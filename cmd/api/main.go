@@ -2,15 +2,19 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/Netflix/go-env"
 	"github.com/dgraph-io/ristretto"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5"
 	"github.com/oklog/run"
 	"github.com/shoppigram-com/marketplace-api/internal/products"
 	"github.com/shoppigram-com/marketplace-api/internal/products/generated"
+	"github.com/streadway/handy/cors"
 	"go.uber.org/zap"
 	"net/http"
+	"time"
 )
 
 func main() {
@@ -34,9 +38,27 @@ func main() {
 	var g run.Group
 	var r = chi.NewRouter()
 	var httpServer = http.Server{
-		Addr:    config.HTTP.Port,
+		Addr:    ":" + config.HTTP.Port,
 		Handler: r,
 	}
+
+	r.Use(
+		middleware.Timeout(10*time.Second),
+		middleware.Recoverer,
+		middleware.Compress(5, "application/json"),
+		cors.Middleware(cors.Config{
+			AllowOrigin: func(r *http.Request) string {
+				return "*.shoppigram.com,*.shoppigram.dev,*.shoppigram.ru,localhost:3000"
+			},
+		}),
+		middleware.Throttle(500),
+	)
+
+	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusNotFound)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "the path you requested does not exist"})
+	})
 
 	cache, err := ristretto.NewCache(&ristretto.Config{
 		NumCounters: 1e7,         // number of keys to track frequency of (10M).
@@ -51,7 +73,7 @@ func main() {
 	productsService := products.New(productsRepo, log.With(zap.String("service", "products")), cache)
 	productsHandler := products.MakeHandler(productsService)
 
-	r.Handle("/api/v1", productsHandler)
+	r.Mount("/api/v1/public/products", productsHandler)
 
 	g.Add(func() error {
 		log.Info("starting HTTP server", zap.String("port", config.HTTP.Port))
@@ -59,8 +81,6 @@ func main() {
 	}, func(err error) {
 		_ = httpServer.Shutdown(ctx)
 	})
-
-	log.Info("Starting the application")
 
 	if err := g.Run(); err != nil {
 		log.Fatal("api exited with error:", zap.Error(err))

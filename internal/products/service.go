@@ -29,8 +29,8 @@ type (
 
 	// GetProductsResponse defines the response body for the GetProducts endpoint
 	GetProductsResponse struct {
-		WebAppName string    `json:"web_app_name"`
-		Products   []Product `json:"products"`
+		WebAppName string    `json:"web_app_name,omitempty"`
+		Products   []Product `json:"products,omitempty"`
 	}
 
 	Repository interface {
@@ -43,12 +43,10 @@ type (
 		log   *zap.Logger
 		cache *ristretto.Cache
 	}
-
-	cacheKey string
 )
 
 const (
-	getProductsCacheKeyBase cacheKey = "products.GetProducts"
+	getProductsCacheKeyBase = "products.GetProducts"
 )
 
 var (
@@ -60,15 +58,16 @@ var (
 // New creates a new product service
 func New(repo Repository, log *zap.Logger, cache *ristretto.Cache) *Service {
 	return &Service{
-		repo: repo,
-		log:  log,
+		repo:  repo,
+		log:   log,
+		cache: cache,
 	}
 }
 
 // GetProducts returns a list of products
 func (s *Service) GetProducts(ctx context.Context, request GetProductsRequest) (GetProductsResponse, error) {
 	// Check if the request is cached
-	key := getProductsCacheKeyBase + cacheKey(request.WebAppID.String())
+	key := getProductsCacheKeyBase + request.WebAppID.String()
 	if s.cache != nil {
 		if res, ok := s.cache.Get(key); ok {
 			return res.(GetProductsResponse), nil
@@ -81,10 +80,12 @@ func (s *Service) GetProducts(ctx context.Context, request GetProductsRequest) (
 
 	res, err := s.repo.GetProducts(ctx, request)
 	if err != nil {
-		s.log.With(
-			zap.String("method", "s.repo.GetProducts"),
-			zap.String("web_app_id", request.WebAppID.String()),
-		).Error(err.Error())
+		if !errors.Is(err, ErrorNotFound) {
+			s.log.With(
+				zap.String("method", "s.repo.GetProducts"),
+				zap.String("web_app_id", request.WebAppID.String()),
+			).Error(err.Error())
+		}
 		return GetProductsResponse{}, errors.Wrap(err, "s.repo.GetProducts")
 	}
 

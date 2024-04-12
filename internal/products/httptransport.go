@@ -5,20 +5,14 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/go-chi/chi/v5"
+	kithttp "github.com/go-kit/kit/transport/http"
 	"github.com/google/uuid"
 	"net/http"
-	"os"
-
-	kitlog "github.com/go-kit/kit/log"
-	"github.com/go-kit/kit/transport"
-	kithttp "github.com/go-kit/kit/transport/http"
 )
 
 // MakeHandler returns a handler for the booking service.
 func MakeHandler(bs *Service) http.Handler {
-	logger := kitlog.NewLogfmtLogger(kitlog.NewSyncWriter(os.Stderr))
 	opts := []kithttp.ServerOption{
-		kithttp.ServerErrorHandler(transport.NewLogErrorHandler(logger)),
 		kithttp.ServerErrorEncoder(encodeError),
 	}
 
@@ -30,7 +24,7 @@ func MakeHandler(bs *Service) http.Handler {
 	)
 
 	r := chi.NewRouter()
-	r.Handle("/{web_app_id}/products", getProductsHandler)
+	r.Get("/{web_app_id}", getProductsHandler.ServeHTTP)
 	return r
 }
 
@@ -59,6 +53,7 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 	switch {
 	case errors.Is(err, ErrorNotFound):
 		w.WriteHeader(http.StatusNotFound)
+		err = ErrorNotFound
 	case errors.Is(err, ErrorInvalidWebAppID):
 		w.WriteHeader(http.StatusBadRequest)
 	default:

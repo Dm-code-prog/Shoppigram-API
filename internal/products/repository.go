@@ -2,8 +2,8 @@ package products
 
 import (
 	"context"
-	"database/sql"
-	"errors"
+	"github.com/jackc/pgx/v5"
+	"github.com/pkg/errors"
 	"github.com/shoppigram-com/marketplace-api/internal/products/generated"
 )
 
@@ -22,11 +22,13 @@ func NewPg(gen *generated.Queries) *Pg {
 func (p *Pg) GetProducts(ctx context.Context, request GetProductsRequest) (GetProductsResponse, error) {
 	prod, err := p.gen.GetProducts(ctx, request.WebAppID)
 	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return GetProductsResponse{}, ErrorNotFound
 		}
+		return GetProductsResponse{}, errors.Wrap(err, "p.gen.GetProducts")
 	}
 
+	var name string
 	var products []Product
 	for _, p := range prod {
 		products = append(products, Product{
@@ -37,10 +39,11 @@ func (p *Pg) GetProducts(ctx context.Context, request GetProductsRequest) (GetPr
 			PriceCurrency: p.PriceCurrency,
 			ImageURL:      p.ImageUrl,
 		})
+		name = p.WebAppName
 	}
 
 	return GetProductsResponse{
-		WebAppName: prod[0].WebAppName,
+		WebAppName: name,
 		Products:   products,
 	}, nil
 }
