@@ -11,11 +11,29 @@ import (
 	"github.com/oklog/run"
 	"github.com/shoppigram-com/marketplace-api/internal/products"
 	"github.com/shoppigram-com/marketplace-api/internal/products/generated"
-	"github.com/streadway/handy/cors"
 	"go.uber.org/zap"
 	"net/http"
 	"time"
 )
+
+// List of allowed origins
+var allowedOrigins = map[string]bool{
+	"https://web-app.shoppigram.com": true,
+	"https://web-app.shoppigram.ru":  true,
+	"https://web-app.shoppigram.dev": true,
+	"http://localhost:3000":          true,
+}
+
+// corsMiddleware checks the request's origin and sets CORS headers accordingly.
+func corsMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		if _, ok := allowedOrigins[origin]; ok {
+			w.Header().Set("Access-Control-Allow-Origin", origin)
+		}
+		next.ServeHTTP(w, r)
+	})
+}
 
 func main() {
 	log, _ := zap.NewProduction()
@@ -46,11 +64,7 @@ func main() {
 		middleware.Timeout(10*time.Second),
 		middleware.Recoverer,
 		middleware.Compress(5, "application/json"),
-		cors.Middleware(cors.Config{
-			AllowOrigin: func(r *http.Request) string {
-				return "*.shoppigram.com,*.shoppigram.dev,*.shoppigram.ru,localhost:3000"
-			},
-		}),
+		corsMiddleware,
 		middleware.Throttle(500),
 	)
 
