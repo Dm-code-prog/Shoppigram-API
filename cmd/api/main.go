@@ -22,6 +22,7 @@ var allowedOrigins = map[string]bool{
 	"https://web-app.shoppigram.ru":  true,
 	"https://web-app.shoppigram.dev": true,
 	"http://localhost:3000":          true,
+	"http://localhost:5173":          true,
 }
 
 // corsMiddleware checks the request's origin and sets CORS headers accordingly.
