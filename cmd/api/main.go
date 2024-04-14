@@ -9,32 +9,13 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/jackc/pgx/v5"
 	"github.com/oklog/run"
+	"github.com/shoppigram-com/marketplace-api/internal/cors"
 	"github.com/shoppigram-com/marketplace-api/internal/products"
 	"github.com/shoppigram-com/marketplace-api/internal/products/generated"
 	"go.uber.org/zap"
 	"net/http"
 	"time"
 )
-
-// List of allowed origins
-var allowedOrigins = map[string]bool{
-	"https://web-app.shoppigram.com": true,
-	"https://web-app.shoppigram.ru":  true,
-	"https://web-app.shoppigram.dev": true,
-	"http://localhost:3000":          true,
-	"http://localhost:5173":          true,
-}
-
-// corsMiddleware checks the request's origin and sets CORS headers accordingly.
-func corsMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		origin := r.Header.Get("Origin")
-		if _, ok := allowedOrigins[origin]; ok {
-			w.Header().Set("Access-Control-Allow-Origin", origin)
-		}
-		next.ServeHTTP(w, r)
-	})
-}
 
 func main() {
 	log, _ := zap.NewProduction()
@@ -65,7 +46,7 @@ func main() {
 		middleware.Timeout(10*time.Second),
 		middleware.Recoverer,
 		middleware.Compress(5, "application/json"),
-		corsMiddleware,
+		cors.Middleware,
 		middleware.Throttle(500),
 	)
 
