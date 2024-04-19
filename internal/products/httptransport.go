@@ -23,8 +23,17 @@ func MakeHandler(bs *Service) http.Handler {
 		opts...,
 	)
 
+	invalidateProductsCacheHandler := kithttp.NewServer(
+		makeInvalidateProductsCacheEndpoint(bs),
+		decodeInvalidateProductsCacheRequest,
+		encodeResponse,
+		opts...,
+	)
+
 	r := chi.NewRouter()
 	r.Get("/{web_app_id}", getProductsHandler.ServeHTTP)
+	r.Put("/{web_app_id}/invalidate", invalidateProductsCacheHandler.ServeHTTP)
+
 	return r
 }
 
@@ -44,9 +53,29 @@ func decodeGetProductsRequest(_ context.Context, r *http.Request) (interface{}, 
 	}, nil
 }
 
+func decodeInvalidateProductsCacheRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	webAppID := chi.URLParam(r, "web_app_id")
+	if webAppID == "" {
+		return InvalidateProductsCacheRequest{}, ErrorInvalidWebAppID
+	}
+
+	webAppUUID, err := uuid.Parse(webAppID)
+	if err != nil {
+		return InvalidateProductsCacheRequest{}, ErrorInvalidWebAppID
+	}
+
+	return InvalidateProductsCacheRequest{
+		WebAppID: webAppUUID,
+	}, nil
+
+}
+
 func encodeResponse(ctx context.Context, w http.ResponseWriter, response interface{}) error {
 	w.Header().Set("Content-Type", "application/json")
-	return json.NewEncoder(w).Encode(response)
+	if response != nil {
+		return json.NewEncoder(w).Encode(response)
+	}
+	return nil
 }
 
 func encodeError(_ context.Context, err error, w http.ResponseWriter) {
