@@ -14,6 +14,8 @@ import (
 	"github.com/shoppigram-com/marketplace-api/internal/products/generated"
 	"go.uber.org/zap"
 	"net/http"
+	"os"
+	"syscall"
 	"time"
 )
 
@@ -36,6 +38,8 @@ func main() {
 	log.Debug("connected to database")
 
 	var g run.Group
+	g.Add(run.SignalHandler(ctx, os.Interrupt, os.Kill, syscall.SIGTERM))
+
 	var r = chi.NewRouter()
 	var httpServer = http.Server{
 		Addr:    ":" + config.HTTP.Port,
