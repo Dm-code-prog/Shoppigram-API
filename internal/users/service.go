@@ -99,6 +99,7 @@ func (s *Service) AuthUser(ctx context.Context, request AuthUserRequest) (AuthUs
 		return AuthUserResponse{}, ErrorInternal
 	}
 
+	// FIXME: Most of the time it won't be equal because of the ID field
 	if reflect.DeepEqual(request.User, usr) {
 		// Cache the response
 		s.cache.SetWithTTL(key, request.User, 0, 1*time.Hour)
