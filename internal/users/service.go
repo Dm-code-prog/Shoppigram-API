@@ -26,19 +26,19 @@ type (
 		AllowsPm     bool      `json:"allows_pm,omitempty"`
 	}
 
-	// AuthUserRequest defines the request for the AuthUser endpoint
-	AuthUserRequest struct {
+	// TelegramAuthUserRequest defines the request for the TelegramAuthUser endpoint
+	TelegramAuthUserRequest struct {
 		User User `json:"user"`
 	}
 
-	// AuthUserResponse defines the response for the AuthUser endpoint
-	AuthUserResponse struct {
+	// TelegramAuthUserResponse defines the response for the TelegramAuthUser endpoint
+	TelegramAuthUserResponse struct {
 		ID uuid.UUID `json:"id"`
 	}
 
 	// Repository provides access to the user storage
 	Repository interface {
-		AuthUser(ctx context.Context, request AuthUserRequest) error
+		TelegramAuthUser(ctx context.Context, request TelegramAuthUserRequest) error
 	}
 
 	// Service provides user operations
@@ -50,7 +50,7 @@ type (
 )
 
 const (
-	authUserCacheKeyBase = "users.AuthUser:"
+	telegramAuthUserCacheKeyBase = "users.TelegramAuthUser:"
 )
 
 var (
@@ -75,13 +75,15 @@ func New(repo Repository, log *zap.Logger, cache *ristretto.Cache) *Service {
 	}
 }
 
-// AuthUser checks if a user record is present and if not, or if its
+// TODO: Add request validation func
+
+// TelegramAuthUser checks if a user record is present and if not, or if its
 // information is not out of date, then updates it
-func (s *Service) AuthUser(ctx context.Context, request AuthUserRequest) (AuthUserResponse, error) {
+func (s *Service) TelegramAuthUser(ctx context.Context, request TelegramAuthUserRequest) (TelegramAuthUserResponse, error) {
 	externalId := strconv.Itoa(request.User.ExternalId)
 
 	// Check if the request is cached
-	key := authUserCacheKeyBase + externalId
+	key := telegramAuthUserCacheKeyBase + externalId
 	res, ok := s.cache.Get(key)
 	if !ok {
 		s.log.With(
@@ -96,27 +98,27 @@ func (s *Service) AuthUser(ctx context.Context, request AuthUserRequest) (AuthUs
 			zap.String("method", "s.cache.Get"),
 			zap.String("external_id", externalId),
 		).Error("User type cache data casting")
-		return AuthUserResponse{}, ErrorInternal
+		return TelegramAuthUserResponse{}, ErrorInternal
 	}
 
 	// FIXME: Most of the time it won't be equal because of the ID field
 	if reflect.DeepEqual(request.User, usr) {
 		// Cache the response
 		s.cache.SetWithTTL(key, request.User, 0, 1*time.Hour)
-		return AuthUserResponse{usr.ID}, nil
+		return TelegramAuthUserResponse{usr.ID}, nil
 	}
 
-	err := s.repo.AuthUser(ctx, request)
+	err := s.repo.TelegramAuthUser(ctx, request)
 	if err != nil {
 		s.log.With(
-			zap.String("method", "s.repo.AuthUser"),
+			zap.String("method", "s.repo.TelegramAuthUser"),
 			zap.String("external_id", externalId),
 		).Error(err.Error())
-		return AuthUserResponse{}, errors.Wrap(err, "s.repo.AuthUser")
+		return TelegramAuthUserResponse{}, errors.Wrap(err, "s.repo.TelegramAuthUser")
 	}
 
 	// Cache the response
 	s.cache.SetWithTTL(key, request.User, 0, 1*time.Hour)
 
-	return AuthUserResponse{usr.ID}, nil
+	return TelegramAuthUserResponse{usr.ID}, nil
 }

@@ -16,20 +16,20 @@ func MakeHandler(bs *Service) http.Handler {
 		kithttp.ServerErrorEncoder(encodeError),
 	}
 
-	authUserHandler := kithttp.NewServer(
-		makeAuthUserEndpoint(bs),
-		decodeAuthUserRequest,
+	telegramAuthUserHandler := kithttp.NewServer(
+		makeTelegramAuthUserEndpoint(bs),
+		decodeTelegramAuthUserRequest,
 		encodeResponse,
 		opts...,
 	)
 
 	r := chi.NewRouter()
-	r.Put("/auth", authUserHandler.ServeHTTP)
+	r.Put("/auth", telegramAuthUserHandler.ServeHTTP)
 
 	return r
 }
 
-func decodeAuthUserRequest(_ context.Context, r *http.Request) (interface{}, error) {
+func decodeTelegramAuthUserRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	var usr User
 
 	decoder := json.NewDecoder(r.Body)
@@ -37,9 +37,7 @@ func decodeAuthUserRequest(_ context.Context, r *http.Request) (interface{}, err
 		return nil, ErrorBadRequest
 	}
 
-	// TODO: Add request validation
-
-	return AuthUserRequest{
+	return TelegramAuthUserRequest{
 		User: usr,
 	}, nil
 }
