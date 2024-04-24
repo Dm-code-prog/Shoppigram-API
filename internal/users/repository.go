@@ -22,25 +22,13 @@ func NewPg(gen *generated.Queries) *Pg {
 
 // TelegramAuthUser creates or updates a user record
 func (p *Pg) TelegramAuthUser(ctx context.Context, request TelegramAuthUserRequest) (uuid.UUID, error) {
-	id, err := p.gen.TelegramAuthUser(ctx, generated.TelegramAuthUserParams{
+	tgAuthUserParams := generated.TelegramAuthUserParams{
 		ExternalID: int32(request.User.ExternalId),
 		IsBot: pgtype.Bool{
 			Bool:  request.User.IsBot,
 			Valid: true,
 		},
 		FirstName: request.User.FirstName,
-		LastName: pgtype.Text{
-			String: request.User.LastName,
-			Valid:  true,
-		},
-		Username: pgtype.Text{
-			String: request.User.Username,
-			Valid:  true,
-		},
-		LanguageCode: pgtype.Text{
-			String: request.User.LanguageCode,
-			Valid:  true,
-		},
 		IsPremium: pgtype.Bool{
 			Bool:  request.User.IsPremium,
 			Valid: true,
@@ -49,7 +37,48 @@ func (p *Pg) TelegramAuthUser(ctx context.Context, request TelegramAuthUserReque
 			Bool:  request.User.AllowsPm,
 			Valid: true,
 		},
-	})
+	}
+
+	switch request.User.LastName {
+	case "":
+		tgAuthUserParams.LastName = pgtype.Text{
+			String: "",
+			Valid:  false,
+		}
+	default:
+		tgAuthUserParams.LastName = pgtype.Text{
+			String: request.User.LastName,
+			Valid:  true,
+		}
+	}
+
+	switch request.User.Username {
+	case "":
+		tgAuthUserParams.Username = pgtype.Text{
+			String: "",
+			Valid:  false,
+		}
+	default:
+		tgAuthUserParams.Username = pgtype.Text{
+			String: request.User.Username,
+			Valid:  true,
+		}
+	}
+
+	switch request.User.LanguageCode {
+	case "":
+		tgAuthUserParams.LanguageCode = pgtype.Text{
+			String: "",
+			Valid:  false,
+		}
+	default:
+		tgAuthUserParams.LanguageCode = pgtype.Text{
+			String: request.User.LanguageCode,
+			Valid:  true,
+		}
+	}
+
+	id, err := p.gen.TelegramAuthUser(ctx, tgAuthUserParams)
 	if err != nil {
 		return uuid.Nil, errors.Wrap(err, "p.gen.TelegramAuthUser")
 	}
