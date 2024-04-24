@@ -72,12 +72,12 @@ const getUser = `-- name: GetUser :one
 select u.id,
        u.external_id,
        u.is_bot,
-	   u.first_name,
-	   u.last_name,
-	   u.username,
-	   u.language_code,
-	   u.is_premium,
-	   u.allows_pm
+       u.first_name,
+       u.last_name,
+       u.username,
+       u.language_code,
+       u.is_premium,
+       u.allows_pm
 from telegram_users u
 where u.external_id = $1
 limit 1
