@@ -1,4 +1,4 @@
--- name: AuthUser :exec
+-- name: AuthUser :one
 insert into telegram_users (external_id,
                             is_bot,
                             first_name,
@@ -15,4 +15,5 @@ do update set first_name = $3,
     language_code = $6,
     is_premium = $7,
     allows_pm = $8,
-    updated_at = now();
+    updated_at = now()
+returning id;

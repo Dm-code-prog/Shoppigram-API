@@ -2,7 +2,6 @@ package telegram_users
 
 import (
 	"context"
-	"net/http"
 	"reflect"
 	"strconv"
 	"time"
@@ -30,6 +29,11 @@ type (
 	// AuthUserRequest defines the request for the AuthUser endpoint
 	AuthUserRequest struct {
 		User User `json:"user"`
+	}
+
+	// AuthUserResponse defines the response for the AuthUser endpoint
+	AuthUserResponse struct {
+		ID uuid.UUID `json:"id"`
 	}
 
 	// Repository provides access to the user storage
@@ -73,7 +77,7 @@ func New(repo Repository, log *zap.Logger, cache *ristretto.Cache) *Service {
 
 // AuthUser checks if a user record is present and if not, or if its
 // information is not out of date, then updates it
-func (s *Service) AuthUser(ctx context.Context, request AuthUserRequest) (int, error) {
+func (s *Service) AuthUser(ctx context.Context, request AuthUserRequest) (AuthUserResponse, error) {
 	externalId := strconv.Itoa(request.User.ExternalId)
 
 	// Check if the request is cached
@@ -92,13 +96,13 @@ func (s *Service) AuthUser(ctx context.Context, request AuthUserRequest) (int, e
 			zap.String("method", "s.cache.Get"),
 			zap.String("external_id", externalId),
 		).Error("User type cache data casting")
-		return http.StatusInternalServerError, nil
+		return AuthUserResponse{}, ErrorInternal
 	}
 
 	if reflect.DeepEqual(request.User, usr) {
 		// Cache the response
 		s.cache.SetWithTTL(key, request.User, 0, 1*time.Hour)
-		return http.StatusAccepted, nil
+		return AuthUserResponse{usr.ID}, nil
 	}
 
 	err := s.repo.AuthUser(ctx, request)
@@ -107,11 +111,11 @@ func (s *Service) AuthUser(ctx context.Context, request AuthUserRequest) (int, e
 			zap.String("method", "s.repo.AuthUser"),
 			zap.String("external_id", externalId),
 		).Error(err.Error())
-		return http.StatusInternalServerError, errors.Wrap(err, "s.repo.AuthUser")
+		return AuthUserResponse{}, errors.Wrap(err, "s.repo.AuthUser")
 	}
 
 	// Cache the response
 	s.cache.SetWithTTL(key, request.User, 0, 1*time.Hour)
 
-	return http.StatusAccepted, nil
+	return AuthUserResponse{usr.ID}, nil
 }

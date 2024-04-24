@@ -8,10 +8,11 @@ package generated
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const authUser = `-- name: AuthUser :exec
+const authUser = `-- name: AuthUser :one
 insert into telegram_users (external_id,
                             is_bot,
                             first_name,
@@ -29,6 +30,7 @@ do update set first_name = $3,
     is_premium = $7,
     allows_pm = $8,
     updated_at = now()
+returning id
 `
 
 type AuthUserParams struct {
@@ -42,8 +44,8 @@ type AuthUserParams struct {
 	AllowsPm     pgtype.Bool
 }
 
-func (q *Queries) AuthUser(ctx context.Context, arg AuthUserParams) error {
-	_, err := q.db.Exec(ctx, authUser,
+func (q *Queries) AuthUser(ctx context.Context, arg AuthUserParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, authUser,
 		arg.ExternalID,
 		arg.IsBot,
 		arg.FirstName,
@@ -53,5 +55,7 @@ func (q *Queries) AuthUser(ctx context.Context, arg AuthUserParams) error {
 		arg.IsPremium,
 		arg.AllowsPm,
 	)
-	return err
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
 }

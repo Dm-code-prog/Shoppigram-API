@@ -3,6 +3,7 @@ package telegram_users
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pkg/errors"
 	"github.com/shoppigram-com/marketplace-api/internal/users/generated"
@@ -20,8 +21,8 @@ func NewPg(gen *generated.Queries) *Pg {
 }
 
 // AuthUser creates or updates a user record
-func (p *Pg) AuthUser(ctx context.Context, request AuthUserRequest) error {
-	err := p.gen.AuthUser(ctx, generated.AuthUserParams{
+func (p *Pg) AuthUser(ctx context.Context, request AuthUserRequest) (uuid.UUID, error) {
+	id, err := p.gen.AuthUser(ctx, generated.AuthUserParams{
 		ExternalID: int32(request.User.ExternalId),
 		IsBot: pgtype.Bool{
 			Bool:  request.User.IsBot,
@@ -50,8 +51,8 @@ func (p *Pg) AuthUser(ctx context.Context, request AuthUserRequest) error {
 		},
 	})
 	if err != nil {
-		return errors.Wrap(err, "p.gen.AuthUser")
+		return uuid.Nil, errors.Wrap(err, "p.gen.AuthUser")
 	}
 
-	return nil
+	return id, nil
 }
