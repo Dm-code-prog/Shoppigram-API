@@ -16,7 +16,7 @@ import (
 type (
 	// User defines the structure for a Marketplace client
 	User struct {
-		ID           uuid.UUID `json:"id"`
+		ID           uuid.UUID `json:"id,omitempty"`
 		ExternalId   int       `json:"external_id"`
 		IsBot        bool      `json:"is_bot,omitempty"`
 		FirstName    string    `json:"first_name"`
@@ -34,10 +34,7 @@ type (
 
 	// Repository provides access to the user storage
 	Repository interface {
-		CreateUser(ctx context.Context, request AuthUserRequest) error
-		GetUser(ctx context.Context, request AuthUserRequest) (User, error)
-		UpdateUser(ctx context.Context, request AuthUserRequest) error
-		DeleteUser(ctx context.Context, request AuthUserRequest) error
+		AuthUser(ctx context.Context, request AuthUserRequest) error
 	}
 
 	// Service provides user operations
@@ -54,7 +51,6 @@ const (
 
 var (
 	ErrorBadRequest = errors.New("bad request")
-	ErrorNotFound   = errors.New("user not found")
 	ErrorInternal   = errors.New("internal server error")
 )
 
@@ -82,63 +78,40 @@ func (s *Service) AuthUser(ctx context.Context, request AuthUserRequest) (int, e
 
 	// Check if the request is cached
 	key := authUserCacheKeyBase + externalId
-	if res, ok := s.cache.Get(key); ok {
-		usr, ok2 := res.(User)
-		if !ok2 {
-			return http.StatusInternalServerError, nil
-		}
-		if !reflect.DeepEqual(request.User, usr) {
-			err := s.repo.UpdateUser(ctx, request)
-			if err != nil {
-				s.log.With(
-					zap.String("method", "s.repo.UpdateUser"),
-					zap.String("external_id", externalId),
-				).Error(err.Error())
-				return http.StatusInternalServerError, errors.Wrap(err, "s.repo.UpdateUser")
-			}
-		}
-
-		return http.StatusAccepted, nil
-	} else {
+	res, ok := s.cache.Get(key)
+	if !ok {
 		s.log.With(
+			zap.String("method", "s.cache.Get"),
 			zap.String("external_id", externalId),
 		).Info("cache miss")
 	}
 
-	res, err := s.repo.GetUser(ctx, request)
-	if err != nil {
-		if !errors.Is(err, ErrorNotFound) {
-			s.log.With(
-				zap.String("method", "s.repo.GetUser"),
-				zap.String("external_id", externalId),
-			).Error(err.Error())
-			return http.StatusInternalServerError, errors.Wrap(err, "s.repo.GetUser")
-		} else {
-			err := s.repo.UpdateUser(ctx, request)
-			if err != nil {
-				s.log.With(
-					zap.String("method", "s.repo.CreateUser"),
-					zap.String("external_id", externalId),
-				).Error(err.Error())
-				return http.StatusInternalServerError, errors.Wrap(err, "s.repo.CreateUser")
-			}
-			return http.StatusAccepted, nil
-		}
+	usr, ok2 := res.(User)
+	if !ok2 {
+		s.log.With(
+			zap.String("method", "s.cache.Get"),
+			zap.String("external_id", externalId),
+		).Error("User type cache data casting")
+		return http.StatusInternalServerError, nil
 	}
 
-	if !reflect.DeepEqual(request.User, res) {
-		err := s.repo.UpdateUser(ctx, request)
-		if err != nil {
-			s.log.With(
-				zap.String("method", "s.repo.AuthUser"),
-				zap.String("external_id", externalId),
-			).Error(err.Error())
-		}
+	if reflect.DeepEqual(request.User, usr) {
+		// Cache the response
+		s.cache.SetWithTTL(key, request.User, 0, 1*time.Hour)
+		return http.StatusAccepted, nil
+	}
 
+	err := s.repo.AuthUser(ctx, request)
+	if err != nil {
+		s.log.With(
+			zap.String("method", "s.repo.AuthUser"),
+			zap.String("external_id", externalId),
+		).Error(err.Error())
+		return http.StatusInternalServerError, errors.Wrap(err, "s.repo.AuthUser")
 	}
 
 	// Cache the response
-	s.cache.SetWithTTL(key, res, 0, 1*time.Hour)
+	s.cache.SetWithTTL(key, request.User, 0, 1*time.Hour)
 
 	return http.StatusAccepted, nil
 }

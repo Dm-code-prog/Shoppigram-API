@@ -8,32 +8,30 @@ package generated
 import (
 	"context"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createUser = `-- name: CreateUser :exec
-insert into telegram_users (id,
-                   external_id, -- 1
-                   is_bot, -- 2
-                   first_name, -- 3
-                   last_name, -- 4
-                   username, -- 5
-                   language_code, -- 6
-                   is_premium, -- 7
-                   allows_pm) -- 8
-values (uuid_generate_v4(),
-        $1,
-        $2,
-        $3,
-        $4,
-        $5,
-        $6,
-        $7,
-        $8)
+const authUser = `-- name: AuthUser :exec
+insert into telegram_users (external_id,
+                            is_bot,
+                            first_name,
+                            last_name,
+                            username,
+                            language_code,
+                            is_premium,
+                            allows_pm)
+values ($1, $2, $3, $4, $5, $6, $7, $8)
+on conflict (external_id)
+do update set first_name = $3,
+    last_name = $4,
+    username = $5,
+    language_code = $6,
+    is_premium = $7,
+    allows_pm = $8,
+    updated_at = now()
 `
 
-type CreateUserParams struct {
+type AuthUserParams struct {
 	ExternalID   int32
 	IsBot        pgtype.Bool
 	FirstName    string
@@ -44,99 +42,10 @@ type CreateUserParams struct {
 	AllowsPm     pgtype.Bool
 }
 
-func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) error {
-	_, err := q.db.Exec(ctx, createUser,
+func (q *Queries) AuthUser(ctx context.Context, arg AuthUserParams) error {
+	_, err := q.db.Exec(ctx, authUser,
 		arg.ExternalID,
 		arg.IsBot,
-		arg.FirstName,
-		arg.LastName,
-		arg.Username,
-		arg.LanguageCode,
-		arg.IsPremium,
-		arg.AllowsPm,
-	)
-	return err
-}
-
-const deleteUser = `-- name: DeleteUser :exec
-delete from telegram_users
-where external_id = $1
-`
-
-func (q *Queries) DeleteUser(ctx context.Context, externalID int32) error {
-	_, err := q.db.Exec(ctx, deleteUser, externalID)
-	return err
-}
-
-const getUser = `-- name: GetUser :one
-select u.id,
-       u.external_id,
-       u.is_bot,
-       u.first_name,
-       u.last_name,
-       u.username,
-       u.language_code,
-       u.is_premium,
-       u.allows_pm
-from telegram_users u
-where u.external_id = $1
-limit 1
-`
-
-type GetUserRow struct {
-	ID           uuid.UUID
-	ExternalID   int32
-	IsBot        pgtype.Bool
-	FirstName    string
-	LastName     pgtype.Text
-	Username     pgtype.Text
-	LanguageCode pgtype.Text
-	IsPremium    pgtype.Bool
-	AllowsPm     pgtype.Bool
-}
-
-func (q *Queries) GetUser(ctx context.Context, externalID int32) (GetUserRow, error) {
-	row := q.db.QueryRow(ctx, getUser, externalID)
-	var i GetUserRow
-	err := row.Scan(
-		&i.ID,
-		&i.ExternalID,
-		&i.IsBot,
-		&i.FirstName,
-		&i.LastName,
-		&i.Username,
-		&i.LanguageCode,
-		&i.IsPremium,
-		&i.AllowsPm,
-	)
-	return i, err
-}
-
-const updateUser = `-- name: UpdateUser :exec
-update telegram_users
-set first_name = $2,
-    last_name = $3,
-    username = $4,
-    language_code = $5,
-    is_premium = $6,
-    allows_pm = $7,
-    updated_at = now()
-where external_id = $1
-`
-
-type UpdateUserParams struct {
-	ExternalID   int32
-	FirstName    string
-	LastName     pgtype.Text
-	Username     pgtype.Text
-	LanguageCode pgtype.Text
-	IsPremium    pgtype.Bool
-	AllowsPm     pgtype.Bool
-}
-
-func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
-	_, err := q.db.Exec(ctx, updateUser,
-		arg.ExternalID,
 		arg.FirstName,
 		arg.LastName,
 		arg.Username,

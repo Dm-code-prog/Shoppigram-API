@@ -54,9 +54,6 @@ func encodeResponse(ctx context.Context, w http.ResponseWriter, response interfa
 
 func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 	switch {
-	case errors.Is(err, ErrorNotFound):
-		w.WriteHeader(http.StatusNotFound)
-		err = ErrorNotFound
 	case errors.Is(err, ErrorBadRequest):
 		w.WriteHeader(http.StatusBadRequest)
 		err = ErrorBadRequest
