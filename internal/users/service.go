@@ -25,7 +25,7 @@ type (
 
 	// TelegramAuthUserRequest defines the request for the TelegramAuthUser endpoint
 	TelegramAuthUserRequest struct {
-		User User `json:"user"`
+		User User
 	}
 
 	// TelegramAuthUserResponse defines the response for the TelegramAuthUser endpoint
