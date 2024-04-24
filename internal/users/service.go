@@ -69,7 +69,8 @@ func New(repo Repository, log *zap.Logger) *Service {
 
 // TODO: Add request validation func
 
-// TelegramAuthUser creates or updates a user record
+// TelegramAuthUser checks if a user record is present and if not, or if its
+// information is not out of date, then updates it
 func (s *Service) TelegramAuthUser(ctx context.Context, request TelegramAuthUserRequest) (TelegramAuthUserResponse, error) {
 	id, err := s.repo.TelegramAuthUser(ctx, request)
 	if err != nil {
