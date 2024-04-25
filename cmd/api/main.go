@@ -3,6 +3,11 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"os"
+	"syscall"
+	"time"
+
 	"github.com/Netflix/go-env"
 	"github.com/dgraph-io/ristretto"
 	"github.com/go-chi/chi/v5"
@@ -10,13 +15,11 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/oklog/run"
 	"github.com/shoppigram-com/marketplace-api/internal/cors"
-	"github.com/shoppigram-com/marketplace-api/internal/products"
-	"github.com/shoppigram-com/marketplace-api/internal/products/generated"
+	products "github.com/shoppigram-com/marketplace-api/internal/products"
+	products_generated "github.com/shoppigram-com/marketplace-api/internal/products/generated"
+	telegram_users "github.com/shoppigram-com/marketplace-api/internal/users"
+	telegram_users_generated "github.com/shoppigram-com/marketplace-api/internal/users/generated"
 	"go.uber.org/zap"
-	"net/http"
-	"os"
-	"syscall"
-	"time"
 )
 
 func main() {
@@ -69,11 +72,16 @@ func main() {
 		log.Fatal("failed to create cache", zap.Error(err))
 	}
 
-	productsRepo := products.NewPg(generated.New(db))
+	productsRepo := products.NewPg(products_generated.New(db))
 	productsService := products.New(productsRepo, log.With(zap.String("service", "products")), cache)
 	productsHandler := products.MakeHandler(productsService)
 
+	telegramUsersRepo := telegram_users.NewPg(telegram_users_generated.New(db))
+	telegramUsersService := telegram_users.New(telegramUsersRepo, log.With(zap.String("service", "users")))
+	telegramUsersHandler := telegram_users.MakeHandler(telegramUsersService)
+
 	r.Mount("/api/v1/public/products", productsHandler)
+	r.Mount("/api/v1/public/telegram_auth", telegramUsersHandler)
 
 	g.Add(func() error {
 		log.Info("starting HTTP server", zap.String("port", config.HTTP.Port))
