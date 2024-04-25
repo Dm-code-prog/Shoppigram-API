@@ -56,3 +56,5 @@ func (p *Pg) TelegramAuthUser(ctx context.Context, request TelegramAuthUserReque
 
 	return id, nil
 }
+
+// TODO: Add method for adding a user token

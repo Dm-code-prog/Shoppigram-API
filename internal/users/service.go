@@ -20,7 +20,7 @@ type (
 		Username     string    `json:"username,omitempty"`
 		LanguageCode string    `json:"language_code,omitempty"`
 		IsPremium    bool      `json:"is_premium,omitempty"`
-		AllowsPm     bool      `json:"allows_pm,omitempty"`
+		AllowsPm     bool      `json:"allows_write_to_pm,omitempty"`
 	}
 
 	// TelegramAuthUserRequest defines the request for the TelegramAuthUser endpoint
