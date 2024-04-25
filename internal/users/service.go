@@ -50,8 +50,9 @@ const (
 )
 
 var (
-	ErrorBadRequest = errors.New("bad request")
-	ErrorInternal   = errors.New("internal server error")
+	ErrorBadRequest   = errors.New("bad request")
+	ErrorUnauthorized = errors.New("unauthorized")
+	ErrorInternal     = errors.New("internal server error")
 )
 
 // New creates a new user service
@@ -67,10 +68,23 @@ func New(repo Repository, log *zap.Logger) *Service {
 	}
 }
 
-// TODO: Add request validation func
+// TelegramRequestValidation validates that request came from Telegram
+func (s *Service) TelegramRequestValidation(ctx context.Context, request TelegramAuthUserRequest) bool {
+	// TODO: Add request validation functionality
+	return true
+}
 
 // TelegramAuthUser creates or updates a user record
 func (s *Service) TelegramAuthUser(ctx context.Context, request TelegramAuthUserRequest) (TelegramAuthUserResponse, error) {
+	if !s.TelegramRequestValidation(ctx, request) {
+		// ASK: Should it be an error or just a warning?
+		s.log.With(
+			zap.String("method", "s.TelegramRequestValidation"),
+			zap.String("external_id", strconv.Itoa(request.User.ExternalId)),
+		).Error(ErrorUnauthorized.Error())
+		return TelegramAuthUserResponse{}, errors.Wrap(ErrorUnauthorized, "s.TelegramRequestValidation")
+	}
+
 	id, err := s.repo.TelegramAuthUser(ctx, request)
 	if err != nil {
 		s.log.With(
