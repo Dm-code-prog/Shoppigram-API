@@ -24,8 +24,16 @@ type (
 	}
 
 	// TelegramAuthUserRequest defines the request for the TelegramAuthUser endpoint
+	// According to the https://core.telegram.org/bots/webapps#webappinitdata
 	TelegramAuthUserRequest struct {
-		User User
+		// ASK: Do we need Chat, ChatInstance, ChatType and CanSendAfter fields?
+		QueryID      string `json:"query_id,omitempty"`
+		User         User   `json:"user"`
+		ChatType     string `json:"chat_type,omitempty"`
+		ChatInstance string `json:"chat_instance,omitempty"`
+		CanSendAfter int    `json:"can_send_after,omitempty"`
+		AuthDate     int    `json:"auth_date"`
+		Hash         string `json:"hash"`
 	}
 
 	// TelegramAuthUserResponse defines the response for the TelegramAuthUser endpoint

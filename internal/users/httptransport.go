@@ -32,9 +32,18 @@ func MakeHandler(bs *Service) http.Handler {
 func decodeTelegramAuthUserRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	var usr User
 
-	decoder := json.NewDecoder(r.Body)
-	if err := decoder.Decode(&usr); err != nil {
-		return nil, ErrorBadRequest
+	param := chi.URLParam(r, "user")
+	if !json.Valid([]byte(param)) {
+		return TelegramAuthUserRequest{}, ErrorBadRequest
+	}
+
+	err := json.Unmarshal([]byte(param), &usr)
+	if err != nil {
+		return TelegramAuthUserRequest{}, ErrorInternal
+	}
+
+	if usr.ExternalId == 0 {
+		return TelegramAuthUserRequest{}, ErrorBadRequest
 	}
 
 	return TelegramAuthUserRequest{
