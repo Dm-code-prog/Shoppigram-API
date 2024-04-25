@@ -101,7 +101,7 @@ func sign(payload string, key string) string {
 }
 
 // TelegramRequestValidation validates that request came from Telegram
-func (s *Service) TelegramRequestValidation(ctx context.Context, initData interface{}) error {
+func (s *Service) TelegramRequestValidation(ctx context.Context, initData string) error {
 	// TODO: Get token string here
 	token := ""
 
