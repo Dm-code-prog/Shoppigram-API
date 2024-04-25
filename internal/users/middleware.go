@@ -8,7 +8,7 @@ import (
 
 // makeTelegramAuthUserMiddleware constructs a middleware which is responsible for
 // Telegram user auth.
-func makeTelegramAuthUserMiddleware() endpoint.Middleware {
+func makeTelegramRequestValidationMiddleware(s *Service) endpoint.Middleware {
 	return func(next endpoint.Endpoint) endpoint.Endpoint {
 		return func(ctx context.Context, request interface{}) (interface{}, error) {
 			// TODO: Implement the authentication middleware

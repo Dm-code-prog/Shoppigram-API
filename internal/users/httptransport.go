@@ -16,8 +16,11 @@ func MakeHandler(bs *Service) http.Handler {
 		kithttp.ServerErrorEncoder(encodeError),
 	}
 
+	telegramAuthUser := makeTelegramAuthUserEndpoint(bs)
+	telegramAuthUser = makeTelegramRequestValidationMiddleware(bs)(telegramAuthUser)
+
 	telegramAuthUserHandler := kithttp.NewServer(
-		makeTelegramAuthUserEndpoint(bs),
+		telegramAuthUser,
 		decodeTelegramAuthUserRequest,
 		encodeResponse,
 		opts...,
