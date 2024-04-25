@@ -67,6 +67,7 @@ const (
 
 var (
 	ErrorBadRequest      = errors.New("bad request")
+	ErrorInvalidJSON     = errors.New("invalid JSON")
 	ErrorUnauthorized    = errors.New("unauthorized")
 	ErrorSignMissing     = errors.New("request sign is missing")
 	ErrorAuthDateMissing = errors.New("request auth date is missing")
