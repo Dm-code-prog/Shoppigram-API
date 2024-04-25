@@ -36,6 +36,11 @@ func makeTelegramRequestValidationMiddleware(s *Service) endpoint.Middleware {
 				return TelegramAuthUserRequest{}, ErrorInternal
 			}
 
+			// ASK: TelegramAuthUserRequest is not a small structure, maybe we don't need something in it?
+			if telegramAuthUserRequest.User.ExternalId == 0 {
+				return TelegramAuthUserRequest{}, ErrorBadRequest
+			}
+
 			ctx = context.WithValue(ctx, "user", telegramAuthUserRequest.User)
 
 			return next(ctx, request)
