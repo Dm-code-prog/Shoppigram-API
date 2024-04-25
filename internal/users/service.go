@@ -2,7 +2,14 @@ package telegram_users
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
+	"net/url"
+	"sort"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -59,9 +66,13 @@ const (
 )
 
 var (
-	ErrorBadRequest   = errors.New("bad request")
-	ErrorUnauthorized = errors.New("unauthorized")
-	ErrorInternal     = errors.New("internal server error")
+	ErrorBadRequest      = errors.New("bad request")
+	ErrorUnauthorized    = errors.New("unauthorized")
+	ErrorSignMissing     = errors.New("request sign is missing")
+	ErrorAuthDateMissing = errors.New("request auth date is missing")
+	ErrorExpired         = errors.New("request is expired")
+	ErrorSignInvalid     = errors.New("request sign is invalid")
+	ErrorInternal        = errors.New("internal server error")
 )
 
 // New creates a new user service
@@ -77,23 +88,90 @@ func New(repo Repository, log *zap.Logger) *Service {
 	}
 }
 
+// sign performs Telegram payload signing with the specified key
+// Payload itself slice of key-value pairs joined with "\n"
+func sign(payload string, key string) string {
+	skHmac := hmac.New(sha256.New, []byte("WebAppData"))
+	skHmac.Write([]byte(key))
+
+	impHmac := hmac.New(sha256.New, skHmac.Sum(nil))
+	impHmac.Write([]byte(payload))
+
+	return hex.EncodeToString(impHmac.Sum(nil))
+}
+
 // TelegramRequestValidation validates that request came from Telegram
-func (s *Service) TelegramRequestValidation(ctx context.Context, request TelegramAuthUserRequest) bool {
-	// TODO: Add request validation functionality
-	return true
+func (s *Service) TelegramRequestValidation(ctx context.Context, initData interface{}) error {
+	// TODO: Get token string here
+	token := ""
+
+	// Parse passed init data as query string.
+	q, err := url.ParseQuery(initData)
+	if err != nil {
+		// ASK: Shall we log some kind of an identificator here?
+		s.log.With(
+			zap.String("method", "url.ParseQuery"),
+		).Error(ErrorBadRequest.Error())
+		return errors.Wrap(err, "url.ParseQuery")
+	}
+
+	var (
+		// Init data creation time.
+		authDate time.Time
+		// Init data sign.
+		hash string
+		// All found key-value pairs.
+		pairs = make([]string, 0, len(q))
+	)
+
+	// Iterate over all key-value pairs of parsed parameters.
+	for k, v := range q {
+		// Store found sign.
+		if k == "hash" {
+			hash = v[0]
+			continue
+		}
+		if k == "auth_date" {
+			if i, err := strconv.Atoi(v[0]); err == nil {
+				authDate = time.Unix(int64(i), 0)
+			}
+		}
+		// Append new pair.
+		pairs = append(pairs, k+"="+v[0])
+	}
+
+	// Sign is always required.
+	if hash == "" {
+		s.log.Error(ErrorSignMissing.Error())
+		return ErrorSignMissing
+	}
+
+	// In case, auth date is zero, it means, we can not check if parameters
+	// are expired.
+	if authDate.IsZero() {
+		s.log.Error(ErrorAuthDateMissing.Error())
+		return ErrorAuthDateMissing
+	}
+
+	// Check if init data is expired.
+	if authDate.Add(telegramAuthUserRequestExpireTime).Before(time.Now()) {
+		s.log.Error(ErrorExpired.Error())
+		return ErrorExpired
+	}
+
+	// According to docs, we sort all the pairs in alphabetical order.
+	sort.Strings(pairs)
+
+	// In case, our sign is not equal to found one, we should throw an error.
+	if sign(strings.Join(pairs, "\n"), token) != hash {
+		s.log.Error(ErrorSignInvalid.Error())
+		return ErrorSignInvalid
+	}
+	return nil
 }
 
 // TelegramAuthUser creates or updates a user record
 func (s *Service) TelegramAuthUser(ctx context.Context, request TelegramAuthUserRequest) (TelegramAuthUserResponse, error) {
-	if !s.TelegramRequestValidation(ctx, request) {
-		// ASK: Should it be an error or just a warning?
-		s.log.With(
-			zap.String("method", "s.TelegramRequestValidation"),
-			zap.String("external_id", strconv.Itoa(request.User.ExternalId)),
-		).Error(ErrorUnauthorized.Error())
-		return TelegramAuthUserResponse{}, errors.Wrap(ErrorUnauthorized, "s.TelegramRequestValidation")
-	}
-
 	id, err := s.repo.TelegramAuthUser(ctx, request)
 	if err != nil {
 		s.log.With(
