@@ -24,7 +24,7 @@ func MakeHandler(bs *Service) http.Handler {
 	)
 
 	r := chi.NewRouter()
-	r.Put("/auth", telegramAuthUserHandler.ServeHTTP)
+	r.Put("/telegram_auth", telegramAuthUserHandler.ServeHTTP)
 
 	return r
 }
