@@ -28,13 +28,13 @@ type (
 	// According to the https://core.telegram.org/bots/webapps#webappinitdata
 	CreateOrUpdateTelegramUserRequest struct {
 		// ASK: Do we need Chat, ChatInstance, ChatType and CanSendAfter fields?
-		QueryID      string `json:"query_id,omitempty"`
-		User         User   `json:"user"`
-		ChatType     string `json:"chat_type,omitempty"`
-		ChatInstance string `json:"chat_instance,omitempty"`
-		CanSendAfter int    `json:"can_send_after,omitempty"`
-		AuthDate     int    `json:"auth_date"`
-		Hash         string `json:"hash"`
+		QueryID      string
+		User         User
+		ChatType     string
+		ChatInstance string
+		CanSendAfter int
+		AuthDate     int
+		Hash         string
 	}
 
 	// CreateOrUpdateTelegramUserResponse defines the response for the CreateOrUpdateTelegramUser endpoint
