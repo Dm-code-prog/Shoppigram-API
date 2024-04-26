@@ -2,7 +2,6 @@ package telegram_users
 
 import (
 	"context"
-	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -78,10 +77,6 @@ func (s *Service) getEndUserBotToken(ctx context.Context, webAppID uuid.UUID) (s
 func (s *Service) CreateOrUpdateTgUser(ctx context.Context, request CreateOrUpdateTgUserRequest) (CreateOrUpdateTgUserResponse, error) {
 	id, err := s.repo.CreateOrUpdateTgUser(ctx, request)
 	if err != nil {
-		s.log.With(
-			zap.String("method", "s.repo.CreateOrUpdateTgUser"),
-			zap.String("external_id", strconv.Itoa(int(request.ExternalId))),
-		).Error(err.Error())
 		return CreateOrUpdateTgUserResponse{}, errors.Wrap(err, "s.repo.CreateOrUpdateTgUser")
 	}
 

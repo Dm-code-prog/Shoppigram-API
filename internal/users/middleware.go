@@ -90,12 +90,17 @@ func MakeAuthMiddleware(s *Service, log *zap.Logger) endpoint.Middleware {
 		return func(ctx context.Context, request any) (any, error) {
 			xInitData, err := GetInitDataFromContext(ctx)
 			if err != nil {
-				return nil, ErrorInitDataIsMissing
+				log.With(
+					zap.String("method", "GetInitDataFromContext"),
+				).Error(err.Error())
+				return nil, err
 			}
 
 			webAppID, err := GetWebAppIDFromContext(ctx)
 			if err != nil {
-				log.Error("web app id missing in the request context", zap.Error(err))
+				log.With(
+					zap.String("method", "GetWebAppIDFromContext"),
+				).Error(err.Error())
 				return nil, err
 			}
 
@@ -103,18 +108,24 @@ func MakeAuthMiddleware(s *Service, log *zap.Logger) endpoint.Middleware {
 
 			token, err := s.getEndUserBotToken(ctx, webAppID)
 			if err != nil {
-				log.Error("s.getEndUserBotToken()", zap.Error(err))
+				log.With(
+					zap.String("method", "s.getEndUserBotToken"),
+				).Error(err.Error())
 				return nil, err
 			}
 			err = initdata.Validate(xInitData, token, initDataTTL)
 			if err != nil {
-				log.Error("initdata.Validate()", zap.Error(err))
+				log.With(
+					zap.String("method", "initdata.Validate"),
+				).Error(ErrorInitDataIsInvalid.Error())
 				return nil, ErrorInitDataIsInvalid
 			}
 
 			parsedInitData, err := initdata.Parse(xInitData)
 			if err != nil {
-				log.Error("initdata.Parse()", zap.Error(err))
+				log.With(
+					zap.String("method", "initdata.Parse"),
+				).Error(ErrorInitDataIsInvalid.Error())
 				return nil, ErrorInitDataIsInvalid
 			}
 
