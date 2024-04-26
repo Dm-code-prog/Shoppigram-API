@@ -6,6 +6,7 @@ import (
 
 	"github.com/go-kit/kit/endpoint"
 	"github.com/pkg/errors"
+	initdata "github.com/telegram-mini-apps/init-data-golang"
 )
 
 // makeTelegramAuthUserMiddleware constructs a middleware which is responsible for
@@ -15,12 +16,15 @@ func makeTelegramRequestValidationMiddleware(s *Service) endpoint.Middleware {
 		return func(ctx context.Context, request interface{}) (interface{}, error) {
 			var telegramAuthUserRequest TelegramAuthUserRequest
 
+			// TODO: Get token string here
+			token := ""
+
 			initData, ok := request.(string)
 			if !ok {
 				return nil, ErrorBadRequest
 			}
 
-			err := s.TelegramRequestValidation(ctx, initData)
+			err := initdata.Validate(initData, token, telegramAuthUserRequestExpireTime)
 			if err != nil {
 				// ASK: Should we have proper logging here?
 				return nil, errors.Wrap(err, "s.TelegramRequestValidation")
