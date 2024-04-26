@@ -81,7 +81,7 @@ func main() {
 	telegramUsersHandler := telegram_users.MakeHandler(telegramUsersService)
 
 	r.Mount("/api/v1/public/products", productsHandler)
-	r.Mount("/api/v1/public/telegram_auth", telegramUsersHandler)
+	r.Mount("/api/v1/public/auth", telegramUsersHandler)
 
 	g.Add(func() error {
 		log.Info("starting HTTP server", zap.String("port", config.HTTP.Port))
