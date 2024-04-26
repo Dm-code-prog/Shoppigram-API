@@ -61,7 +61,6 @@ type (
 )
 
 const (
-	telegramAuthUserCacheKeyBase      = "users.TelegramAuthUser:"
 	telegramAuthUserRequestExpireTime = 30 * time.Second
 )
 

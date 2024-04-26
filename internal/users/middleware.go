@@ -17,28 +17,26 @@ func makeTelegramRequestValidationMiddleware(s *Service) endpoint.Middleware {
 
 			initData, ok := request.(string)
 			if !ok {
-				// ASK: Is TelegramAuthUserResponse a correct type to return?
-				return TelegramAuthUserResponse{}, ErrorBadRequest
+				return nil, ErrorBadRequest
 			}
 
 			err := s.TelegramRequestValidation(ctx, initData)
 			if err != nil {
 				// ASK: Should we have proper logging here?
-				return TelegramAuthUserResponse{}, errors.Wrap(err, "s.TelegramRequestValidation")
+				return nil, errors.Wrap(err, "s.TelegramRequestValidation")
 			}
 
 			if !json.Valid([]byte(initData)) {
-				return TelegramAuthUserRequest{}, ErrorInvalidJSON
+				return nil, ErrorInvalidJSON
 			}
 
 			err = json.Unmarshal([]byte(initData), &telegramAuthUserRequest)
 			if err != nil {
-				return TelegramAuthUserRequest{}, ErrorInternal
+				return nil, ErrorInternal
 			}
 
-			// ASK: TelegramAuthUserRequest is not a small structure, maybe we don't need something in it?
 			if telegramAuthUserRequest.User.ExternalId == 0 {
-				return TelegramAuthUserRequest{}, ErrorBadRequest
+				return nil, ErrorBadRequest
 			}
 
 			ctx = context.WithValue(ctx, "user", telegramAuthUserRequest.User)
