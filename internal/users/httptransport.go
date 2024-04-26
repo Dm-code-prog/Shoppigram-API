@@ -3,8 +3,9 @@ package telegram_users
 import (
 	"context"
 	"encoding/json"
-	"go.uber.org/zap"
 	"net/http"
+
+	"go.uber.org/zap"
 
 	"github.com/pkg/errors"
 
@@ -59,12 +60,24 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 	case errors.Is(err, ErrorBadRequest):
 		w.WriteHeader(http.StatusBadRequest)
 		err = ErrorBadRequest
-	case errors.Is(err, ErrorInitDataIsInvalid):
+	case errors.Is(err, ErrorUserNotFound):
 		w.WriteHeader(http.StatusBadRequest)
-		err = ErrorInitDataIsInvalid
+		err = ErrorUserNotFound
 	case errors.Is(err, ErrorInitDataIsMissing):
 		w.WriteHeader(http.StatusBadRequest)
 		err = ErrorInitDataIsMissing
+	case errors.Is(err, ErrorInitDataNotFound):
+		w.WriteHeader(http.StatusBadRequest)
+		err = ErrorInitDataNotFound
+	case errors.Is(err, ErrorInitDataIsInvalid):
+		w.WriteHeader(http.StatusBadRequest)
+		err = ErrorInitDataIsInvalid
+	case errors.Is(err, ErrorInitDataIsEmpty):
+		w.WriteHeader(http.StatusBadRequest)
+		err = ErrorInitDataIsEmpty
+	case errors.Is(err, ErrorWebAppNotFound):
+		w.WriteHeader(http.StatusBadRequest)
+		err = ErrorWebAppNotFound
 	default:
 		w.WriteHeader(http.StatusInternalServerError)
 		err = ErrorInternal
