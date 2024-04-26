@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/go-kit/kit/endpoint"
 	"github.com/pkg/errors"
 	initdata "github.com/telegram-mini-apps/init-data-golang"
@@ -23,17 +22,25 @@ func putUserToContext(ctx context.Context, usr User) context.Context {
 func makeValidateTelegramUserMiddleware(s *Service) endpoint.Middleware {
 	return func(next endpoint.Endpoint) endpoint.Endpoint {
 		return func(ctx context.Context, request interface{}) (interface{}, error) {
+			var createOrUpdateTelegramUserRequest CreateOrUpdateTelegramUserRequest
 			var usr User
 
-			// TODO: Get token string here
-			token, err := s.GetEndUserBotToken(ctx, CreateOrUpdateTelegramUserRequest{})
-			if err != nil {
-				return nil, errors.Wrap(err, "s.GetEndUserBotToken")
-			}
-
-			initData, ok := request.(string)
+			req, ok := request.(*http.Request)
 			if !ok {
 				return nil, ErrorBadRequest
+			}
+
+			initData := req.Header.Get("X-Init-Data")
+			// ASK: Will JSON data be a JSON in that case?
+
+			err := json.Unmarshal([]byte(initData), &createOrUpdateTelegramUserRequest)
+			if err != nil {
+				return nil, ErrorInvalidJSON
+			}
+
+			token, err := s.GetEndUserBotToken(ctx, createOrUpdateTelegramUserRequest)
+			if err != nil {
+				return nil, errors.Wrap(err, "s.GetEndUserBotToken")
 			}
 
 			err = initdata.Validate(initData, token, createOrUpdateTelegramUserRequestExpireTime)
@@ -42,19 +49,7 @@ func makeValidateTelegramUserMiddleware(s *Service) endpoint.Middleware {
 				return nil, errors.Wrap(err, "s.ValidateTelegramUser")
 			}
 
-			req, ok := request.(*http.Request)
-			if !ok {
-				return nil, ErrorBadRequest
-			}
-
-			usrRaw := chi.URLParam(req, "user")
-
-			err = json.Unmarshal([]byte(usrRaw), &usr)
-			if err != nil {
-				return nil, ErrorInvalidJSON
-			}
-
-			if usr.ExternalId == 0 {
+			if createOrUpdateTelegramUserRequest.User.ExternalId == 0 {
 				return nil, ErrorBadRequest
 			}
 
