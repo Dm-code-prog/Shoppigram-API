@@ -15,10 +15,18 @@ import (
 func MakeHandler(bs *Service) http.Handler {
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(encodeError),
+		kithttp.ServerBefore(func(ctx context.Context, request *http.Request) context.Context {
+			xInitData := request.Header.Get("X-Init-Data")
+			return PutInitDataToContext(ctx, xInitData)
+		}),
+		kithttp.ServerBefore(func(ctx context.Context, request *http.Request) context.Context {
+			webAppID := chi.URLParam(request, "web_app_id")
+			return PutWebAppIDToContext(ctx, webAppID)
+		}),
 	}
 
 	createOrUpdateTgUser := makeCreateOrUpdateTgUserEndpoint(bs)
-	createOrUpdateTgUser = makeValidateTgUserMiddleware(bs)(createOrUpdateTgUser)
+	createOrUpdateTgUser = MakeAuthMiddleware(bs)(createOrUpdateTgUser)
 
 	createOrUpdateTgUserHandler := kithttp.NewServer(
 		createOrUpdateTgUser,
@@ -33,29 +41,11 @@ func MakeHandler(bs *Service) http.Handler {
 	return r
 }
 
-// getUserFromContext gets User data from context
-func getUserFromContext(ctx context.Context) (User, error) {
-	val := ctx.Value("user")
-
-	usr, ok := val.(User)
-	if !ok {
-		return User{}, ErrorInternal
-	}
-	return usr, nil
+func decodeCreateOrUpdateTgUserRequest(c context.Context, _ *http.Request) (interface{}, error) {
+	return nil, nil
 }
 
-func decodeCreateOrUpdateTgUserRequest(c context.Context, r *http.Request) (interface{}, error) {
-	usr, err := getUserFromContext(c)
-	if err != nil {
-		return CreateOrUpdateTgUserRequest{}, errors.Wrap(err, "getUserFromContext")
-	}
-
-	return CreateOrUpdateTgUserRequest{
-		User: usr,
-	}, nil
-}
-
-func encodeResponse(ctx context.Context, w http.ResponseWriter, response interface{}) error {
+func encodeResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
 	w.Header().Set("Content-Type", "application/json")
 	if response != nil {
 		return json.NewEncoder(w).Encode(response)

@@ -23,30 +23,30 @@ func NewPg(gen *generated.Queries) *Pg {
 // CreateOrUpdateTgUser creates or updates a user record
 func (p *Pg) CreateOrUpdateTgUser(ctx context.Context, request CreateOrUpdateTgUserRequest) (uuid.UUID, error) {
 	id, err := p.gen.CreateOrUpdateTgUser(ctx, generated.CreateOrUpdateTgUserParams{
-		ExternalID: int32(request.User.ExternalId),
+		ExternalID: int32(request.ExternalId),
 		IsBot: pgtype.Bool{
-			Bool:  request.User.IsBot,
+			Bool:  request.IsBot,
 			Valid: true,
 		},
-		FirstName: request.User.FirstName,
+		FirstName: request.FirstName,
 		LastName: pgtype.Text{
-			String: request.User.LastName,
+			String: request.LastName,
 			Valid:  true,
 		},
 		Username: pgtype.Text{
-			String: request.User.Username,
+			String: request.Username,
 			Valid:  true,
 		},
 		LanguageCode: pgtype.Text{
-			String: request.User.LanguageCode,
+			String: request.LanguageCode,
 			Valid:  true,
 		},
 		IsPremium: pgtype.Bool{
-			Bool:  request.User.IsPremium,
+			Bool:  request.IsPremium,
 			Valid: true,
 		},
 		AllowsPm: pgtype.Bool{
-			Bool:  request.User.AllowsPm,
+			Bool:  request.AllowsPm,
 			Valid: true,
 		},
 	})
@@ -57,7 +57,11 @@ func (p *Pg) CreateOrUpdateTgUser(ctx context.Context, request CreateOrUpdateTgU
 	return id, nil
 }
 
-func (p *Pg) GetEndUserBotToken(ctx context.Context, request CreateOrUpdateTgUserRequest) (string, error) {
-	// TODO: Add token getting logic
-	return "", nil
+func (p *Pg) GetEndUserBotToken(ctx context.Context, webAppID uuid.UUID) (string, error) {
+	token, err := p.gen.GetEndUserBotToken(ctx, generated.GetEndUserBotTokenParams{ID: webAppID})
+	if err != nil {
+		return "", errors.Wrap(err, "p.gen.GetEndUserBotToken")
+	}
+
+	return token.(string), nil
 }

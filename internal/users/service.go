@@ -14,7 +14,7 @@ type (
 	// User defines the structure for a Marketplace client
 	User struct {
 		ID           uuid.UUID `json:"id,omitempty"`
-		ExternalId   int       `json:"external_id"`
+		ExternalId   int64     `json:"external_id"`
 		IsBot        bool      `json:"is_bot,omitempty"`
 		FirstName    string    `json:"first_name"`
 		LastName     string    `json:"last_name,omitempty"`
@@ -25,17 +25,7 @@ type (
 	}
 
 	// CreateOrUpdateTgUserRequest defines the request for the CreateOrUpdateTgUser endpoint
-	// According to the https://core.telegram.org/bots/webapps#webappinitdata
-	CreateOrUpdateTgUserRequest struct {
-		// ASK: Do we need Chat, ChatInstance, ChatType and CanSendAfter fields?
-		QueryID      string
-		User         User
-		ChatType     string
-		ChatInstance string
-		CanSendAfter int
-		AuthDate     int
-		Hash         string
-	}
+	CreateOrUpdateTgUserRequest User
 
 	// CreateOrUpdateTgUserResponse defines the response for the CreateOrUpdateTgUser endpoint
 	CreateOrUpdateTgUserResponse struct {
@@ -44,7 +34,7 @@ type (
 
 	// Repository provides access to the user storage
 	Repository interface {
-		GetEndUserBotToken(ctx context.Context, request CreateOrUpdateTgUserRequest) (string, error)
+		GetEndUserBotToken(ctx context.Context, webAppID uuid.UUID) (string, error)
 		CreateOrUpdateTgUser(ctx context.Context, request CreateOrUpdateTgUserRequest) (uuid.UUID, error)
 	}
 
@@ -84,9 +74,8 @@ func New(repo Repository, log *zap.Logger) *Service {
 }
 
 // GetEndUserBotToken gets user bot token
-func (s *Service) GetEndUserBotToken(ctx context.Context, request CreateOrUpdateTgUserRequest) (string, error) {
-	// TODO: Add token processing logic
-	return s.repo.GetEndUserBotToken(ctx, request)
+func (s *Service) getEndUserBotToken(ctx context.Context, webAppID uuid.UUID) (string, error) {
+	return s.repo.GetEndUserBotToken(ctx, webAppID)
 }
 
 // CreateOrUpdateTgUser creates or updates a user record
@@ -95,7 +84,7 @@ func (s *Service) CreateOrUpdateTgUser(ctx context.Context, request CreateOrUpda
 	if err != nil {
 		s.log.With(
 			zap.String("method", "s.repo.CreateOrUpdateTgUser"),
-			zap.String("external_id", strconv.Itoa(request.User.ExternalId)),
+			zap.String("external_id", strconv.Itoa(int(request.ExternalId))),
 		).Error(err.Error())
 		return CreateOrUpdateTgUserResponse{}, errors.Wrap(err, "s.repo.CreateOrUpdateTgUser")
 	}

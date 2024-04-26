@@ -8,14 +8,15 @@ import (
 
 // makeCreateOrUpdateTgUserEndpoint constructs a CreateOrUpdateTgUser endpoint wrapping the service.
 //
-// Path: PUT /api/v1/public/telegram_auth
+// Path: PUT /api/v1/public/auth/telegram
 func makeCreateOrUpdateTgUserEndpoint(s *Service) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		req, ok := request.(CreateOrUpdateTgUserRequest)
-		if !ok {
-			return nil, ErrorBadRequest
+	return func(ctx context.Context, _ interface{}) (interface{}, error) {
+		user, err := GetUserFromContext(ctx)
+		if err != nil {
+			return nil, err
 		}
-		v0, err := s.CreateOrUpdateTgUser(ctx, req)
+
+		v0, err := s.CreateOrUpdateTgUser(ctx, CreateOrUpdateTgUserRequest(user))
 		if err != nil {
 			return nil, err
 		}
