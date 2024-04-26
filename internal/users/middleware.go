@@ -2,12 +2,12 @@ package telegram_users
 
 import (
 	"context"
+	"time"
+
 	"github.com/go-kit/kit/endpoint"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	initdata "github.com/telegram-mini-apps/init-data-golang"
 	"go.uber.org/zap"
-	"time"
 )
 
 type (
@@ -34,7 +34,7 @@ func PutUserToContext(ctx context.Context, usr User) context.Context {
 func GetUserFromContext(ctx context.Context) (User, error) {
 	usr, ok := ctx.Value(userKey).(User)
 	if !ok {
-		return usr, errors.New("user not found")
+		return usr, ErrorUserNotFound
 	}
 
 	return usr, nil
@@ -54,11 +54,11 @@ func PutInitDataToContext(ctx context.Context, initData string) context.Context 
 func GetInitDataFromContext(ctx context.Context) (string, error) {
 	initData, ok := ctx.Value(initDataKey).(string)
 	if !ok {
-		return initData, errors.New("init data not found")
+		return initData, ErrorInitDataIsInvalid
 	}
 
 	if initData == "" {
-		return initData, errors.New("init data is empty")
+		return initData, ErrorInitDataIsEmpty
 	}
 
 	return initData, nil
@@ -77,7 +77,7 @@ func PutWebAppIDToContext(ctx context.Context, webAppID string) context.Context 
 func GetWebAppIDFromContext(ctx context.Context) (uuid.UUID, error) {
 	webAppID, ok := ctx.Value(webAppIDKey).(uuid.UUID)
 	if !ok {
-		return uuid.Nil, errors.New("web app id not found")
+		return uuid.Nil, ErrorWebAppNotFound
 	}
 
 	return webAppID, nil

@@ -2,10 +2,11 @@ package telegram_users
 
 import (
 	"context"
+	"strconv"
+
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	"strconv"
 )
 
 type (
@@ -47,9 +48,12 @@ var (
 	ErrorBadRequest        = errors.New("bad request")
 	ErrorInvalidJSON       = errors.New("invalid JSON")
 	ErrorUnauthorized      = errors.New("unauthorized")
+	ErrorUserNotFound      = errors.New("user not found")
 	ErrorInternal          = errors.New("internal server error")
 	ErrorInitDataIsMissing = errors.New("init data is missing, it must be present in x-init-data header")
 	ErrorInitDataIsInvalid = errors.New("init data is invalid")
+	ErrorInitDataIsEmpty   = errors.New("init data is empty")
+	ErrorWebAppNotFound    = errors.New("web app id not found")
 )
 
 // New creates a new user service
