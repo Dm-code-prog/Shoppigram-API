@@ -17,12 +17,12 @@ func putUserToContext(ctx context.Context, usr User) context.Context {
 	return ctx
 }
 
-// makeCreateOrUpdateTelegramUserMiddleware constructs a middleware which is responsible for
+// makeCreateOrUpdateTgUserMiddleware constructs a middleware which is responsible for
 // Telegram user auth.
-func makeValidateTelegramUserMiddleware(s *Service) endpoint.Middleware {
+func makeValidateTgUserMiddleware(s *Service) endpoint.Middleware {
 	return func(next endpoint.Endpoint) endpoint.Endpoint {
 		return func(ctx context.Context, request interface{}) (interface{}, error) {
-			var createOrUpdateTelegramUserRequest CreateOrUpdateTelegramUserRequest
+			var createOrUpdateTgUserRequest CreateOrUpdateTgUserRequest
 			var usr User
 
 			req, ok := request.(*http.Request)
@@ -33,23 +33,23 @@ func makeValidateTelegramUserMiddleware(s *Service) endpoint.Middleware {
 			initData := req.Header.Get("X-Init-Data")
 			// ASK: Will JSON data be a JSON in that case?
 
-			err := json.Unmarshal([]byte(initData), &createOrUpdateTelegramUserRequest)
+			err := json.Unmarshal([]byte(initData), &createOrUpdateTgUserRequest)
 			if err != nil {
 				return nil, ErrorInvalidJSON
 			}
 
-			token, err := s.GetEndUserBotToken(ctx, createOrUpdateTelegramUserRequest)
+			token, err := s.GetEndUserBotToken(ctx, createOrUpdateTgUserRequest)
 			if err != nil {
 				return nil, errors.Wrap(err, "s.GetEndUserBotToken")
 			}
 
-			err = initdata.Validate(initData, token, createOrUpdateTelegramUserRequestExpireTime)
+			err = initdata.Validate(initData, token, createOrUpdateTgUserRequestExpireTime)
 			if err != nil {
 				// ASK: Should we have proper logging here?
-				return nil, errors.Wrap(err, "s.ValidateTelegramUser")
+				return nil, errors.Wrap(err, "s.ValidateTgUser")
 			}
 
-			if createOrUpdateTelegramUserRequest.User.ExternalId == 0 {
+			if createOrUpdateTgUserRequest.User.ExternalId == 0 {
 				return nil, ErrorBadRequest
 			}
 

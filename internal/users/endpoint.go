@@ -6,16 +6,16 @@ import (
 	"github.com/go-kit/kit/endpoint"
 )
 
-// makeCreateOrUpdateTelegramUserEndpoint constructs a CreateOrUpdateTelegramUser endpoint wrapping the service.
+// makeCreateOrUpdateTgUserEndpoint constructs a CreateOrUpdateTgUser endpoint wrapping the service.
 //
 // Path: PUT /api/v1/public/telegram_auth
-func makeCreateOrUpdateTelegramUserEndpoint(s *Service) endpoint.Endpoint {
+func makeCreateOrUpdateTgUserEndpoint(s *Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		req, ok := request.(CreateOrUpdateTelegramUserRequest)
+		req, ok := request.(CreateOrUpdateTgUserRequest)
 		if !ok {
 			return nil, ErrorBadRequest
 		}
-		v0, err := s.CreateOrUpdateTelegramUser(ctx, req)
+		v0, err := s.CreateOrUpdateTgUser(ctx, req)
 		if err != nil {
 			return nil, err
 		}

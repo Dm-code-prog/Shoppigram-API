@@ -76,12 +76,12 @@ func main() {
 	productsService := products.New(productsRepo, log.With(zap.String("service", "products")), cache)
 	productsHandler := products.MakeHandler(productsService)
 
-	telegramUsersRepo := telegram_users.NewPg(telegram_users_generated.New(db))
-	telegramUsersService := telegram_users.New(telegramUsersRepo, log.With(zap.String("service", "users")))
-	telegramUsersHandler := telegram_users.MakeHandler(telegramUsersService)
+	tgUsersRepo := telegram_users.NewPg(telegram_users_generated.New(db))
+	tgUsersService := telegram_users.New(tgUsersRepo, log.With(zap.String("service", "users")))
+	tgUsersHandler := telegram_users.MakeHandler(tgUsersService)
 
 	r.Mount("/api/v1/public/products", productsHandler)
-	r.Mount("/api/v1/public/auth", telegramUsersHandler)
+	r.Mount("/api/v1/public/auth", tgUsersHandler)
 
 	g.Add(func() error {
 		log.Info("starting HTTP server", zap.String("port", config.HTTP.Port))

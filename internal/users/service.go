@@ -24,9 +24,9 @@ type (
 		AllowsPm     bool      `json:"allows_write_to_pm,omitempty"`
 	}
 
-	// CreateOrUpdateTelegramUserRequest defines the request for the CreateOrUpdateTelegramUser endpoint
+	// CreateOrUpdateTgUserRequest defines the request for the CreateOrUpdateTgUser endpoint
 	// According to the https://core.telegram.org/bots/webapps#webappinitdata
-	CreateOrUpdateTelegramUserRequest struct {
+	CreateOrUpdateTgUserRequest struct {
 		// ASK: Do we need Chat, ChatInstance, ChatType and CanSendAfter fields?
 		QueryID      string
 		User         User
@@ -37,15 +37,15 @@ type (
 		Hash         string
 	}
 
-	// CreateOrUpdateTelegramUserResponse defines the response for the CreateOrUpdateTelegramUser endpoint
-	CreateOrUpdateTelegramUserResponse struct {
+	// CreateOrUpdateTgUserResponse defines the response for the CreateOrUpdateTgUser endpoint
+	CreateOrUpdateTgUserResponse struct {
 		ID uuid.UUID `json:"id"`
 	}
 
 	// Repository provides access to the user storage
 	Repository interface {
-		GetEndUserBotToken(ctx context.Context, request CreateOrUpdateTelegramUserRequest) (string, error)
-		CreateOrUpdateTelegramUser(ctx context.Context, request CreateOrUpdateTelegramUserRequest) (uuid.UUID, error)
+		GetEndUserBotToken(ctx context.Context, request CreateOrUpdateTgUserRequest) (string, error)
+		CreateOrUpdateTgUser(ctx context.Context, request CreateOrUpdateTgUserRequest) (uuid.UUID, error)
 	}
 
 	// Service provides user operations
@@ -56,7 +56,7 @@ type (
 )
 
 const (
-	createOrUpdateTelegramUserRequestExpireTime = 30 * time.Second
+	createOrUpdateTgUserRequestExpireTime = 30 * time.Second
 )
 
 var (
@@ -84,21 +84,21 @@ func New(repo Repository, log *zap.Logger) *Service {
 }
 
 // GetEndUserBotToken gets user bot token
-func (s *Service) GetEndUserBotToken(ctx context.Context, request CreateOrUpdateTelegramUserRequest) (string, error) {
+func (s *Service) GetEndUserBotToken(ctx context.Context, request CreateOrUpdateTgUserRequest) (string, error) {
 	// TODO: Add token processing logic
 	return s.repo.GetEndUserBotToken(ctx, request)
 }
 
-// CreateOrUpdateTelegramUser creates or updates a user record
-func (s *Service) CreateOrUpdateTelegramUser(ctx context.Context, request CreateOrUpdateTelegramUserRequest) (CreateOrUpdateTelegramUserResponse, error) {
-	id, err := s.repo.CreateOrUpdateTelegramUser(ctx, request)
+// CreateOrUpdateTgUser creates or updates a user record
+func (s *Service) CreateOrUpdateTgUser(ctx context.Context, request CreateOrUpdateTgUserRequest) (CreateOrUpdateTgUserResponse, error) {
+	id, err := s.repo.CreateOrUpdateTgUser(ctx, request)
 	if err != nil {
 		s.log.With(
-			zap.String("method", "s.repo.CreateOrUpdateTelegramUser"),
+			zap.String("method", "s.repo.CreateOrUpdateTgUser"),
 			zap.String("external_id", strconv.Itoa(request.User.ExternalId)),
 		).Error(err.Error())
-		return CreateOrUpdateTelegramUserResponse{}, errors.Wrap(err, "s.repo.CreateOrUpdateTelegramUser")
+		return CreateOrUpdateTgUserResponse{}, errors.Wrap(err, "s.repo.CreateOrUpdateTgUser")
 	}
 
-	return CreateOrUpdateTelegramUserResponse{id}, nil
+	return CreateOrUpdateTgUserResponse{id}, nil
 }

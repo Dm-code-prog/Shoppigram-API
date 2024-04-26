@@ -17,18 +17,18 @@ func MakeHandler(bs *Service) http.Handler {
 		kithttp.ServerErrorEncoder(encodeError),
 	}
 
-	createOrUpdateTelegramUser := makeCreateOrUpdateTelegramUserEndpoint(bs)
-	createOrUpdateTelegramUser = makeValidateTelegramUserMiddleware(bs)(createOrUpdateTelegramUser)
+	createOrUpdateTgUser := makeCreateOrUpdateTgUserEndpoint(bs)
+	createOrUpdateTgUser = makeValidateTgUserMiddleware(bs)(createOrUpdateTgUser)
 
-	createOrUpdateTelegramUserHandler := kithttp.NewServer(
-		createOrUpdateTelegramUser,
-		decodeCreateOrUpdateTelegramUserRequest,
+	createOrUpdateTgUserHandler := kithttp.NewServer(
+		createOrUpdateTgUser,
+		decodeCreateOrUpdateTgUserRequest,
 		encodeResponse,
 		opts...,
 	)
 
 	r := chi.NewRouter()
-	r.Put("/telegram", createOrUpdateTelegramUserHandler.ServeHTTP)
+	r.Put("/telegram", createOrUpdateTgUserHandler.ServeHTTP)
 
 	return r
 }
@@ -44,13 +44,13 @@ func getUserFromContext(ctx context.Context) (User, error) {
 	return usr, nil
 }
 
-func decodeCreateOrUpdateTelegramUserRequest(c context.Context, r *http.Request) (interface{}, error) {
+func decodeCreateOrUpdateTgUserRequest(c context.Context, r *http.Request) (interface{}, error) {
 	usr, err := getUserFromContext(c)
 	if err != nil {
-		return CreateOrUpdateTelegramUserRequest{}, errors.Wrap(err, "getUserFromContext")
+		return CreateOrUpdateTgUserRequest{}, errors.Wrap(err, "getUserFromContext")
 	}
 
-	return CreateOrUpdateTelegramUserRequest{
+	return CreateOrUpdateTgUserRequest{
 		User: usr,
 	}, nil
 }

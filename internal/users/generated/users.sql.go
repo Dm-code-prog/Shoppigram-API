@@ -12,7 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createOrUpdateTelegramUser = `-- name: CreateOrUpdateTelegramUser :one
+const createOrUpdateTgUser = `-- name: CreateOrUpdateTgUser :one
 insert into telegram_users (external_id,
                             is_bot,
                             first_name,
@@ -33,7 +33,7 @@ do update set first_name = $3,
 returning id
 `
 
-type CreateOrUpdateTelegramUserParams struct {
+type CreateOrUpdateTgUserParams struct {
 	ExternalID   int32
 	IsBot        pgtype.Bool
 	FirstName    string
@@ -44,8 +44,8 @@ type CreateOrUpdateTelegramUserParams struct {
 	AllowsPm     pgtype.Bool
 }
 
-func (q *Queries) CreateOrUpdateTelegramUser(ctx context.Context, arg CreateOrUpdateTelegramUserParams) (uuid.UUID, error) {
-	row := q.db.QueryRow(ctx, createOrUpdateTelegramUser,
+func (q *Queries) CreateOrUpdateTgUser(ctx context.Context, arg CreateOrUpdateTgUserParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, createOrUpdateTgUser,
 		arg.ExternalID,
 		arg.IsBot,
 		arg.FirstName,

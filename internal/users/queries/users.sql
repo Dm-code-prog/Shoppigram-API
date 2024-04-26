@@ -1,4 +1,4 @@
--- name: CreateOrUpdateTelegramUser :one
+-- name: CreateOrUpdateTgUser :one
 insert into telegram_users (external_id,
                             is_bot,
                             first_name,
