@@ -3,7 +3,9 @@ package telegram_users
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/go-kit/kit/endpoint"
 	"github.com/pkg/errors"
 	initdata "github.com/telegram-mini-apps/init-data-golang"
@@ -11,6 +13,7 @@ import (
 
 // userToContext puts User data into context
 func putUserToContext(ctx context.Context, usr User) context.Context {
+	// ASK: Shall we put it together with getUserFromContext in one place?
 	ctx = context.WithValue(ctx, "user", usr)
 	return ctx
 }
@@ -20,7 +23,7 @@ func putUserToContext(ctx context.Context, usr User) context.Context {
 func makeValidateTelegramUserMiddleware(s *Service) endpoint.Middleware {
 	return func(next endpoint.Endpoint) endpoint.Endpoint {
 		return func(ctx context.Context, request interface{}) (interface{}, error) {
-			var createOrUpdateTelegramUserRequest CreateOrUpdateTelegramUserRequest
+			var usr User
 
 			// TODO: Get token string here
 			token := ""
@@ -36,20 +39,23 @@ func makeValidateTelegramUserMiddleware(s *Service) endpoint.Middleware {
 				return nil, errors.Wrap(err, "s.ValidateTelegramUser")
 			}
 
-			if !json.Valid([]byte(initData)) {
-				return nil, ErrorInvalidJSON
-			}
-
-			err = json.Unmarshal([]byte(initData), &createOrUpdateTelegramUserRequest)
-			if err != nil {
-				return nil, ErrorInternal
-			}
-
-			if createOrUpdateTelegramUserRequest.User.ExternalId == 0 {
+			req, ok := request.(*http.Request)
+			if !ok {
 				return nil, ErrorBadRequest
 			}
 
-			ctx = putUserToContext(ctx, createOrUpdateTelegramUserRequest.User)
+			usrRaw := chi.URLParam(req, "user")
+
+			err = json.Unmarshal([]byte(usrRaw), &usr)
+			if err != nil {
+				return nil, ErrorInvalidJSON
+			}
+
+			if usr.ExternalId == 0 {
+				return nil, ErrorBadRequest
+			}
+
+			ctx = putUserToContext(ctx, usr)
 
 			return next(ctx, request)
 		}
