@@ -57,4 +57,7 @@ func (p *Pg) CreateOrUpdateTelegramUser(ctx context.Context, request CreateOrUpd
 	return id, nil
 }
 
-// TODO: Add method for adding a user token
+func (p *Pg) GetEndUserBotToken(ctx context.Context, request CreateOrUpdateTelegramUserRequest) (string, error) {
+	// TODO: Add token getting logic
+	return "", nil
+}

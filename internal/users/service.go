@@ -44,6 +44,7 @@ type (
 
 	// Repository provides access to the user storage
 	Repository interface {
+		GetEndUserBotToken(ctx context.Context, request CreateOrUpdateTelegramUserRequest) (string, error)
 		CreateOrUpdateTelegramUser(ctx context.Context, request CreateOrUpdateTelegramUserRequest) (uuid.UUID, error)
 	}
 
@@ -80,6 +81,12 @@ func New(repo Repository, log *zap.Logger) *Service {
 		repo: repo,
 		log:  log,
 	}
+}
+
+// GetEndUserBotToken gets user bot token
+func (s *Service) GetEndUserBotToken(ctx context.Context, request CreateOrUpdateTelegramUserRequest) (string, error) {
+	// TODO: Add token processing logic
+	return s.repo.GetEndUserBotToken(ctx, request)
 }
 
 // CreateOrUpdateTelegramUser creates or updates a user record

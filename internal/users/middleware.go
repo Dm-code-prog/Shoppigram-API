@@ -26,14 +26,17 @@ func makeValidateTelegramUserMiddleware(s *Service) endpoint.Middleware {
 			var usr User
 
 			// TODO: Get token string here
-			token := ""
+			token, err := s.GetEndUserBotToken(ctx, CreateOrUpdateTelegramUserRequest{})
+			if err != nil {
+				return nil, errors.Wrap(err, "s.GetEndUserBotToken")
+			}
 
 			initData, ok := request.(string)
 			if !ok {
 				return nil, ErrorBadRequest
 			}
 
-			err := initdata.Validate(initData, token, createOrUpdateTelegramUserRequestExpireTime)
+			err = initdata.Validate(initData, token, createOrUpdateTelegramUserRequestExpireTime)
 			if err != nil {
 				// ASK: Should we have proper logging here?
 				return nil, errors.Wrap(err, "s.ValidateTelegramUser")
