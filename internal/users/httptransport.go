@@ -3,6 +3,7 @@ package telegram_users
 import (
 	"context"
 	"encoding/json"
+	"go.uber.org/zap"
 	"net/http"
 
 	"github.com/pkg/errors"
@@ -12,7 +13,7 @@ import (
 )
 
 // MakeHandler returns a handler for the users service.
-func MakeHandler(bs *Service) http.Handler {
+func MakeHandler(bs *Service, log *zap.Logger) http.Handler {
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(encodeError),
 		kithttp.ServerBefore(func(ctx context.Context, request *http.Request) context.Context {
@@ -26,7 +27,7 @@ func MakeHandler(bs *Service) http.Handler {
 	}
 
 	createOrUpdateTgUser := makeCreateOrUpdateTgUserEndpoint(bs)
-	createOrUpdateTgUser = MakeAuthMiddleware(bs)(createOrUpdateTgUser)
+	createOrUpdateTgUser = MakeAuthMiddleware(bs, log)(createOrUpdateTgUser)
 
 	createOrUpdateTgUserHandler := kithttp.NewServer(
 		createOrUpdateTgUser,
@@ -36,7 +37,7 @@ func MakeHandler(bs *Service) http.Handler {
 	)
 
 	r := chi.NewRouter()
-	r.Put("/telegram", createOrUpdateTgUserHandler.ServeHTTP)
+	r.Put("/{web_app_id}/telegram", createOrUpdateTgUserHandler.ServeHTTP)
 
 	return r
 }
@@ -58,6 +59,12 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 	case errors.Is(err, ErrorBadRequest):
 		w.WriteHeader(http.StatusBadRequest)
 		err = ErrorBadRequest
+	case errors.Is(err, ErrorInitDataIsInvalid):
+		w.WriteHeader(http.StatusBadRequest)
+		err = ErrorInitDataIsInvalid
+	case errors.Is(err, ErrorInitDataIsMissing):
+		w.WriteHeader(http.StatusBadRequest)
+		err = ErrorInitDataIsMissing
 	default:
 		w.WriteHeader(http.StatusInternalServerError)
 		err = ErrorInternal

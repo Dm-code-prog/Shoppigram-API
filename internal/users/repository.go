@@ -2,6 +2,7 @@ package telegram_users
 
 import (
 	"context"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -12,12 +13,13 @@ import (
 // Pg implements the Repository interface
 // using PostgreSQL as the backing store.
 type Pg struct {
-	gen *generated.Queries
+	gen           *generated.Queries
+	encryptionKey string
 }
 
 // NewPg creates a new Pg
-func NewPg(gen *generated.Queries) *Pg {
-	return &Pg{gen: gen}
+func NewPg(db *pgxpool.Pool, encryptionKey string) *Pg {
+	return &Pg{gen: generated.New(db), encryptionKey: encryptionKey}
 }
 
 // CreateOrUpdateTgUser creates or updates a user record
@@ -58,7 +60,10 @@ func (p *Pg) CreateOrUpdateTgUser(ctx context.Context, request CreateOrUpdateTgU
 }
 
 func (p *Pg) GetEndUserBotToken(ctx context.Context, webAppID uuid.UUID) (string, error) {
-	token, err := p.gen.GetEndUserBotToken(ctx, generated.GetEndUserBotTokenParams{ID: webAppID})
+	token, err := p.gen.GetEndUserBotToken(
+		ctx,
+		generated.GetEndUserBotTokenParams{ID: webAppID, EncryptionKey: p.encryptionKey},
+	)
 	if err != nil {
 		return "", errors.Wrap(err, "p.gen.GetEndUserBotToken")
 	}

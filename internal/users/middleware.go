@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	initdata "github.com/telegram-mini-apps/init-data-golang"
+	"go.uber.org/zap"
 	"time"
 )
 
@@ -18,7 +19,7 @@ const (
 	initDataKey contextKeyT = "init_data_key"
 	webAppIDKey contextKeyT = "web_app_id"
 
-	initDataTTL = time.Second * 30
+	initDataTTL = time.Minute * 30
 )
 
 // PutUserToContext puts User data into context
@@ -56,6 +57,10 @@ func GetInitDataFromContext(ctx context.Context) (string, error) {
 		return initData, errors.New("init data not found")
 	}
 
+	if initData == "" {
+		return initData, errors.New("init data is empty")
+	}
+
 	return initData, nil
 }
 
@@ -80,28 +85,37 @@ func GetWebAppIDFromContext(ctx context.Context) (uuid.UUID, error) {
 
 // MakeAuthMiddleware constructs a middleware which is responsible for
 // Telegram user auth.
-func MakeAuthMiddleware(s *Service) endpoint.Middleware {
+func MakeAuthMiddleware(s *Service, log *zap.Logger) endpoint.Middleware {
 	return func(next endpoint.Endpoint) endpoint.Endpoint {
 		return func(ctx context.Context, request any) (any, error) {
 			xInitData, err := GetInitDataFromContext(ctx)
 			if err != nil {
-				return nil, err
+				return nil, ErrorInitDataIsMissing
 			}
 
 			webAppID, err := GetWebAppIDFromContext(ctx)
 			if err != nil {
+				log.Error("web app id missing in the request context", zap.Error(err))
 				return nil, err
 			}
 
+			log = log.With(zap.String("web_app_id", webAppID.String()))
+
 			token, err := s.getEndUserBotToken(ctx, webAppID)
+			if err != nil {
+				log.Error("s.getEndUserBotToken()", zap.Error(err))
+				return nil, err
+			}
 			err = initdata.Validate(xInitData, token, initDataTTL)
 			if err != nil {
-				return nil, err
+				log.Error("initdata.Validate()", zap.Error(err))
+				return nil, ErrorInitDataIsInvalid
 			}
 
 			parsedInitData, err := initdata.Parse(xInitData)
 			if err != nil {
-				return nil, err
+				log.Error("initdata.Parse()", zap.Error(err))
+				return nil, ErrorInitDataIsInvalid
 			}
 
 			tgUser := parsedInitData.User

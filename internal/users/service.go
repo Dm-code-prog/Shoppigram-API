@@ -50,14 +50,12 @@ const (
 )
 
 var (
-	ErrorBadRequest      = errors.New("bad request")
-	ErrorInvalidJSON     = errors.New("invalid JSON")
-	ErrorUnauthorized    = errors.New("unauthorized")
-	ErrorSignMissing     = errors.New("request sign is missing")
-	ErrorAuthDateMissing = errors.New("request auth date is missing")
-	ErrorExpired         = errors.New("request is expired")
-	ErrorSignInvalid     = errors.New("request sign is invalid")
-	ErrorInternal        = errors.New("internal server error")
+	ErrorBadRequest        = errors.New("bad request")
+	ErrorInvalidJSON       = errors.New("invalid JSON")
+	ErrorUnauthorized      = errors.New("unauthorized")
+	ErrorInternal          = errors.New("internal server error")
+	ErrorInitDataIsMissing = errors.New("init data is missing, it must be present in x-init-data header")
+	ErrorInitDataIsInvalid = errors.New("init data is invalid")
 )
 
 // New creates a new user service
