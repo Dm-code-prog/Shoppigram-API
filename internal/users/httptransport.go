@@ -16,31 +16,31 @@ func MakeHandler(bs *Service) http.Handler {
 		kithttp.ServerErrorEncoder(encodeError),
 	}
 
-	telegramAuthUser := makeTelegramAuthUserEndpoint(bs)
-	telegramAuthUser = makeTelegramRequestValidationMiddleware(bs)(telegramAuthUser)
+	createOrUpdateTelegramUser := makeCreateOrUpdateTelegramUserEndpoint(bs)
+	createOrUpdateTelegramUser = makeValidateTelegramUserMiddleware(bs)(createOrUpdateTelegramUser)
 
-	telegramAuthUserHandler := kithttp.NewServer(
-		telegramAuthUser,
-		decodeTelegramAuthUserRequest,
+	createOrUpdateTelegramUserHandler := kithttp.NewServer(
+		createOrUpdateTelegramUser,
+		decodeCreateOrUpdateTelegramUserRequest,
 		encodeResponse,
 		opts...,
 	)
 
 	r := chi.NewRouter()
-	r.Put("/telegram_auth", telegramAuthUserHandler.ServeHTTP)
+	r.Put("/telegram_auth", createOrUpdateTelegramUserHandler.ServeHTTP)
 
 	return r
 }
 
-func decodeTelegramAuthUserRequest(c context.Context, r *http.Request) (interface{}, error) {
+func decodeCreateOrUpdateTelegramUserRequest(c context.Context, r *http.Request) (interface{}, error) {
 	val := c.Value("user")
 
 	usr, ok := val.(User)
 	if !ok {
-		return TelegramAuthUserRequest{}, ErrorInternal
+		return CreateOrUpdateTelegramUserRequest{}, ErrorInternal
 	}
 
-	return TelegramAuthUserRequest{
+	return CreateOrUpdateTelegramUserRequest{
 		User: usr,
 	}, nil
 }

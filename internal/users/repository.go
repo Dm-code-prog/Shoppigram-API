@@ -20,9 +20,9 @@ func NewPg(gen *generated.Queries) *Pg {
 	return &Pg{gen: gen}
 }
 
-// TelegramAuthUser creates or updates a user record
-func (p *Pg) TelegramAuthUser(ctx context.Context, request TelegramAuthUserRequest) (uuid.UUID, error) {
-	id, err := p.gen.TelegramAuthUser(ctx, generated.TelegramAuthUserParams{
+// CreateOrUpdateTelegramUser creates or updates a user record
+func (p *Pg) CreateOrUpdateTelegramUser(ctx context.Context, request CreateOrUpdateTelegramUserRequest) (uuid.UUID, error) {
+	id, err := p.gen.CreateOrUpdateTelegramUser(ctx, generated.CreateOrUpdateTelegramUserParams{
 		ExternalID: int32(request.User.ExternalId),
 		IsBot: pgtype.Bool{
 			Bool:  request.User.IsBot,
@@ -51,7 +51,7 @@ func (p *Pg) TelegramAuthUser(ctx context.Context, request TelegramAuthUserReque
 		},
 	})
 	if err != nil {
-		return uuid.Nil, errors.Wrap(err, "p.gen.TelegramAuthUser")
+		return uuid.Nil, errors.Wrap(err, "p.gen.CreateOrUpdateTelegramUser")
 	}
 
 	return id, nil

@@ -24,9 +24,9 @@ type (
 		AllowsPm     bool      `json:"allows_write_to_pm,omitempty"`
 	}
 
-	// TelegramAuthUserRequest defines the request for the TelegramAuthUser endpoint
+	// CreateOrUpdateTelegramUserRequest defines the request for the CreateOrUpdateTelegramUser endpoint
 	// According to the https://core.telegram.org/bots/webapps#webappinitdata
-	TelegramAuthUserRequest struct {
+	CreateOrUpdateTelegramUserRequest struct {
 		// ASK: Do we need Chat, ChatInstance, ChatType and CanSendAfter fields?
 		QueryID      string `json:"query_id,omitempty"`
 		User         User   `json:"user"`
@@ -37,14 +37,14 @@ type (
 		Hash         string `json:"hash"`
 	}
 
-	// TelegramAuthUserResponse defines the response for the TelegramAuthUser endpoint
-	TelegramAuthUserResponse struct {
+	// CreateOrUpdateTelegramUserResponse defines the response for the CreateOrUpdateTelegramUser endpoint
+	CreateOrUpdateTelegramUserResponse struct {
 		ID uuid.UUID `json:"id"`
 	}
 
 	// Repository provides access to the user storage
 	Repository interface {
-		TelegramAuthUser(ctx context.Context, request TelegramAuthUserRequest) (uuid.UUID, error)
+		CreateOrUpdateTelegramUser(ctx context.Context, request CreateOrUpdateTelegramUserRequest) (uuid.UUID, error)
 	}
 
 	// Service provides user operations
@@ -55,7 +55,7 @@ type (
 )
 
 const (
-	telegramAuthUserRequestExpireTime = 30 * time.Second
+	createOrUpdateTelegramUserRequestExpireTime = 30 * time.Second
 )
 
 var (
@@ -82,16 +82,16 @@ func New(repo Repository, log *zap.Logger) *Service {
 	}
 }
 
-// TelegramAuthUser creates or updates a user record
-func (s *Service) TelegramAuthUser(ctx context.Context, request TelegramAuthUserRequest) (TelegramAuthUserResponse, error) {
-	id, err := s.repo.TelegramAuthUser(ctx, request)
+// CreateOrUpdateTelegramUser creates or updates a user record
+func (s *Service) CreateOrUpdateTelegramUser(ctx context.Context, request CreateOrUpdateTelegramUserRequest) (CreateOrUpdateTelegramUserResponse, error) {
+	id, err := s.repo.CreateOrUpdateTelegramUser(ctx, request)
 	if err != nil {
 		s.log.With(
-			zap.String("method", "s.repo.TelegramAuthUser"),
+			zap.String("method", "s.repo.CreateOrUpdateTelegramUser"),
 			zap.String("external_id", strconv.Itoa(request.User.ExternalId)),
 		).Error(err.Error())
-		return TelegramAuthUserResponse{}, errors.Wrap(err, "s.repo.TelegramAuthUser")
+		return CreateOrUpdateTelegramUserResponse{}, errors.Wrap(err, "s.repo.CreateOrUpdateTelegramUser")
 	}
 
-	return TelegramAuthUserResponse{id}, nil
+	return CreateOrUpdateTelegramUserResponse{id}, nil
 }

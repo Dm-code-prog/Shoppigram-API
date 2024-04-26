@@ -9,12 +9,12 @@ import (
 	initdata "github.com/telegram-mini-apps/init-data-golang"
 )
 
-// makeTelegramAuthUserMiddleware constructs a middleware which is responsible for
+// makeCreateOrUpdateTelegramUserMiddleware constructs a middleware which is responsible for
 // Telegram user auth.
-func makeTelegramRequestValidationMiddleware(s *Service) endpoint.Middleware {
+func makeValidateTelegramUserMiddleware(s *Service) endpoint.Middleware {
 	return func(next endpoint.Endpoint) endpoint.Endpoint {
 		return func(ctx context.Context, request interface{}) (interface{}, error) {
-			var telegramAuthUserRequest TelegramAuthUserRequest
+			var createOrUpdateTelegramUserRequest CreateOrUpdateTelegramUserRequest
 
 			// TODO: Get token string here
 			token := ""
@@ -24,26 +24,26 @@ func makeTelegramRequestValidationMiddleware(s *Service) endpoint.Middleware {
 				return nil, ErrorBadRequest
 			}
 
-			err := initdata.Validate(initData, token, telegramAuthUserRequestExpireTime)
+			err := initdata.Validate(initData, token, createOrUpdateTelegramUserRequestExpireTime)
 			if err != nil {
 				// ASK: Should we have proper logging here?
-				return nil, errors.Wrap(err, "s.TelegramRequestValidation")
+				return nil, errors.Wrap(err, "s.ValidateTelegramUser")
 			}
 
 			if !json.Valid([]byte(initData)) {
 				return nil, ErrorInvalidJSON
 			}
 
-			err = json.Unmarshal([]byte(initData), &telegramAuthUserRequest)
+			err = json.Unmarshal([]byte(initData), &createOrUpdateTelegramUserRequest)
 			if err != nil {
 				return nil, ErrorInternal
 			}
 
-			if telegramAuthUserRequest.User.ExternalId == 0 {
+			if createOrUpdateTelegramUserRequest.User.ExternalId == 0 {
 				return nil, ErrorBadRequest
 			}
 
-			ctx = context.WithValue(ctx, "user", telegramAuthUserRequest.User)
+			ctx = context.WithValue(ctx, "user", createOrUpdateTelegramUserRequest.User)
 
 			return next(ctx, request)
 		}
