@@ -2,12 +2,10 @@ package telegram_users
 
 import (
 	"context"
-	"strconv"
-	"time"
-
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+	"strconv"
 )
 
 type (
@@ -43,10 +41,6 @@ type (
 		repo Repository
 		log  *zap.Logger
 	}
-)
-
-const (
-	createOrUpdateTgUserRequestExpireTime = 30 * time.Second
 )
 
 var (
