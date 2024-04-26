@@ -54,7 +54,7 @@ func PutInitDataToContext(ctx context.Context, initData string) context.Context 
 func GetInitDataFromContext(ctx context.Context) (string, error) {
 	initData, ok := ctx.Value(initDataKey).(string)
 	if !ok {
-		return initData, ErrorInitDataIsInvalid
+		return initData, ErrorInitDataNotFound
 	}
 
 	if initData == "" {

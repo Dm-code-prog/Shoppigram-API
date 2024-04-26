@@ -45,11 +45,10 @@ type (
 
 var (
 	ErrorBadRequest        = errors.New("bad request")
-	ErrorInvalidJSON       = errors.New("invalid JSON")
-	ErrorUnauthorized      = errors.New("unauthorized")
 	ErrorUserNotFound      = errors.New("user not found")
 	ErrorInternal          = errors.New("internal server error")
 	ErrorInitDataIsMissing = errors.New("init data is missing, it must be present in x-init-data header")
+	ErrorInitDataNotFound  = errors.New("init data not found")
 	ErrorInitDataIsInvalid = errors.New("init data is invalid")
 	ErrorInitDataIsEmpty   = errors.New("init data is empty")
 	ErrorWebAppNotFound    = errors.New("web app id not found")
