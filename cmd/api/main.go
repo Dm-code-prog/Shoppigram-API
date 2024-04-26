@@ -3,20 +3,22 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"github.com/Netflix/go-env"
-	"github.com/dgraph-io/ristretto"
-	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-	"github.com/jackc/pgx/v5"
-	"github.com/oklog/run"
-	"github.com/shoppigram-com/marketplace-api/internal/cors"
-	"github.com/shoppigram-com/marketplace-api/internal/products"
-	"github.com/shoppigram-com/marketplace-api/internal/products/generated"
-	"go.uber.org/zap"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"net/http"
 	"os"
 	"syscall"
 	"time"
+
+	"github.com/Netflix/go-env"
+	"github.com/dgraph-io/ristretto"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+	"github.com/oklog/run"
+	"github.com/shoppigram-com/marketplace-api/internal/cors"
+	"github.com/shoppigram-com/marketplace-api/internal/products"
+	productsgenerated "github.com/shoppigram-com/marketplace-api/internal/products/generated"
+	telegramusers "github.com/shoppigram-com/marketplace-api/internal/users"
+	"go.uber.org/zap"
 )
 
 func main() {
@@ -30,11 +32,11 @@ func main() {
 		log.Fatal("failed to load environment variables", zap.Error(err))
 	}
 
-	db, err := pgx.Connect(ctx, config.Postgres.DSN)
+	db, err := pgxpool.New(ctx, config.Postgres.DSN)
 	if err != nil {
 		log.Fatal("failed to connect to database", zap.Error(err))
 	}
-	defer db.Close(ctx)
+	defer db.Close()
 	log.Debug("connected to database")
 
 	var g run.Group
@@ -69,11 +71,16 @@ func main() {
 		log.Fatal("failed to create cache", zap.Error(err))
 	}
 
-	productsRepo := products.NewPg(generated.New(db))
+	productsRepo := products.NewPg(productsgenerated.New(db))
 	productsService := products.New(productsRepo, log.With(zap.String("service", "products")), cache)
 	productsHandler := products.MakeHandler(productsService)
 
+	tgUsersRepo := telegramusers.NewPg(db, config.Encryption.Key)
+	tgUsersService := telegramusers.New(tgUsersRepo, log.With(zap.String("service", "users")))
+	tgUsersHandler := telegramusers.MakeHandler(tgUsersService, log.With(zap.String("service", "users")))
+
 	r.Mount("/api/v1/public/products", productsHandler)
+	r.Mount("/api/v1/public/auth", tgUsersHandler)
 
 	g.Add(func() error {
 		log.Info("starting HTTP server", zap.String("port", config.HTTP.Port))

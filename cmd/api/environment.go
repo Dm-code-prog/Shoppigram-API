@@ -9,4 +9,8 @@ type Environment struct {
 	HTTP struct {
 		Port string `env:"HTTP_PORT,required"`
 	}
+
+	Encryption struct {
+		Key string `env:"ENCRYPTION_KEY,required"`
+	}
 }

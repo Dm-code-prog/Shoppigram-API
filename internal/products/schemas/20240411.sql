@@ -42,4 +42,3 @@ create table channels
     end_user_bot_id uuid references end_user_bots (id),
     admin_bot_id    uuid references admin_bots (id)
 );
-
