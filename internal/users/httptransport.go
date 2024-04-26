@@ -3,8 +3,9 @@ package telegram_users
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"net/http"
+
+	"github.com/pkg/errors"
 
 	"github.com/go-chi/chi/v5"
 	kithttp "github.com/go-kit/kit/transport/http"
@@ -32,12 +33,21 @@ func MakeHandler(bs *Service) http.Handler {
 	return r
 }
 
-func decodeCreateOrUpdateTelegramUserRequest(c context.Context, r *http.Request) (interface{}, error) {
-	val := c.Value("user")
+// getUserFromContext gets User data from context
+func getUserFromContext(ctx context.Context) (User, error) {
+	val := ctx.Value("user")
 
 	usr, ok := val.(User)
 	if !ok {
-		return CreateOrUpdateTelegramUserRequest{}, ErrorInternal
+		return User{}, ErrorInternal
+	}
+	return usr, nil
+}
+
+func decodeCreateOrUpdateTelegramUserRequest(c context.Context, r *http.Request) (interface{}, error) {
+	usr, err := getUserFromContext(c)
+	if err != nil {
+		return CreateOrUpdateTelegramUserRequest{}, errors.Wrap(err, "getUserFromContext")
 	}
 
 	return CreateOrUpdateTelegramUserRequest{

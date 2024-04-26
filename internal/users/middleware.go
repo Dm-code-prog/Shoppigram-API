@@ -9,6 +9,12 @@ import (
 	initdata "github.com/telegram-mini-apps/init-data-golang"
 )
 
+// userToContext puts User data into context
+func putUserToContext(ctx context.Context, usr User) context.Context {
+	ctx = context.WithValue(ctx, "user", usr)
+	return ctx
+}
+
 // makeCreateOrUpdateTelegramUserMiddleware constructs a middleware which is responsible for
 // Telegram user auth.
 func makeValidateTelegramUserMiddleware(s *Service) endpoint.Middleware {
@@ -43,7 +49,7 @@ func makeValidateTelegramUserMiddleware(s *Service) endpoint.Middleware {
 				return nil, ErrorBadRequest
 			}
 
-			ctx = context.WithValue(ctx, "user", createOrUpdateTelegramUserRequest.User)
+			ctx = putUserToContext(ctx, createOrUpdateTelegramUserRequest.User)
 
 			return next(ctx, request)
 		}
