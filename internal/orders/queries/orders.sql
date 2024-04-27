@@ -1,8 +1,8 @@
 -- name: CreateOrder :one
-insert into orders (web_app_id, telegram_user_id)
+insert into orders (web_app_id, external_user_id)
 values ($1,
         $2)
-returning id;
+returning id,readable_id;
 
 -- name: SetOrderProducts :batchexec
 insert into order_products (order_id, product_id, quantity)

@@ -11,8 +11,9 @@ import (
 
 type Order struct {
 	ID             uuid.UUID
+	ReadableID     pgtype.Int8
 	WebAppID       pgtype.UUID
-	TelegramUserID pgtype.UUID
+	ExternalUserID pgtype.Int4
 }
 
 type OrderProduct struct {

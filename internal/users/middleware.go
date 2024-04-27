@@ -2,6 +2,9 @@ package telegram_users
 
 import (
 	"context"
+	"github.com/go-chi/chi/v5"
+	kithttp "github.com/go-kit/kit/transport/http"
+	"net/http"
 	"time"
 
 	"github.com/go-kit/kit/endpoint"
@@ -64,6 +67,7 @@ func GetInitDataFromContext(ctx context.Context) (string, error) {
 	return initData, nil
 }
 
+// PutWebAppIDToContext grabs the Web app ID from the path params and puts it into context
 func PutWebAppIDToContext(ctx context.Context, webAppID string) context.Context {
 	asUUID, err := uuid.Parse(webAppID)
 	if err != nil {
@@ -74,6 +78,7 @@ func PutWebAppIDToContext(ctx context.Context, webAppID string) context.Context 
 	return ctx
 }
 
+// GetWebAppIDFromContext gets previously added to context Web app ID
 func GetWebAppIDFromContext(ctx context.Context) (uuid.UUID, error) {
 	webAppID, ok := ctx.Value(webAppIDKey).(uuid.UUID)
 	if !ok {
@@ -81,6 +86,22 @@ func GetWebAppIDFromContext(ctx context.Context) (uuid.UUID, error) {
 	}
 
 	return webAppID, nil
+}
+
+// AuthServerBefore adds all values necessary to authenticate a Telegram user
+// to context
+//
+// Add it to the ServerOption block of every Go kit server that needs authentication
+// that ensures that the user actually came from Telegram.
+var AuthServerBefore = []kithttp.ServerOption{
+	kithttp.ServerBefore(func(ctx context.Context, request *http.Request) context.Context {
+		xInitData := request.Header.Get("X-Init-Data")
+		return PutInitDataToContext(ctx, xInitData)
+	}),
+	kithttp.ServerBefore(func(ctx context.Context, request *http.Request) context.Context {
+		webAppID := chi.URLParam(request, "web_app_id")
+		return PutWebAppIDToContext(ctx, webAppID)
+	}),
 }
 
 // MakeAuthMiddleware constructs a middleware which is responsible for
@@ -131,7 +152,6 @@ func MakeAuthMiddleware(s *Service, log *zap.Logger) endpoint.Middleware {
 
 			tgUser := parsedInitData.User
 			ctx = PutUserToContext(ctx, User{
-				ID:           uuid.UUID{}, // TODO: Get the actual user ID, or maybe not
 				ExternalId:   tgUser.ID,
 				IsBot:        tgUser.IsBot,
 				FirstName:    tgUser.FirstName,

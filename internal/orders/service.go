@@ -4,7 +4,9 @@ import (
 	"context"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"github.com/shoppigram-com/marketplace-api/internal/logging"
 	"github.com/shoppigram-com/marketplace-api/internal/products"
+	telegramusers "github.com/shoppigram-com/marketplace-api/internal/users"
 	"go.uber.org/zap"
 )
 
@@ -20,41 +22,33 @@ type (
 	// of a web app marketplace that make up
 	// the order and user information
 	CreateOrderRequest struct {
-		WebAppID     uuid.UUID
-		UserID       uuid.UUID
-		UserNickname string
-		Products     []Product `json:"products"`
+		WebAppID uuid.UUID
+		Products []Product `json:"products"`
 	}
 
 	// CreateOrderResponse returns the ID of the newly created order
 	CreateOrderResponse struct {
-		ID uuid.UUID `json:"id"`
+		ReadableID int `json:"readable_id"`
+	}
+
+	// SaveOrderRequest is a request to save order info
+	// to the storage
+	SaveOrderRequest struct {
+		WebAppID       uuid.UUID
+		Products       []Product
+		ExternalUserID int
+	}
+
+	// SaveOrderResponse is the response to SaveOrderRequest
+	//
+	// It contains the readable order ID
+	SaveOrderResponse struct {
+		ReadableID int
 	}
 
 	// Repository is the storage interface for orders
 	Repository interface {
-		CreateOrder(context.Context, CreateOrderRequest) (CreateOrderResponse, error)
-	}
-
-	NotificationProduct struct {
-		ID       uuid.UUID
-		Quantity int32
-		Name     string
-	}
-
-	// OrderNotification makes up the information
-	// about an order that should be delivered
-	// to the seller of the products
-	OrderNotification struct {
-		ID           uuid.UUID
-		UserNickname string
-		Products     []NotificationProduct
-	}
-
-	// Notifier sends message notifications
-	// on events
-	Notifier interface {
-		NotifySeller(context.Context, OrderNotification) error
+		CreateOrder(context.Context, SaveOrderRequest) (SaveOrderResponse, error)
 	}
 )
 
@@ -63,7 +57,6 @@ type (
 	Service struct {
 		logger     *zap.Logger
 		repo       Repository
-		notifier   Notifier
 		productSvc *products.Service
 	}
 )
@@ -71,14 +64,18 @@ type (
 var (
 	// ErrorBadRequest is returned to the end user when the request is malformed
 	ErrorBadRequest = errors.New("the request to create an order is malformed")
+
+	ErrorInvalidProductQuantity = errors.New("the product quantity must be greater than zero")
+
+	// ErrorInternal is a server error
+	ErrorInternal = errors.New("internal error, try again later")
 )
 
 // New returns new instance of Service
-func New(logger *zap.Logger, repo Repository, n Notifier) *Service {
+func New(repo Repository, logger *zap.Logger) *Service {
 	return &Service{
-		logger:   logger,
-		repo:     repo,
-		notifier: n,
+		logger: logger,
+		repo:   repo,
 	}
 }
 
@@ -86,46 +83,22 @@ func New(logger *zap.Logger, repo Repository, n Notifier) *Service {
 // and notifies the clients, that own the marketplace web app
 // about a new order
 func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (CreateOrderResponse, error) {
-	res, err := s.repo.CreateOrder(ctx, req)
+	u, err := telegramusers.GetUserFromContext(ctx)
 	if err != nil {
-		return CreateOrderResponse{}, errors.Wrap(err, "s.repo.CreateOrder()")
+		s.logger.Error("telegramusers.GetUserFromContext()", logging.SilentError(err))
+		return CreateOrderResponse{}, errors.Wrap(err, "telegramusers.GetUserFromContext()")
 	}
 
-	go s.notifySeller(ctx, req, res)
-	return res, nil
-}
-
-func (s *Service) notifySeller(ctx context.Context, req CreateOrderRequest, resp CreateOrderResponse) {
-	webAppProducts, err := s.productSvc.GetProducts(ctx, products.GetProductsRequest{WebAppID: req.WebAppID})
-	if err != nil {
-		s.logger.Error("s.productSvc.GetProducts()", zap.Error(err))
-		return
-	}
-
-	var webAppProductsMap map[string]products.Product
-	for _, v := range webAppProducts.Products {
-		webAppProductsMap[v.ID.String()] = v
-	}
-
-	// enrich the product with the name
-	// for the notification message
-	var orderProducts []NotificationProduct
-	for _, product := range req.Products {
-		if WaP, ok := webAppProductsMap[product.ID.String()]; ok {
-			orderProducts = append(orderProducts, NotificationProduct{
-				ID:       product.ID,
-				Quantity: product.Quantity,
-				Name:     WaP.Name,
-			})
-		}
-	}
-
-	err = s.notifier.NotifySeller(ctx, OrderNotification{
-		ID:           resp.ID,
-		UserNickname: req.UserNickname,
-		Products:     orderProducts,
+	res, err := s.repo.CreateOrder(ctx, SaveOrderRequest{
+		WebAppID:       req.WebAppID,
+		Products:       req.Products,
+		ExternalUserID: int(u.ExternalId),
 	})
 	if err != nil {
-		s.logger.Error("s.notifier.NotifySeller()", zap.Error(err))
+		s.logger.
+			With(zap.String("web_app_id", req.WebAppID.String())).
+			Error("repository.CreateOrder()", logging.SilentError(err))
+		return CreateOrderResponse{}, errors.Wrap(err, "s.repo.CreateOrder()")
 	}
+	return CreateOrderResponse(res), nil
 }

@@ -13,20 +13,25 @@ import (
 )
 
 const createOrder = `-- name: CreateOrder :one
-insert into orders (web_app_id, telegram_user_id)
+insert into orders (web_app_id, external_user_id)
 values ($1,
         $2)
-returning id
+returning id,readable_id
 `
 
 type CreateOrderParams struct {
 	WebAppID       pgtype.UUID
-	TelegramUserID pgtype.UUID
+	ExternalUserID pgtype.Int4
 }
 
-func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (uuid.UUID, error) {
-	row := q.db.QueryRow(ctx, createOrder, arg.WebAppID, arg.TelegramUserID)
-	var id uuid.UUID
-	err := row.Scan(&id)
-	return id, err
+type CreateOrderRow struct {
+	ID         uuid.UUID
+	ReadableID pgtype.Int8
+}
+
+func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (CreateOrderRow, error) {
+	row := q.db.QueryRow(ctx, createOrder, arg.WebAppID, arg.ExternalUserID)
+	var i CreateOrderRow
+	err := row.Scan(&i.ID, &i.ReadableID)
+	return i, err
 }

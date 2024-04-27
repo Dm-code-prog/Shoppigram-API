@@ -8,8 +8,8 @@ import (
 
 // makeGetProductsEndpoint constructs a CreateOrder endpoint wrapping the service.
 //
-// Path: PUT /api/v1/public/order/{web_app_id}
-func makeCreateOrderEndpoint(svc Service) endpoint.Endpoint {
+// Path: PUT /api/v1/public/orders/{web_app_id}
+func makeCreateOrderEndpoint(svc *Service) endpoint.Endpoint {
 	return func(ctx context.Context, request interface{}) (interface{}, error) {
 		req, ok := request.(CreateOrderRequest)
 		if !ok {
@@ -18,7 +18,7 @@ func makeCreateOrderEndpoint(svc Service) endpoint.Endpoint {
 
 		res, err := svc.CreateOrder(ctx, req)
 		if err != nil {
-			return CreateOrderResponse{}, errors.Wrap(err, "failed to create order")
+			return CreateOrderResponse{}, errors.Wrap(err, "svc.CreateOrder()")
 		}
 
 		return res, nil

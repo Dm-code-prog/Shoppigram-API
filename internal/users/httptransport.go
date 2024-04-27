@@ -17,15 +17,8 @@ import (
 func MakeHandler(bs *Service, log *zap.Logger) http.Handler {
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(encodeError),
-		kithttp.ServerBefore(func(ctx context.Context, request *http.Request) context.Context {
-			xInitData := request.Header.Get("X-Init-Data")
-			return PutInitDataToContext(ctx, xInitData)
-		}),
-		kithttp.ServerBefore(func(ctx context.Context, request *http.Request) context.Context {
-			webAppID := chi.URLParam(request, "web_app_id")
-			return PutWebAppIDToContext(ctx, webAppID)
-		}),
 	}
+	opts = append(opts, AuthServerBefore...)
 
 	createOrUpdateTgUser := makeCreateOrUpdateTgUserEndpoint(bs)
 	createOrUpdateTgUser = MakeAuthMiddleware(bs, log)(createOrUpdateTgUser)
