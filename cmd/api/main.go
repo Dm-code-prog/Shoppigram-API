@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/shoppigram-com/marketplace-api/internal/orders"
+	"go.uber.org/zap/zapcore"
 	"net/http"
 	"os"
 	"syscall"
@@ -22,7 +24,7 @@ import (
 )
 
 func main() {
-	log, _ := zap.NewProduction()
+	log, _ := zap.NewProductionConfig().Build(zap.AddStacktrace(zapcore.PanicLevel))
 	defer log.Sync()
 
 	ctx := context.Background()
@@ -38,6 +40,9 @@ func main() {
 	}
 	defer db.Close()
 	log.Debug("connected to database")
+
+	db.Config().MinConns = 5
+	db.Config().MaxConns = 25
 
 	var g run.Group
 	g.Add(run.SignalHandler(ctx, os.Interrupt, os.Kill, syscall.SIGTERM))
@@ -79,8 +84,13 @@ func main() {
 	tgUsersService := telegramusers.New(tgUsersRepo, log.With(zap.String("service", "users")))
 	tgUsersHandler := telegramusers.MakeHandler(tgUsersService, log.With(zap.String("service", "users")))
 
+	ordersRepo := orders.NewPg(db)
+	ordersService := orders.New(ordersRepo, log.With(zap.String("service", "orders")))
+	ordersHandler := orders.MakeHandler(ordersService, tgUsersService, log.With(zap.String("service", "orders")))
+
 	r.Mount("/api/v1/public/products", productsHandler)
 	r.Mount("/api/v1/public/auth", tgUsersHandler)
+	r.Mount("/api/v1/public/orders", ordersHandler)
 
 	g.Add(func() error {
 		log.Info("starting HTTP server", zap.String("port", config.HTTP.Port))
