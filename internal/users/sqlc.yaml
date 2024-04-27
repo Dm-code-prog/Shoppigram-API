@@ -2,10 +2,11 @@ version: "2"
 sql:
   - engine: postgresql
     queries:
-      - ./queries/products.sql
+      - ./queries/users.sql
     schema:
-      - ./schemas/20240411.sql
-      - ./schemas/extensions.sql
+      - ./schemas/20240423.sql
+      - ../products/schemas/20240411.sql
+      - ../products/schemas/20240424.sql
     gen:
       go:
         package: generated
