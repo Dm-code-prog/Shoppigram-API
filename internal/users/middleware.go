@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/go-chi/chi/v5"
 	kithttp "github.com/go-kit/kit/transport/http"
+	"github.com/shoppigram-com/marketplace-api/internal/logging"
 	"net/http"
 	"time"
 
@@ -111,17 +112,13 @@ func MakeAuthMiddleware(s *Service, log *zap.Logger) endpoint.Middleware {
 		return func(ctx context.Context, request any) (any, error) {
 			xInitData, err := GetInitDataFromContext(ctx)
 			if err != nil {
-				log.With(
-					zap.String("method", "GetInitDataFromContext"),
-				).Error(err.Error())
+				log.Error("GetInitDataFromContext", logging.SilentError(err))
 				return nil, err
 			}
 
 			webAppID, err := GetWebAppIDFromContext(ctx)
 			if err != nil {
-				log.With(
-					zap.String("method", "GetWebAppIDFromContext"),
-				).Error(err.Error())
+				log.Error("GetWebAppIDFromContext", logging.SilentError(err))
 				return nil, err
 			}
 
@@ -129,24 +126,18 @@ func MakeAuthMiddleware(s *Service, log *zap.Logger) endpoint.Middleware {
 
 			token, err := s.getEndUserBotToken(ctx, webAppID)
 			if err != nil {
-				log.With(
-					zap.String("method", "s.getEndUserBotToken"),
-				).Error(err.Error())
+				log.Error("s.getEndUserBotToken", logging.SilentError(err))
 				return nil, err
 			}
 			err = initdata.Validate(xInitData, token, initDataTTL)
 			if err != nil {
-				log.With(
-					zap.String("method", "initdata.Validate"),
-				).Error(ErrorInitDataIsInvalid.Error())
+				log.Error("initData.Validate", logging.SilentError(err))
 				return nil, ErrorInitDataIsInvalid
 			}
 
 			parsedInitData, err := initdata.Parse(xInitData)
 			if err != nil {
-				log.With(
-					zap.String("method", "initdata.Parse"),
-				).Error(ErrorInitDataIsInvalid.Error())
+				log.Error("initData.Parse", logging.SilentError(err))
 				return nil, ErrorInitDataIsInvalid
 			}
 
