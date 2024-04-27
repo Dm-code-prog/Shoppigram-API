@@ -17,6 +17,7 @@ var allowedOrigins = map[string]struct{}{
 // Slice of regex patterns for matching dynamic subdomains or origins
 var allowedPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`^https://[\w-]+dmcodeprogs-projects\.vercel\.app$`),
+	regexp.MustCompile(`^https://[\w-]+shoppigram\.vercel\.app$`),
 }
 
 // Middleware checks the request's origin and sets CORS headers accordingly.
