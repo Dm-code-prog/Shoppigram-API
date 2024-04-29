@@ -1,0 +1,19 @@
+version: "2"
+sql:
+  - engine: postgresql
+    queries:
+      - ./queries/adminbot.sql
+    schema:
+      - ./schemas/20240429.sql
+      - ../products/schemas/20240411.sql
+      - ../products/schemas/20240424.sql
+    gen:
+      go:
+        package: generated
+        out: ./generated
+        sql_package: "pgx/v5"
+        overrides:
+          - db_type: "uuid"
+            go_type:
+              import: "github.com/google/uuid"
+              type: "UUID"
