@@ -27,6 +27,21 @@ type NotifyList struct {
 	AdminUsername pgtype.Text
 }
 
+type Order struct {
+	ID             uuid.UUID
+	ReadableID     pgtype.Int8
+	WebAppID       pgtype.UUID
+	ExternalUserID pgtype.Int4
+	CreatedAt      pgtype.Timestamp
+	UpdatedAt      pgtype.Timestamp
+}
+
+type OrderProduct struct {
+	OrderID   pgtype.UUID
+	ProductID pgtype.UUID
+	Quantity  int32
+}
+
 type Product struct {
 	ID            uuid.UUID
 	WebAppID      pgtype.UUID

@@ -7,6 +7,6 @@ create table notifier_cursors (
 
 -- Notify list
 create table notify_list (
-	web_app_id uuid references web_apps(id),
+  web_app_id uuid references web_apps(id),
   admin_username varchar(35)
 );
