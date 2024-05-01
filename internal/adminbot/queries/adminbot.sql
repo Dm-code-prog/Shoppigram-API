@@ -20,7 +20,12 @@ set last_processed_created_at = $2,
 where name = $1;
 
 -- name: GetNotificationsForOrdersAfterCursor :many
-select readable_id, web_app_id, external_user_id
-from orders
-where created_at >= $1
-limit $2;
+with orders_batch as (
+    select readable_id, web_app_id, external_user_id
+    from orders
+    where created_at >= $1
+    limit $2
+)
+select * from orders_batch
+    join order_products op
+    on orders_batch.id = op.order_id;

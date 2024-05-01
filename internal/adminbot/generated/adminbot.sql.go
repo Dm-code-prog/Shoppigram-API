@@ -62,10 +62,15 @@ func (q *Queries) GetAdminsNotificationList(ctx context.Context, webAppID pgtype
 }
 
 const getNotificationsForOrdersAfterCursor = `-- name: GetNotificationsForOrdersAfterCursor :many
-select readable_id, web_app_id, external_user_id
-from orders
-where created_at >= $1
-limit $2
+with orders_batch as (
+    select readable_id, web_app_id, external_user_id
+    from orders
+    where created_at >= $1
+    limit $2
+)
+select readable_id, web_app_id, external_user_id, order_id, product_id, quantity from orders_batch
+    join order_products op
+    on orders_batch.id = op.order_id
 `
 
 type GetNotificationsForOrdersAfterCursorParams struct {
@@ -77,6 +82,9 @@ type GetNotificationsForOrdersAfterCursorRow struct {
 	ReadableID     pgtype.Int8
 	WebAppID       pgtype.UUID
 	ExternalUserID pgtype.Int4
+	OrderID        pgtype.UUID
+	ProductID      pgtype.UUID
+	Quantity       int32
 }
 
 func (q *Queries) GetNotificationsForOrdersAfterCursor(ctx context.Context, arg GetNotificationsForOrdersAfterCursorParams) ([]GetNotificationsForOrdersAfterCursorRow, error) {
@@ -88,7 +96,14 @@ func (q *Queries) GetNotificationsForOrdersAfterCursor(ctx context.Context, arg 
 	var items []GetNotificationsForOrdersAfterCursorRow
 	for rows.Next() {
 		var i GetNotificationsForOrdersAfterCursorRow
-		if err := rows.Scan(&i.ReadableID, &i.WebAppID, &i.ExternalUserID); err != nil {
+		if err := rows.Scan(
+			&i.ReadableID,
+			&i.WebAppID,
+			&i.ExternalUserID,
+			&i.OrderID,
+			&i.ProductID,
+			&i.Quantity,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
