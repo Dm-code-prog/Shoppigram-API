@@ -115,15 +115,33 @@ func (p *Pg) GetNotificationsForOrdersAfterCursor(ctx context.Context, cur Curso
 		return nil, errors.Wrap(err, "p.gen.GetNotificationsForOrdersAfterCursor")
 	}
 
+	ordersMap := map[string]OrderNotification{}
+
 	for _, r := range rows {
-		orderNotifications = append(
-			orderNotifications,
-			OrderNotification{
-				ReadableID:     int64(r.ReadableID.Int64),
-				WebAppID:       r.WebAppID.Bytes,
-				ExternalUserID: int(r.ExternalUserID.Int32),
-			},
-		)
+		orderID := r.OrderID.String()
+		if order, ok := ordersMap[orderID]; ok {
+			// If the order exists, append the new product to the existing order's product list
+			order.Products = append(order.Products, Product{
+				Name:     r.Name,
+				Quantity: int(r.Quantity),
+				Price:    r.Price,
+			})
+			// Update the map after modification
+			ordersMap[orderID] = order
+		} else {
+			ordersMap[orderID] = OrderNotification{
+				ID:              r.OrderID,
+				ReadableOrderID: r.ReadableID.Int64,
+				CreatedAt:       r.CreatedAt.Time,
+				UserNickname:    r.Username.String,
+				//WebAppID:        r.WebAppID, // fix this
+				Products: []Product{{
+					Name:     r.Name,
+					Quantity: int(r.Quantity),
+					Price:    r.Price,
+				}},
+			}
+		}
 	}
 
 	return orderNotifications, nil

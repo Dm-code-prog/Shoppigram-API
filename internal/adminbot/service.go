@@ -10,7 +10,6 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	"github.com/shoppigram-com/marketplace-api/internal/products"
 	"go.uber.org/zap"
 )
 
@@ -22,13 +21,21 @@ type (
 		LastProcessedID        uuid.UUID
 	}
 
+	// Product is a marketplace product
+	Product struct {
+		Name     string
+		Quantity int
+		Price    float64
+	}
+
 	// OrderNotification defines the structure of order notification
 	OrderNotification struct {
-		ReadableID     int64
-		WebAppID       uuid.UUID
-		ExternalUserID int
-		//Products       []orders.Product
-		//BuyerUsername  string
+		ID              uuid.UUID
+		ReadableOrderID int64
+		CreatedAt       time.Time
+		UserNickname    string
+		WebAppID        uuid.UUID
+		Products        []Product
 	}
 
 	// Repository provides access to the user storage
@@ -46,7 +53,8 @@ type (
 		log                  *zap.Logger
 		cache                *ristretto.Cache
 		ctx                  context.Context
-		orderProcessingTimer int
+		cancel               context.CancelFunc
+		orderProcessingTimer time.Duration
 	}
 )
 
@@ -62,8 +70,23 @@ var (
 	ErrorEmptyProductsList = errors.New("empty products list")
 )
 
+// String creates a notification message for a new order
+func (o *OrderNotification) String() string {
+	var productList strings.Builder
+	for _, p := range o.Products {
+		productList.WriteString(fmt.Sprintf("%d x %s at $%.2f each; ", p.Quantity, p.Name, p.Price))
+	}
+
+	return fmt.Sprintf("У вас новый заказ. Номер заказа: #%d, создан: %s, пользователь: %s, Продукты в заказе: [%s]",
+		o.ReadableOrderID,
+		o.CreatedAt.Format("Jan 2, 2006 at 3:04pm (MST)"),
+		o.UserNickname,
+		strings.TrimRight(productList.String(), "; "),
+	)
+}
+
 // New creates a new user service
-func New(repo Repository, log *zap.Logger, ctx context.Context, orderProcessingTimer int) *Service {
+func New(repo Repository, log *zap.Logger, orderProcessingTimer time.Duration) *Service {
 	if log == nil {
 		log, _ = zap.NewProduction()
 		log.Warn("log *zap.Logger is nil, using zap.NewProduction")
@@ -74,125 +97,33 @@ func New(repo Repository, log *zap.Logger, ctx context.Context, orderProcessingT
 
 	cache, err := ristretto.NewCache(&ristretto.Config{
 		NumCounters: 1e2,       // number of keys to track frequency of (100).
-		MaxCost:     2_000_000, // maximum cost of cache (200 MB).
+		MaxCost:     2_000_000, // maximum cost of cache (2MB).
 		BufferItems: 10,        // number of keys per Get buffer.
 	})
 	if err != nil {
 		log.Fatal("cache *ristretto.Cache is nil, fatal")
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
 	return &Service{
 		repo:                 repo,
 		log:                  log,
 		ctx:                  ctx,
+		cancel:               cancel,
 		cache:                cache,
 		orderProcessingTimer: orderProcessingTimer,
 	}
 }
 
-func (s *Service) getOrderNotifications(cur Cursor) ([]OrderNotification, error) {
-	adminsList, err := s.repo.GetAdminsNotificationList(s.ctx, webAppID)
-	if err != nil {
-		return nil, errors.Wrap(err, "s.repo.GetAdminsNotificationList")
-	}
-
-	return nil, nil
-}
-
-func (s *Service) buildMessage(orderId int, username string, products []products.Product, totalPrice float32) (string, error) {
-	if len(products) == 0 {
-		return "", ErrorEmptyProductsList
-	}
-
-	return fmt.Sprintf(
-		template,
-		username,
-		strings.Join(products, ", "),
-		totalPrice,
-		orderId,
-	), nil
-}
-
-func (s *Service) sendOrderNotifications(orderNotifications []OrderNotification) (Cursor, error) {
-	var bot *tgbotapi.BotAPI
-
-	for _, a := range orderNotifications {
-		if a.WebAppID == uuid.Nil {
-			// FIXME: It should not be like that, log
-			continue
-		}
-
-		val, ok := s.cache.Get(a.WebAppID)
-		if ok {
-			bot = val.(*tgbotapi.BotAPI)
-		} else {
-			s.log.With(
-				zap.String("web_app_id", a.WebAppID.String()),
-			).Info("cache miss")
-
-			token, err := s.repo.GetAdminBotToken(s.ctx, a.WebAppID)
-			if err != nil {
-				return Cursor{}, errors.Wrap(err, "s.repo.GetAdminBotToken")
-			}
-
-			bot, err = tgbotapi.NewBotAPI(token)
-			if err != nil {
-				return Cursor{}, errors.Wrap(err, "tgbotapi.NewBotAPI")
-			}
-
-			// Cache the bot structure
-			ok = s.cache.SetWithTTL(a.WebAppID, bot, 0, 10*time.Minute)
-			if !ok {
-				// FIXME: Probably something is wrong, log
-			}
-		}
-
-		msg := tgbotapi.NewMessage(a, "Test message")
-		_, err := bot.Send(msg)
-		if err != nil {
-			return Cursor{}, errors.Wrap(err, "bot.Send")
-		}
-	}
-
-	// FIXME: Return updated cursor after sending the messages
-	return Cursor{}, nil
-}
-
-func (s *Service) notifyIteration() error {
-	cursor, err := s.repo.GetNotifierCursor(s.ctx, "defaultCursor")
-
-	orderNotifications, err := s.getOrderNotifications(cursor)
-	if err != nil {
-		return errors.Wrap(err, "s.getOrderNotifications")
-	}
-
-	if len(orderNotifications) == 0 {
-		// FIXME: Log warning
-		return nil
-	}
-
-	updCursor, err := s.sendOrderNotifications(orderNotifications)
-	if err != nil {
-		return errors.Wrap(err, "s.sendOrderNotifications")
-	}
-
-	err = s.repo.UpdateNotifierCursor(s.ctx, updCursor)
-	if err != nil {
-		return errors.Wrap(err, "s.repo.UpdateNotifierCursor")
-	}
-
-	return nil
-}
-
 func (s *Service) Run() error {
-	ticker := time.NewTicker(time.Duration(s.orderProcessingTimer) * time.Second)
+	ticker := time.NewTicker(s.orderProcessingTimer * time.Minute)
 
 	for {
 		select {
 		case <-ticker.C:
-			err := s.notifyIteration()
+			err := s.runOnce()
 			if err != nil {
-				return errors.Wrap(err, "s.notifyIteration")
+				return errors.Wrap(err, "s.runOnce")
 			}
 		case <-s.ctx.Done():
 			ticker.Stop()
@@ -201,7 +132,73 @@ func (s *Service) Run() error {
 	}
 }
 
-func (s *Service) Shutdown(cancel context.CancelFunc) error {
-	cancel()
+func (s *Service) Shutdown() error {
+	s.cancel()
+	return nil
+}
+
+func (s *Service) sendOrderNotifications(orderNotifications []OrderNotification) error {
+	var bot *tgbotapi.BotAPI
+
+	for _, a := range orderNotifications {
+		val, ok := s.cache.Get(a.WebAppID)
+		if ok {
+			bot = val.(*tgbotapi.BotAPI)
+		} else {
+			token, err := s.repo.GetAdminBotToken(s.ctx, a.WebAppID)
+			if err != nil {
+				return errors.Wrap(err, "s.repo.GetAdminBotToken")
+			}
+
+			bot, err = tgbotapi.NewBotAPI(token)
+			if err != nil {
+				return errors.Wrap(err, "tgbotapi.NewBotAPI")
+			}
+
+			s.cache.SetWithTTL(a.WebAppID, bot, 0, 10*time.Minute)
+		}
+
+		nl, err := s.repo.GetAdminsNotificationList(s.ctx, a.WebAppID)
+		if err != nil {
+			return errors.Wrap(err, "s.repo.GetAdminsNotificationList")
+		}
+
+		// need to get chat id's of users, who we are going to send messages
+		for _, v := range nl {
+			msg := tgbotapi.NewMessage(v, a.String())
+			_, err := bot.Send(msg)
+			if err != nil {
+				return errors.Wrap(err, "bot.Send")
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (s *Service) runOnce() error {
+	cursor, err := s.repo.GetNotifierCursor(s.ctx, "defaultCursor")
+
+	orderNotifications, err := s.repo.GetNotificationsForOrdersAfterCursor(s.ctx, cursor)
+	if err != nil {
+		return errors.Wrap(err, "s.getOrderNotifications")
+	}
+
+	err = s.sendOrderNotifications(orderNotifications)
+	if err != nil {
+		return errors.Wrap(err, "s.sendOrderNotifications")
+	}
+
+	lastElem := orderNotifications[len(orderNotifications)-1]
+
+	err = s.repo.UpdateNotifierCursor(s.ctx, Cursor{
+		LastProcessedCreatedAt: lastElem.CreatedAt,
+		LastProcessedID:        lastElem.ID,
+	})
+	if err != nil {
+		return errors.Wrap(err, "s.repo.UpdateNotifierCursor")
+	}
+
 	return nil
 }

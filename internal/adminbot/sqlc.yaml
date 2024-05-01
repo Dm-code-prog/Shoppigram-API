@@ -8,6 +8,7 @@ sql:
       - ../orders/schemas/20240424.sql
       - ../products/schemas/20240411.sql
       - ../products/schemas/20240424.sql
+      - ../users/schemas/20240423.sql
     gen:
       go:
         package: generated
