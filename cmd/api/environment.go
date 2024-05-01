@@ -3,7 +3,8 @@ package main
 // Environment is the configuration struct for the application
 type Environment struct {
 	Postgres struct {
-		DSN string `env:"POSTGRES_DSN,required"`
+		DSN             string `env:"POSTGRES_DSN,required"`
+		OrderFetchLimit int    `env:"ORDER_FETCH_LIMIT,required"`
 	}
 
 	HTTP struct {
