@@ -119,9 +119,9 @@ func (p *Pg) GetNotificationsForOrdersAfterCursor(ctx context.Context, cur Curso
 		orderNotifications = append(
 			orderNotifications,
 			OrderNotification{
-				int64(r.ReadableID.Int64),
-				r.WebAppID.Bytes,
-				int(r.ExternalUserID.Int32),
+				ReadableID:     int64(r.ReadableID.Int64),
+				WebAppID:       r.WebAppID.Bytes,
+				ExternalUserID: int(r.ExternalUserID.Int32),
 			},
 		)
 	}
