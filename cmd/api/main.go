@@ -90,7 +90,7 @@ func main() {
 	ordersService := orders.New(ordersRepo, log.With(zap.String("service", "orders")))
 	ordersHandler := orders.MakeHandler(ordersService, tgUsersService, log.With(zap.String("service", "orders")))
 
-	adminbotRepo := adminbot.NewPg(db, config.Encryption.Key)
+	adminbotRepo := adminbot.NewPg(db, config.Encryption.Key, 5)
 	adminbotService := adminbot.New(adminbotRepo, log.With(zap.String("service", "adminbot")))
 	adminbotService.Run(ctx)
 

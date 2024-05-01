@@ -14,13 +14,18 @@ import (
 // Pg implements the Repository interface
 // using PostgreSQL as the backing store.
 type Pg struct {
-	gen           *generated.Queries
-	encryptionKey string
+	gen             *generated.Queries
+	encryptionKey   string
+	orderFetchLimit int
 }
 
 // NewPg creates a new Pg
-func NewPg(db *pgxpool.Pool, encryptionKey string) *Pg {
-	return &Pg{gen: generated.New(db), encryptionKey: encryptionKey}
+func NewPg(db *pgxpool.Pool, encryptionKey string, orderFetchLimit int) *Pg {
+	return &Pg{
+		gen:             generated.New(db),
+		encryptionKey:   encryptionKey,
+		orderFetchLimit: orderFetchLimit,
+	}
 }
 
 // GetAdminsNotificationList gets a list of admins to notificate about an order
@@ -104,7 +109,7 @@ func (p *Pg) GetNotificationsForOrdersAfterCursor(ctx context.Context, cur Curso
 				Time:  cur.LastProcessedCreatedAt,
 				Valid: true,
 			},
-			Limit: 5,
+			Limit: int32(p.orderFetchLimit),
 		})
 	if err != nil {
 		return nil, errors.Wrap(err, "p.gen.GetNotificationsForOrdersAfterCursor")
