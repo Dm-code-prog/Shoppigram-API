@@ -28,6 +28,9 @@ type (
 	Repository interface {
 		GetAdminsNotificationList(ctx context.Context, webAppID uuid.UUID) ([]int64, error)
 		GetAdminBotToken(ctx context.Context, webAppID uuid.UUID) (string, error)
+		GetNotifierCursor(ctx context.Context, name string) (Cursor, error)
+		UpdateNotifierCursor(ctx context.Context, cur Cursor) error
+		GetNotificationsForOrdersAfterCursor(ctx context.Context, cur Cursor) ([]OrderNotification, error)
 	}
 
 	// Service provides user operations
