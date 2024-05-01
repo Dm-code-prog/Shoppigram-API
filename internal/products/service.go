@@ -16,6 +16,7 @@ type (
 		WebAppID      uuid.UUID `json:"web_app_id,omitempty"`
 		Name          string    `json:"name"`
 		Description   string    `json:"description,omitempty"`
+		Category      string    `json:"category,omitempty"`
 		Price         float64   `json:"price"`
 		PriceCurrency string    `json:"price_currency"`
 		ImageURL      string    `json:"image_url,omitempty"`

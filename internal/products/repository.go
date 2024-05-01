@@ -35,6 +35,7 @@ func (p *Pg) GetProducts(ctx context.Context, request GetProductsRequest) (GetPr
 			ID:            p.ID,
 			Name:          p.Name,
 			Description:   p.Description.String,
+			Category:      p.Category.String,
 			Price:         p.Price,
 			PriceCurrency: p.PriceCurrency,
 			ImageURL:      p.ImageUrl,
