@@ -92,7 +92,7 @@ func main() {
 
 	var adminbotTerminateChannel chan interface{}
 	adminbotRepo := adminbot.NewPg(db, config.Encryption.Key, config.Postgres.OrderFetchLimit)
-	adminbotService := adminbot.New(adminbotRepo, log.With(zap.String("service", "adminbot")))
+	adminbotService := adminbot.New(adminbotRepo, log.With(zap.String("service", "adminbot")), config.Postgres.OrderProcessingTimer)
 	adminbotService.Run(ctx, adminbotTerminateChannel)
 
 	r.Mount("/api/v1/public/products", productsHandler)

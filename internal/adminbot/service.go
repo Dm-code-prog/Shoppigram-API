@@ -35,8 +35,9 @@ type (
 
 	// Service provides user operations
 	Service struct {
-		repo Repository
-		log  *zap.Logger
+		repo                 Repository
+		log                  *zap.Logger
+		orderProcessingTimer int
 	}
 )
 
@@ -47,15 +48,16 @@ var (
 )
 
 // New creates a new user service
-func New(repo Repository, log *zap.Logger) *Service {
+func New(repo Repository, log *zap.Logger, orderProcessingTimer int) *Service {
 	if log == nil {
 		log, _ = zap.NewProduction()
 		log.Warn("log *zap.Logger is nil, using zap.NewProduction")
 	}
 
 	return &Service{
-		repo: repo,
-		log:  log,
+		repo:                 repo,
+		log:                  log,
+		orderProcessingTimer: orderProcessingTimer,
 	}
 }
 
@@ -86,7 +88,7 @@ func (s *Service) notifyIteration(ctx context.Context) error {
 }
 
 func (s *Service) Run(ctx context.Context, done <-chan interface{}) error {
-	ticker := time.NewTicker(300 * time.Second)
+	ticker := time.NewTicker(time.Duration(s.orderProcessingTimer) * time.Second)
 
 	for {
 		select {
