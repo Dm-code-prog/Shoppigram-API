@@ -25,6 +25,7 @@ type NotifierCursor struct {
 type NotifyList struct {
 	WebAppID      pgtype.UUID
 	AdminUsername pgtype.Text
+	AdminChatID   int64
 }
 
 type Order struct {

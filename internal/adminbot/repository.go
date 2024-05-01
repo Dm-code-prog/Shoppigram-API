@@ -24,10 +24,10 @@ func NewPg(db *pgxpool.Pool, encryptionKey string) *Pg {
 }
 
 // GetAdminsNotificationList gets a list of admins to notificate about an order
-func (p *Pg) GetAdminsNotificationList(ctx context.Context, webAppID uuid.UUID) ([]string, error) {
-	var adminsList []string
+func (p *Pg) GetAdminsNotificationList(ctx context.Context, webAppID uuid.UUID) ([]int64, error) {
+	var adminsNotificationList []int64
 
-	vals, err := p.gen.GetAdminsNotificationList(ctx, pgtype.UUID{
+	rows, err := p.gen.GetAdminsNotificationList(ctx, pgtype.UUID{
 		Bytes: webAppID,
 		Valid: true,
 	})
@@ -35,11 +35,11 @@ func (p *Pg) GetAdminsNotificationList(ctx context.Context, webAppID uuid.UUID) 
 		return nil, errors.Wrap(err, "p.gen.GetAdminsNotificationList")
 	}
 
-	for _, v := range vals {
-		adminsList = append(adminsList, v.String)
+	for _, v := range rows {
+		adminsNotificationList = append(adminsNotificationList, v.AdminChatID)
 	}
 
-	return adminsList, nil
+	return adminsNotificationList, nil
 }
 
 // GetAdminBotToken gets admin bot token
@@ -53,4 +53,41 @@ func (p *Pg) GetAdminBotToken(ctx context.Context, webAppID uuid.UUID) (string, 
 	}
 
 	return token.(string), nil
+}
+
+// GetNotifierCursor gets notifier cursor
+func (p *Pg) GetNotifierCursor(ctx context.Context, name string) (Cursor, error) {
+	cursor, err := p.gen.GetNotifierCursor(ctx, pgtype.Text{
+		String: name,
+		Valid:  true,
+	})
+	if err != nil {
+		return Cursor{}, errors.Wrap(err, "p.gen.GetNotifierCursor")
+	}
+	return Cursor{
+		LastProcessedCreatedAt: cursor.LastProcessedCreatedAt.Time,
+		LastProcessedID:        cursor.LastProcessedID.Bytes,
+	}, nil
+}
+
+// UpdateNotifierCursor updates notifier cursor
+func (p *Pg) UpdateNotifierCursor(ctx context.Context, cur Cursor) error {
+	err := p.gen.UpdateNotifierCursor(ctx, generated.UpdateNotifierCursorParams{
+		Name: pgtype.Text{
+			String: cur.Name,
+			Valid:  true,
+		},
+		LastProcessedCreatedAt: pgtype.Timestamp{
+			Time:  cur.LastProcessedCreatedAt,
+			Valid: true,
+		},
+		LastProcessedID: pgtype.UUID{
+			Bytes: cur.LastProcessedID,
+			Valid: true,
+		},
+	})
+	if err != nil {
+		return errors.Wrap(err, "p.gen.UpdateNotifierCursor")
+	}
+	return nil
 }
