@@ -61,7 +61,7 @@ func New(repo Repository, log *zap.Logger, orderProcessingTimer int) *Service {
 	}
 }
 
-func (s *Service) getOrderNotifications(ctx context.Context) ([]OrderNotification, error) {
+func (s *Service) getOrderNotifications(ctx context.Context, cur Cursor) ([]OrderNotification, error) {
 	return nil, nil
 }
 
@@ -71,8 +71,9 @@ func (s *Service) sendOrderNotifications(ctx context.Context, orderNotifications
 
 func (s *Service) notifyIteration(ctx context.Context) error {
 	// TODO: Fetch cursor here
+	var cursor Cursor
 
-	orderNotifications, err := s.getOrderNotifications(ctx)
+	orderNotifications, err := s.getOrderNotifications(ctx, cursor)
 	if err != nil {
 		return errors.Wrap(err, "s.getOrderNotifications")
 	}
