@@ -3,13 +3,15 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/shoppigram-com/marketplace-api/internal/orders"
-	"go.uber.org/zap/zapcore"
 	"net/http"
 	"os"
 	"syscall"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/shoppigram-com/marketplace-api/internal/adminbot"
+	"github.com/shoppigram-com/marketplace-api/internal/orders"
+	"go.uber.org/zap/zapcore"
 
 	"github.com/Netflix/go-env"
 	"github.com/dgraph-io/ristretto"
@@ -87,6 +89,10 @@ func main() {
 	ordersRepo := orders.NewPg(db)
 	ordersService := orders.New(ordersRepo, log.With(zap.String("service", "orders")))
 	ordersHandler := orders.MakeHandler(ordersService, tgUsersService, log.With(zap.String("service", "orders")))
+
+	adminbotRepo := adminbot.NewPg(db, config.Encryption.Key)
+	adminbotService := adminbot.New(adminbotRepo, log.With(zap.String("service", "adminbot")))
+	adminbotService.Run(ctx)
 
 	r.Mount("/api/v1/public/products", productsHandler)
 	r.Mount("/api/v1/public/auth", tgUsersHandler)
