@@ -37,6 +37,7 @@ type (
 	Service struct {
 		repo                 Repository
 		log                  *zap.Logger
+		ctx                  context.Context
 		orderProcessingTimer int
 	}
 )
@@ -48,64 +49,75 @@ var (
 )
 
 // New creates a new user service
-func New(repo Repository, log *zap.Logger, orderProcessingTimer int) *Service {
+func New(repo Repository, log *zap.Logger, ctx context.Context, orderProcessingTimer int) *Service {
 	if log == nil {
 		log, _ = zap.NewProduction()
 		log.Warn("log *zap.Logger is nil, using zap.NewProduction")
+	}
+	if orderProcessingTimer == 0 {
+		orderProcessingTimer = 300
 	}
 
 	return &Service{
 		repo:                 repo,
 		log:                  log,
+		ctx:                  ctx,
 		orderProcessingTimer: orderProcessingTimer,
 	}
 }
 
-func (s *Service) getOrderNotifications(ctx context.Context, cur Cursor) ([]OrderNotification, error) {
+func (s *Service) getOrderNotifications(cur Cursor) ([]OrderNotification, error) {
 	return nil, nil
 }
 
-func (s *Service) sendOrderNotifications(ctx context.Context, orderNotifications []OrderNotification) error {
-	return nil
+func (s *Service) sendOrderNotifications(orderNotifications []OrderNotification) (Cursor, error) {
+	return Cursor{}, nil
 }
 
-func (s *Service) notifyIteration(ctx context.Context) error {
-	// TODO: Fetch cursor here
-	var cursor Cursor
+func (s *Service) notifyIteration() error {
+	cursor, err := s.repo.GetNotifierCursor(s.ctx, "defaultCursor")
 
-	orderNotifications, err := s.getOrderNotifications(ctx, cursor)
+	orderNotifications, err := s.getOrderNotifications(cursor)
 	if err != nil {
 		return errors.Wrap(err, "s.getOrderNotifications")
 	}
 
-	err = s.sendOrderNotifications(ctx, orderNotifications)
+	if len(orderNotifications) == 0 {
+		// FIXME: Log warning
+		return nil
+	}
+
+	updCursor, err := s.sendOrderNotifications(orderNotifications)
 	if err != nil {
 		return errors.Wrap(err, "s.sendOrderNotifications")
 	}
 
-	// TODO: Update cursor here
+	err = s.repo.UpdateNotifierCursor(s.ctx, updCursor)
+	if err != nil {
+		return errors.Wrap(err, "s.repo.UpdateNotifierCursor")
+	}
 
 	return nil
 }
 
-func (s *Service) Run(ctx context.Context, done <-chan interface{}) error {
+func (s *Service) Run() error {
 	ticker := time.NewTicker(time.Duration(s.orderProcessingTimer) * time.Second)
 
 	for {
 		select {
 		case <-ticker.C:
-			err := s.notifyIteration(ctx)
+			err := s.notifyIteration()
 			if err != nil {
 				return errors.Wrap(err, "s.notifyIteration")
 			}
-		case <-done:
+		case <-s.ctx.Done():
 			ticker.Stop()
 			return nil
 		}
 	}
 }
 
-func (s *Service) Shutdown(ctx context.Context, done chan<- interface{}) error {
-	done <- interface{}(nil)
+func (s *Service) Shutdown(cancel context.CancelFunc) error {
+	cancel()
 	return nil
 }

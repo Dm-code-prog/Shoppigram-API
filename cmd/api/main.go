@@ -90,10 +90,19 @@ func main() {
 	ordersService := orders.New(ordersRepo, log.With(zap.String("service", "orders")))
 	ordersHandler := orders.MakeHandler(ordersService, tgUsersService, log.With(zap.String("service", "orders")))
 
-	var adminbotTerminateChannel chan interface{}
+	adminbotCtx, adminbotCancel := context.WithCancel(context.Background())
 	adminbotRepo := adminbot.NewPg(db, config.Encryption.Key, config.Postgres.OrderFetchLimit)
-	adminbotService := adminbot.New(adminbotRepo, log.With(zap.String("service", "adminbot")), config.Postgres.OrderProcessingTimer)
-	adminbotService.Run(ctx, adminbotTerminateChannel)
+	adminbotService := adminbot.New(
+		adminbotRepo,
+		log.With(zap.String("service", "adminbot")),
+		adminbotCtx,
+		config.Postgres.OrderProcessingTimer,
+	)
+	g.Add(func() error {
+		return adminbotService.Run()
+	}, func(err error) {
+		_ = adminbotService.Shutdown(adminbotCancel)
+	})
 
 	r.Mount("/api/v1/public/products", productsHandler)
 	r.Mount("/api/v1/public/auth", tgUsersHandler)
