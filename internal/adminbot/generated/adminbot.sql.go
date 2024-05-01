@@ -61,6 +61,44 @@ func (q *Queries) GetAdminsNotificationList(ctx context.Context, webAppID pgtype
 	return items, nil
 }
 
+const getNotificationsForOrdersAfterCursor = `-- name: GetNotificationsForOrdersAfterCursor :many
+select readable_id, web_app_id, external_user_id
+from orders
+where created_at >= $1
+limit $2
+`
+
+type GetNotificationsForOrdersAfterCursorParams struct {
+	CreatedAt pgtype.Timestamp
+	Limit     int32
+}
+
+type GetNotificationsForOrdersAfterCursorRow struct {
+	ReadableID     pgtype.Int8
+	WebAppID       pgtype.UUID
+	ExternalUserID pgtype.Int4
+}
+
+func (q *Queries) GetNotificationsForOrdersAfterCursor(ctx context.Context, arg GetNotificationsForOrdersAfterCursorParams) ([]GetNotificationsForOrdersAfterCursorRow, error) {
+	rows, err := q.db.Query(ctx, getNotificationsForOrdersAfterCursor, arg.CreatedAt, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetNotificationsForOrdersAfterCursorRow
+	for rows.Next() {
+		var i GetNotificationsForOrdersAfterCursorRow
+		if err := rows.Scan(&i.ReadableID, &i.WebAppID, &i.ExternalUserID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getNotifierCursor = `-- name: GetNotifierCursor :one
 select last_processed_created_at, last_processed_id
 from notifier_cursors

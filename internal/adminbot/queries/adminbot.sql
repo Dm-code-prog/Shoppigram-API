@@ -18,3 +18,9 @@ update notifier_cursors
 set last_processed_created_at = $2,
     last_processed_id = $3
 where name = $1;
+
+-- name: GetNotificationsForOrdersAfterCursor :many
+select readable_id, web_app_id, external_user_id
+from orders
+where created_at >= $1
+limit $2;

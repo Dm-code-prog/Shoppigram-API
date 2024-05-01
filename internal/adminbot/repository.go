@@ -91,3 +91,35 @@ func (p *Pg) UpdateNotifierCursor(ctx context.Context, cur Cursor) error {
 	}
 	return nil
 }
+
+// GetNotificationsForOrdersAfterCursor gets notifcations for orders which were
+// created after date specified in cursor
+func (p *Pg) GetNotificationsForOrdersAfterCursor(ctx context.Context, cur Cursor) ([]OrderNotification, error) {
+	var orderNotifications []OrderNotification
+
+	rows, err := p.gen.GetNotificationsForOrdersAfterCursor(
+		ctx,
+		generated.GetNotificationsForOrdersAfterCursorParams{
+			CreatedAt: pgtype.Timestamp{
+				Time:  cur.LastProcessedCreatedAt,
+				Valid: true,
+			},
+			Limit: 5,
+		})
+	if err != nil {
+		return nil, errors.Wrap(err, "p.gen.GetNotificationsForOrdersAfterCursor")
+	}
+
+	for _, r := range rows {
+		orderNotifications = append(
+			orderNotifications,
+			OrderNotification{
+				int64(r.ReadableID.Int64),
+				r.WebAppID.Bytes,
+				int(r.ExternalUserID.Int32),
+			},
+		)
+	}
+
+	return orderNotifications, nil
+}
