@@ -59,10 +59,28 @@ func New(repo Repository, log *zap.Logger) *Service {
 	}
 }
 
-func (s *Service) Run(ctx context.Context) error {
+func (s *Service) notifyIteration(ctx context.Context) error {
 	return nil
 }
 
-func (s *Service) Shutdown(ctx context.Context) error {
+func (s *Service) Run(ctx context.Context, done <-chan interface{}) error {
+	ticker := time.NewTicker(300 * time.Second)
+
+	for {
+		select {
+		case <-ticker.C:
+			err := s.notifyIteration(ctx)
+			if err != nil {
+				return errors.Wrap(err, "s.notifyIteration")
+			}
+		case <-done:
+			ticker.Stop()
+			return nil
+		}
+	}
+}
+
+func (s *Service) Shutdown(ctx context.Context, done chan<- interface{}) error {
+	done <- interface{}(nil)
 	return nil
 }
