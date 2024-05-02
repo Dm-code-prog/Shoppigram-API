@@ -1,8 +1,10 @@
-package adminbot
+package notifications
 
 import (
 	"context"
+	"embed"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -12,6 +14,9 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
+
+//go:embed message.md
+var messageTemplate embed.FS
 
 type (
 	// Cursor defines the structure for a notify list cursor
@@ -59,30 +64,27 @@ type (
 )
 
 const (
-	defaultCursor = "orders_cursor"
-	template      = "Hello! User %d want to buy products %d with a total price of %d. Order ID: `%d` ."
+	notifierName = "order_notifications"
 )
 
-var (
-	ErrorUserNotFound      = errors.New("user not found")
-	ErrorWebAppNotFound    = errors.New("web app id not found")
-	ErrorInternal          = errors.New("internal server error")
-	ErrorEmptyProductsList = errors.New("empty products list")
-)
-
-// String creates a notification message for a new order
-func (o *OrderNotification) String() string {
+// BuildMessage creates a notification message for a new order
+func (o *OrderNotification) BuildMessage() (string, error) {
 	var productList strings.Builder
 	for _, p := range o.Products {
-		productList.WriteString(fmt.Sprintf("%d x %s at $%.2f each; ", p.Quantity, p.Name, p.Price))
+		productList.WriteString(fmt.Sprintf(`\- %d x %s по цене %d  
+`, p.Quantity, p.Name, int(p.Price)))
 	}
 
-	return fmt.Sprintf("У вас новый заказ. Номер заказа: #%d, создан: %s, пользователь: %s, Продукты в заказе: [%s]",
+	data, err := messageTemplate.ReadFile("message.md")
+	if err != nil {
+		return "", errors.Wrap(err, "messageTemplate.ReadFile")
+	}
+
+	return fmt.Sprintf(string(data),
 		o.ReadableOrderID,
-		o.CreatedAt.Format("Jan 2, 2006 at 3:04pm (MST)"),
 		o.UserNickname,
 		strings.TrimRight(productList.String(), "; "),
-	)
+	), nil
 }
 
 // New creates a new user service
@@ -91,14 +93,11 @@ func New(repo Repository, log *zap.Logger, orderProcessingTimer time.Duration) *
 		log, _ = zap.NewProduction()
 		log.Warn("log *zap.Logger is nil, using zap.NewProduction")
 	}
-	if orderProcessingTimer == 0 {
-		orderProcessingTimer = 300
-	}
 
 	cache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 1e2,       // number of keys to track frequency of (100).
-		MaxCost:     2_000_000, // maximum cost of cache (2MB).
-		BufferItems: 10,        // number of keys per Get buffer.
+		NumCounters: 1e2,     // number of keys to track frequency of (100).
+		MaxCost:     100_000, // maximum cost of cache (100KB).
+		BufferItems: 10,      // number of keys per Get buffer.
 	})
 	if err != nil {
 		log.Fatal("cache *ristretto.Cache is nil, fatal")
@@ -115,8 +114,10 @@ func New(repo Repository, log *zap.Logger, orderProcessingTimer time.Duration) *
 	}
 }
 
+// Run starts a job that batch loads new orders
+// and sends notifications to the owners of marketplaces
 func (s *Service) Run() error {
-	ticker := time.NewTicker(s.orderProcessingTimer * time.Minute)
+	ticker := time.NewTicker(s.orderProcessingTimer)
 
 	for {
 		select {
@@ -132,8 +133,44 @@ func (s *Service) Run() error {
 	}
 }
 
+func (s *Service) runOnce() error {
+	defer s.cache.Clear()
+	cursor, err := s.repo.GetNotifierCursor(s.ctx, "defaultCursor")
+
+	orderNotifications, err := s.repo.GetNotificationsForOrdersAfterCursor(s.ctx, cursor)
+	if err != nil {
+		return errors.Wrap(err, "s.getOrderNotifications")
+	}
+
+	if len(orderNotifications) == 0 {
+		s.log.Info("no new orders found, skipping")
+		return nil
+	}
+
+	s.log.With(zap.String("count", strconv.Itoa(len(orderNotifications)))).Info("sending notifications for new orders")
+	err = s.sendOrderNotifications(orderNotifications)
+	if err != nil {
+		return errors.Wrap(err, "s.sendOrderNotifications")
+	}
+
+	lastElem := orderNotifications[len(orderNotifications)-1]
+
+	err = s.repo.UpdateNotifierCursor(s.ctx, Cursor{
+		LastProcessedCreatedAt: lastElem.CreatedAt,
+		LastProcessedID:        lastElem.ID,
+		Name:                   notifierName,
+	})
+	if err != nil {
+		return errors.Wrap(err, "s.repo.UpdateNotifierCursor")
+	}
+
+	return nil
+}
+
+// Shutdown stops the job
 func (s *Service) Shutdown() error {
 	s.cancel()
+	<-s.ctx.Done()
 	return nil
 }
 
@@ -141,7 +178,7 @@ func (s *Service) sendOrderNotifications(orderNotifications []OrderNotification)
 	var bot *tgbotapi.BotAPI
 
 	for _, a := range orderNotifications {
-		val, ok := s.cache.Get(a.WebAppID)
+		val, ok := s.cache.Get(a.WebAppID.String())
 		if ok {
 			bot = val.(*tgbotapi.BotAPI)
 		} else {
@@ -155,7 +192,7 @@ func (s *Service) sendOrderNotifications(orderNotifications []OrderNotification)
 				return errors.Wrap(err, "tgbotapi.NewBotAPI")
 			}
 
-			s.cache.SetWithTTL(a.WebAppID, bot, 0, 10*time.Minute)
+			s.cache.SetWithTTL(a.WebAppID.String(), bot, 0, 10*time.Minute)
 		}
 
 		nl, err := s.repo.GetAdminsNotificationList(s.ctx, a.WebAppID)
@@ -165,39 +202,19 @@ func (s *Service) sendOrderNotifications(orderNotifications []OrderNotification)
 
 		// need to get chat id's of users, who we are going to send messages
 		for _, v := range nl {
-			msg := tgbotapi.NewMessage(v, a.String())
-			_, err := bot.Send(msg)
+			fmt.Println(a.BuildMessage())
+			msgTxt, err := a.BuildMessage()
+			if err != nil {
+				return errors.Wrap(err, "a.BuildMessage")
+			}
+			msg := tgbotapi.NewMessage(v, msgTxt)
+			msg.ParseMode = tgbotapi.ModeMarkdownV2
+			_, err = bot.Send(msg)
 			if err != nil {
 				return errors.Wrap(err, "bot.Send")
 			}
 		}
 
-	}
-
-	return nil
-}
-
-func (s *Service) runOnce() error {
-	cursor, err := s.repo.GetNotifierCursor(s.ctx, "defaultCursor")
-
-	orderNotifications, err := s.repo.GetNotificationsForOrdersAfterCursor(s.ctx, cursor)
-	if err != nil {
-		return errors.Wrap(err, "s.getOrderNotifications")
-	}
-
-	err = s.sendOrderNotifications(orderNotifications)
-	if err != nil {
-		return errors.Wrap(err, "s.sendOrderNotifications")
-	}
-
-	lastElem := orderNotifications[len(orderNotifications)-1]
-
-	err = s.repo.UpdateNotifierCursor(s.ctx, Cursor{
-		LastProcessedCreatedAt: lastElem.CreatedAt,
-		LastProcessedID:        lastElem.ID,
-	})
-	if err != nil {
-		return errors.Wrap(err, "s.repo.UpdateNotifierCursor")
 	}
 
 	return nil

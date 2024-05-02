@@ -1,4 +1,4 @@
-package adminbot
+package notifications
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	"github.com/shoppigram-com/marketplace-api/internal/adminbot/generated"
+	"github.com/shoppigram-com/marketplace-api/internal/notifications/generated"
 )
 
 // Pg implements the Repository interface
@@ -57,7 +57,11 @@ func (p *Pg) GetAdminBotToken(ctx context.Context, webAppID uuid.UUID) (string, 
 		return "", errors.Wrap(err, "p.gen.GetAdminBotToken")
 	}
 
-	return token.(string), nil
+	if token == nil {
+		return "", errors.New("the admin token is nil")
+	}
+
+	return token.(string), err
 }
 
 // GetNotifierCursor gets notifier cursor
@@ -129,12 +133,17 @@ func (p *Pg) GetNotificationsForOrdersAfterCursor(ctx context.Context, cur Curso
 			// Update the map after modification
 			ordersMap[orderID] = order
 		} else {
+			asUUID, err := r.WebAppID.UUIDValue()
+			if err != nil {
+				return nil, errors.Wrap(err, "p.gen.GetNotificationsForOrdersAfterCursor")
+			}
+
 			ordersMap[orderID] = OrderNotification{
 				ID:              r.OrderID,
 				ReadableOrderID: r.ReadableID.Int64,
 				CreatedAt:       r.CreatedAt.Time,
 				UserNickname:    r.Username.String,
-				//WebAppID:        r.WebAppID, // fix this
+				WebAppID:        asUUID.Bytes, // fix this
 				Products: []Product{{
 					Name:     r.Name,
 					Quantity: int(r.Quantity),
@@ -142,6 +151,10 @@ func (p *Pg) GetNotificationsForOrdersAfterCursor(ctx context.Context, cur Curso
 				}},
 			}
 		}
+	}
+
+	for _, order := range ordersMap {
+		orderNotifications = append(orderNotifications, order)
 	}
 
 	return orderNotifications, nil

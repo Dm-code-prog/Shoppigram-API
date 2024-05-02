@@ -3,9 +3,7 @@ package main
 // Environment is the configuration struct for the application
 type Environment struct {
 	Postgres struct {
-		DSN                  string `env:"POSTGRES_DSN,required"`
-		OrderFetchLimit      int    `env:"ORDER_FETCH_LIMIT,required"`
-		OrderProcessingTimer int    `env:"ORDER_PROCESSING_TIMER,required"`
+		DSN string `env:"POSTGRES_DSN,required"`
 	}
 
 	HTTP struct {
@@ -14,5 +12,14 @@ type Environment struct {
 
 	Encryption struct {
 		Key string `env:"ENCRYPTION_KEY,required"`
+	}
+
+	OrderNotifications struct {
+		BatchSize int `env:"ORDER_NOTIFICATIONS_BATCH_SIZE,required"`
+		Timeout   int `env:"ORDER_NOTIFICATIONS_TIMEOUT,required"`
+	}
+
+	Bot struct {
+		Token string `env:"BOT_TOKEN,required"`
 	}
 }

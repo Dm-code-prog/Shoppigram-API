@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/shoppigram-com/marketplace-api/internal/adminbot"
+	"github.com/shoppigram-com/marketplace-api/internal/notifications"
 	"github.com/shoppigram-com/marketplace-api/internal/orders"
 	"go.uber.org/zap/zapcore"
 
@@ -90,15 +90,13 @@ func main() {
 	ordersService := orders.New(ordersRepo, log.With(zap.String("service", "orders")))
 	ordersHandler := orders.MakeHandler(ordersService, tgUsersService, log.With(zap.String("service", "orders")))
 
-	adminbotRepo := adminbot.NewPg(db, config.Encryption.Key, config.Postgres.OrderFetchLimit)
-	adminbotService := adminbot.New(
+	adminbotRepo := notifications.NewPg(db, config.Encryption.Key, config.OrderNotifications.BatchSize)
+	adminbotService := notifications.New(
 		adminbotRepo,
 		log.With(zap.String("service", "adminbot")),
-		time.Duration(config.Postgres.OrderProcessingTimer),
+		time.Duration(config.OrderNotifications.Timeout)*time.Second,
 	)
-	g.Add(func() error {
-		return adminbotService.Run()
-	}, func(err error) {
+	g.Add(adminbotService.Run, func(err error) {
 		_ = adminbotService.Shutdown()
 	})
 

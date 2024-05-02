@@ -1,6 +1,6 @@
 -- Notifiers
 create table notifier_cursors (
-  last_processed_created_at timestamp primary key,
+  last_processed_created_at timestamp,
   last_processed_id uuid references orders(id),
   name varchar(50) unique
 );

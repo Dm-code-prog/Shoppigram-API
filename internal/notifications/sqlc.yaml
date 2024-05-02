@@ -2,7 +2,7 @@ version: "2"
 sql:
   - engine: postgresql
     queries:
-      - ./queries/adminbot.sql
+      - ./queries/notifications.sql
     schema:
       - ./schemas/20240429.sql
       - ../orders/schemas/20240424.sql
