@@ -71,7 +71,7 @@ const (
 func (o *OrderNotification) BuildMessage() (string, error) {
 	var productList strings.Builder
 	for _, p := range o.Products {
-		productList.WriteString(fmt.Sprintf(`\- %d x %s по цене %d  
+		productList.WriteString(fmt.Sprintf(`\- %d x %s по цене %d
 `, p.Quantity, p.Name, int(p.Price)))
 	}
 
@@ -92,6 +92,9 @@ func New(repo Repository, log *zap.Logger, orderProcessingTimer time.Duration) *
 	if log == nil {
 		log, _ = zap.NewProduction()
 		log.Warn("log *zap.Logger is nil, using zap.NewProduction")
+	}
+	if orderProcessingTimer == 0 {
+		log.Fatal("order processing timer is not specified")
 	}
 
 	cache, err := ristretto.NewCache(&ristretto.Config{
@@ -135,7 +138,7 @@ func (s *Service) Run() error {
 
 func (s *Service) runOnce() error {
 	defer s.cache.Clear()
-	cursor, err := s.repo.GetNotifierCursor(s.ctx, "defaultCursor")
+	cursor, err := s.repo.GetNotifierCursor(s.ctx, notifierName)
 
 	orderNotifications, err := s.repo.GetNotificationsForOrdersAfterCursor(s.ctx, cursor)
 	if err != nil {
