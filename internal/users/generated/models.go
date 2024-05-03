@@ -30,14 +30,14 @@ type TelegramUser struct {
 	ID           uuid.UUID
 	ExternalID   int32
 	IsBot        pgtype.Bool
-	FirstName    string
-	LastName     pgtype.Text
-	Username     pgtype.Text
 	LanguageCode pgtype.Text
 	IsPremium    pgtype.Bool
 	AllowsPm     pgtype.Bool
 	CreatedAt    pgtype.Timestamp
 	UpdatedAt    pgtype.Timestamp
+	FirstName    pgtype.Text
+	LastName     pgtype.Text
+	Username     pgtype.Text
 }
 
 type WebApp struct {

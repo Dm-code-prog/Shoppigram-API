@@ -36,7 +36,7 @@ returning id
 type CreateOrUpdateTgUserParams struct {
 	ExternalID   int32
 	IsBot        pgtype.Bool
-	FirstName    string
+	FirstName    pgtype.Text
 	LastName     pgtype.Text
 	Username     pgtype.Text
 	LanguageCode pgtype.Text
