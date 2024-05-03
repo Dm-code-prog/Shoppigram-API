@@ -2,6 +2,7 @@ package telegram_users
 
 import (
 	"context"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/google/uuid"
@@ -30,7 +31,10 @@ func (p *Pg) CreateOrUpdateTgUser(ctx context.Context, request CreateOrUpdateTgU
 			Bool:  request.IsBot,
 			Valid: true,
 		},
-		FirstName: request.FirstName,
+		FirstName: pgtype.Text{
+			String: request.FirstName,
+			Valid:  true,
+		},
 		LastName: pgtype.Text{
 			String: request.LastName,
 			Valid:  true,
