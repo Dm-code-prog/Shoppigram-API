@@ -4,22 +4,22 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/go-chi/chi/v5"
+	"github.com/go-kit/kit/endpoint"
 	kithttp "github.com/go-kit/kit/transport/http"
 	"github.com/pkg/errors"
 	telegramusers "github.com/shoppigram-com/marketplace-api/internal/users"
-	"go.uber.org/zap"
 	"net/http"
 )
 
 // MakeHandler returns a handler for the users service.
-func MakeHandler(s *Service, us *telegramusers.Service, log *zap.Logger) http.Handler {
+func MakeHandler(s *Service, authMw endpoint.Middleware) http.Handler {
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(encodeError),
 	}
 	opts = append(opts, telegramusers.AuthServerBefore...)
 
 	ep := makeCreateOrderEndpoint(s)
-	ep = telegramusers.MakeAuthMiddleware(us, log)(ep)
+	ep = authMw(ep)
 
 	createOrUpdateTgUserHandler := kithttp.NewServer(
 		ep,

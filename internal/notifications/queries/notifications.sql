@@ -39,3 +39,4 @@ from orders_batch
               on orders_batch.order_id = op.order_id
          join products p on p.id = op.product_id
          join telegram_users u on external_user_id = u.external_id;
+

@@ -14,6 +14,8 @@ type Order struct {
 	ReadableID     pgtype.Int8
 	WebAppID       pgtype.UUID
 	ExternalUserID pgtype.Int4
+	CreatedAt      pgtype.Timestamp
+	UpdatedAt      pgtype.Timestamp
 }
 
 type OrderProduct struct {

@@ -46,7 +46,6 @@ type (
 	// Repository provides access to the user storage
 	Repository interface {
 		GetAdminsNotificationList(ctx context.Context, webAppID uuid.UUID) ([]int64, error)
-		GetAdminBotToken(ctx context.Context, webAppID uuid.UUID) (string, error)
 		GetNotifierCursor(ctx context.Context, name string) (Cursor, error)
 		UpdateNotifierCursor(ctx context.Context, cur Cursor) error
 		GetNotificationsForOrdersAfterCursor(ctx context.Context, cur Cursor) ([]OrderNotification, error)
@@ -60,6 +59,7 @@ type (
 		ctx                  context.Context
 		cancel               context.CancelFunc
 		orderProcessingTimer time.Duration
+		botToken             string
 	}
 )
 
@@ -88,7 +88,7 @@ func (o *OrderNotification) BuildMessage() (string, error) {
 }
 
 // New creates a new user service
-func New(repo Repository, log *zap.Logger, orderProcessingTimer time.Duration) *Service {
+func New(repo Repository, log *zap.Logger, orderProcessingTimer time.Duration, botToken string) *Service {
 	if log == nil {
 		log, _ = zap.NewProduction()
 		log.Warn("log *zap.Logger is nil, using zap.NewProduction")
@@ -114,6 +114,7 @@ func New(repo Repository, log *zap.Logger, orderProcessingTimer time.Duration) *
 		cancel:               cancel,
 		cache:                cache,
 		orderProcessingTimer: orderProcessingTimer,
+		botToken:             botToken,
 	}
 }
 
@@ -127,7 +128,8 @@ func (s *Service) Run() error {
 		case <-ticker.C:
 			err := s.runOnce()
 			if err != nil {
-				return errors.Wrap(err, "s.runOnce")
+				s.log.Error("runOnce failed", zap.Error(err))
+				continue
 			}
 		case <-s.ctx.Done():
 			ticker.Stop()
@@ -146,7 +148,6 @@ func (s *Service) runOnce() error {
 	}
 
 	if len(orderNotifications) == 0 {
-		s.log.Info("no new orders found, skipping")
 		return nil
 	}
 
@@ -178,19 +179,17 @@ func (s *Service) Shutdown() error {
 }
 
 func (s *Service) sendOrderNotifications(orderNotifications []OrderNotification) error {
-	var bot *tgbotapi.BotAPI
+	var (
+		bot *tgbotapi.BotAPI
+		err error
+	)
 
 	for _, a := range orderNotifications {
 		val, ok := s.cache.Get(a.WebAppID.String())
 		if ok {
 			bot = val.(*tgbotapi.BotAPI)
 		} else {
-			token, err := s.repo.GetAdminBotToken(s.ctx, a.WebAppID)
-			if err != nil {
-				return errors.Wrap(err, "s.repo.GetAdminBotToken")
-			}
-
-			bot, err = tgbotapi.NewBotAPI(token)
+			bot, err = tgbotapi.NewBotAPI(s.botToken)
 			if err != nil {
 				return errors.Wrap(err, "tgbotapi.NewBotAPI")
 			}

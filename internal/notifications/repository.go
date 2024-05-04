@@ -28,7 +28,7 @@ func NewPg(db *pgxpool.Pool, encryptionKey string, orderFetchLimit int) *Pg {
 	}
 }
 
-// GetAdminsNotificationList gets a list of admins to notificate about an order
+// GetAdminsNotificationList gets a list of admins to notify about an order
 func (p *Pg) GetAdminsNotificationList(ctx context.Context, webAppID uuid.UUID) ([]int64, error) {
 	var adminsNotificationList []int64
 
@@ -45,23 +45,6 @@ func (p *Pg) GetAdminsNotificationList(ctx context.Context, webAppID uuid.UUID) 
 	}
 
 	return adminsNotificationList, nil
-}
-
-// GetAdminBotToken gets admin bot token
-func (p *Pg) GetAdminBotToken(ctx context.Context, webAppID uuid.UUID) (string, error) {
-	token, err := p.gen.GetAdminBotToken(
-		ctx,
-		generated.GetAdminBotTokenParams{ID: webAppID, EncryptionKey: p.encryptionKey},
-	)
-	if err != nil {
-		return "", errors.Wrap(err, "p.gen.GetAdminBotToken")
-	}
-
-	if token == nil {
-		return "", errors.New("the admin token is nil")
-	}
-
-	return token.(string), err
 }
 
 // GetNotifierCursor gets notifier cursor

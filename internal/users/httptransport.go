@@ -3,9 +3,8 @@ package telegram_users
 import (
 	"context"
 	"encoding/json"
+	"github.com/go-kit/kit/endpoint"
 	"net/http"
-
-	"go.uber.org/zap"
 
 	"github.com/pkg/errors"
 
@@ -14,14 +13,14 @@ import (
 )
 
 // MakeHandler returns a handler for the users service.
-func MakeHandler(bs *Service, log *zap.Logger) http.Handler {
+func MakeHandler(bs *Service, authMw endpoint.Middleware) http.Handler {
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(encodeError),
 	}
 	opts = append(opts, AuthServerBefore...)
 
 	createOrUpdateTgUser := makeCreateOrUpdateTgUserEndpoint(bs)
-	createOrUpdateTgUser = MakeAuthMiddleware(bs, log)(createOrUpdateTgUser)
+	createOrUpdateTgUser = authMw(createOrUpdateTgUser)
 
 	createOrUpdateTgUserHandler := kithttp.NewServer(
 		createOrUpdateTgUser,
