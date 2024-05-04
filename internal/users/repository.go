@@ -58,15 +58,3 @@ func (p *Pg) CreateOrUpdateTgUser(ctx context.Context, request CreateOrUpdateTgU
 
 	return id, nil
 }
-
-func (p *Pg) GetEndUserBotToken(ctx context.Context, webAppID uuid.UUID) (string, error) {
-	token, err := p.gen.GetEndUserBotToken(
-		ctx,
-		generated.GetEndUserBotTokenParams{ID: webAppID, EncryptionKey: p.encryptionKey},
-	)
-	if err != nil {
-		return "", errors.Wrap(err, "p.gen.GetEndUserBotToken")
-	}
-
-	return token.(string), nil
-}

@@ -9,7 +9,7 @@ import (
 )
 
 type (
-	// User defines the structure for a Marketplace client
+	// User defines the structure for a Marketplace end user
 	User struct {
 		ID           uuid.UUID `json:"id,omitempty"`
 		ExternalId   int64     `json:"external_id"`
@@ -32,7 +32,6 @@ type (
 
 	// Repository provides access to the user storage
 	Repository interface {
-		GetEndUserBotToken(ctx context.Context, webAppID uuid.UUID) (string, error)
 		CreateOrUpdateTgUser(ctx context.Context, request CreateOrUpdateTgUserRequest) (uuid.UUID, error)
 	}
 
@@ -65,11 +64,6 @@ func New(repo Repository, log *zap.Logger) *Service {
 		repo: repo,
 		log:  log,
 	}
-}
-
-// GetEndUserBotToken gets user bot token
-func (s *Service) getEndUserBotToken(ctx context.Context, webAppID uuid.UUID) (string, error) {
-	return s.repo.GetEndUserBotToken(ctx, webAppID)
 }
 
 // CreateOrUpdateTgUser creates or updates a user record

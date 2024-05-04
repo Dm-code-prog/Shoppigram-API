@@ -78,26 +78,29 @@ func main() {
 		log.Fatal("failed to create cache", zap.Error(err))
 	}
 
+	authMw := telegramusers.MakeAuthMiddleware(log.With(zap.String("service", "users")), config.Bot.Token)
+
 	productsRepo := products.NewPg(productsgenerated.New(db))
 	productsService := products.New(productsRepo, log.With(zap.String("service", "products")), cache)
 	productsHandler := products.MakeHandler(productsService)
 
 	tgUsersRepo := telegramusers.NewPg(db, config.Encryption.Key)
 	tgUsersService := telegramusers.New(tgUsersRepo, log.With(zap.String("service", "users")))
-	tgUsersHandler := telegramusers.MakeHandler(tgUsersService, log.With(zap.String("service", "users")))
+	tgUsersHandler := telegramusers.MakeHandler(tgUsersService, authMw)
 
 	ordersRepo := orders.NewPg(db)
 	ordersService := orders.New(ordersRepo, log.With(zap.String("service", "orders")))
-	ordersHandler := orders.MakeHandler(ordersService, tgUsersService, log.With(zap.String("service", "orders")))
+	ordersHandler := orders.MakeHandler(ordersService, authMw)
 
-	adminbotRepo := notifications.NewPg(db, config.Encryption.Key, config.OrderNotifications.BatchSize)
-	adminbotService := notifications.New(
-		adminbotRepo,
-		log.With(zap.String("service", "adminbot")),
+	notificationsRepo := notifications.NewPg(db, config.Encryption.Key, config.OrderNotifications.BatchSize)
+	notificationsService := notifications.New(
+		notificationsRepo,
+		log.With(zap.String("service", "notifications")),
 		time.Duration(config.OrderNotifications.Timeout)*time.Second,
+		config.Bot.Token,
 	)
-	g.Add(adminbotService.Run, func(err error) {
-		_ = adminbotService.Shutdown()
+	g.Add(notificationsService.Run, func(err error) {
+		_ = notificationsService.Shutdown()
 	})
 
 	r.Mount("/api/v1/public/products", productsHandler)

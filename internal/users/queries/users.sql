@@ -17,8 +17,3 @@ on conflict (external_id)
                   allows_pm     = $8,
                   updated_at    = now()
 returning id;
-
--- name: GetEndUserBotToken :one
-select pgp_sym_decrypt(end_user_bot_encr_token, @encryption_key::text)
-from web_apps
-where id = $1;

@@ -107,7 +107,7 @@ var AuthServerBefore = []kithttp.ServerOption{
 
 // MakeAuthMiddleware constructs a middleware which is responsible for
 // Telegram user auth.
-func MakeAuthMiddleware(s *Service, log *zap.Logger) endpoint.Middleware {
+func MakeAuthMiddleware(log *zap.Logger, botToken string) endpoint.Middleware {
 	return func(next endpoint.Endpoint) endpoint.Endpoint {
 		return func(ctx context.Context, request any) (any, error) {
 			xInitData, err := GetInitDataFromContext(ctx)
@@ -116,22 +116,8 @@ func MakeAuthMiddleware(s *Service, log *zap.Logger) endpoint.Middleware {
 				return nil, err
 			}
 
-			webAppID, err := GetWebAppIDFromContext(ctx)
+			err = initdata.Validate(xInitData, botToken, initDataTTL)
 			if err != nil {
-				log.Error("GetWebAppIDFromContext", logging.SilentError(err))
-				return nil, err
-			}
-
-			log = log.With(zap.String("web_app_id", webAppID.String()))
-
-			token, err := s.getEndUserBotToken(ctx, webAppID)
-			if err != nil {
-				log.Error("s.getEndUserBotToken", logging.SilentError(err))
-				return nil, err
-			}
-			err = initdata.Validate(xInitData, token, initDataTTL)
-			if err != nil {
-				log.Error("initData.Validate", logging.SilentError(err))
 				return nil, ErrorInitDataIsInvalid
 			}
 
