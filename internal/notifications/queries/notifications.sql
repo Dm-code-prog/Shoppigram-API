@@ -22,7 +22,7 @@ where name = $1;
 -- name: GetNotificationsForOrdersAfterCursor :many
 with orders_batch as (select id as order_id, created_at, readable_id, web_app_id, external_user_id
                       from orders o
-                      where o.created_at >= $1
+                      where o.created_at > $1
                       order by o.created_at
                       limit $2)
 select orders_batch.order_id,

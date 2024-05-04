@@ -205,7 +205,6 @@ func (s *Service) sendOrderNotifications(orderNotifications []OrderNotification)
 
 		// need to get chat id's of users, who we are going to send messages
 		for _, v := range nl {
-			fmt.Println(a.BuildMessage())
 			msgTxt, err := a.BuildMessage()
 			if err != nil {
 				return errors.Wrap(err, "a.BuildMessage")
