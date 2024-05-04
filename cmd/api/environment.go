@@ -13,4 +13,13 @@ type Environment struct {
 	Encryption struct {
 		Key string `env:"ENCRYPTION_KEY,required"`
 	}
+
+	OrderNotifications struct {
+		BatchSize int `env:"ORDER_NOTIFICATIONS_BATCH_SIZE,required"`
+		Timeout   int `env:"ORDER_NOTIFICATIONS_TIMEOUT,required"`
+	}
+
+	Bot struct {
+		Token string `env:"BOT_TOKEN,required"`
+	}
 }

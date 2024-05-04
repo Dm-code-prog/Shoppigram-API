@@ -3,13 +3,15 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/shoppigram-com/marketplace-api/internal/orders"
-	"go.uber.org/zap/zapcore"
 	"net/http"
 	"os"
 	"syscall"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/shoppigram-com/marketplace-api/internal/notifications"
+	"github.com/shoppigram-com/marketplace-api/internal/orders"
+	"go.uber.org/zap/zapcore"
 
 	"github.com/Netflix/go-env"
 	"github.com/dgraph-io/ristretto"
@@ -87,6 +89,16 @@ func main() {
 	ordersRepo := orders.NewPg(db)
 	ordersService := orders.New(ordersRepo, log.With(zap.String("service", "orders")))
 	ordersHandler := orders.MakeHandler(ordersService, tgUsersService, log.With(zap.String("service", "orders")))
+
+	adminbotRepo := notifications.NewPg(db, config.Encryption.Key, config.OrderNotifications.BatchSize)
+	adminbotService := notifications.New(
+		adminbotRepo,
+		log.With(zap.String("service", "adminbot")),
+		time.Duration(config.OrderNotifications.Timeout)*time.Second,
+	)
+	g.Add(adminbotService.Run, func(err error) {
+		_ = adminbotService.Shutdown()
+	})
 
 	r.Mount("/api/v1/public/products", productsHandler)
 	r.Mount("/api/v1/public/auth", tgUsersHandler)

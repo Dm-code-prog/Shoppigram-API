@@ -2,12 +2,13 @@ version: "2"
 sql:
   - engine: postgresql
     queries:
-      - ./queries/users.sql
+      - ./queries/notifications.sql
     schema:
-      - ./schemas/20240423.sql
-      - ./schemas/20240503.sql
+      - ./schemas/20240429.sql
+      - ../orders/schemas/20240424.sql
       - ../products/schemas/20240411.sql
       - ../products/schemas/20240424.sql
+      - ../users/schemas/20240423.sql
     gen:
       go:
         package: generated
