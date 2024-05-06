@@ -76,7 +76,6 @@ select orders_batch.order_id,
        p.price,
        p.price_currency,
        op.quantity,
-       p.price_currency,
        u.username
 from orders_batch
          join order_products op
@@ -92,17 +91,16 @@ type GetNotificationsForOrdersAfterCursorParams struct {
 }
 
 type GetNotificationsForOrdersAfterCursorRow struct {
-	OrderID         uuid.UUID
-	ReadableID      pgtype.Int8
-	CreatedAt       pgtype.Timestamp
-	WebAppID        pgtype.UUID
-	WebAppName      string
-	Name            string
-	Price           float64
-	PriceCurrency   string
-	Quantity        int32
-	PriceCurrency_2 string
-	Username        pgtype.Text
+	OrderID       uuid.UUID
+	ReadableID    pgtype.Int8
+	CreatedAt     pgtype.Timestamp
+	WebAppID      pgtype.UUID
+	WebAppName    string
+	Name          string
+	Price         float64
+	PriceCurrency string
+	Quantity      int32
+	Username      pgtype.Text
 }
 
 func (q *Queries) GetNotificationsForOrdersAfterCursor(ctx context.Context, arg GetNotificationsForOrdersAfterCursorParams) ([]GetNotificationsForOrdersAfterCursorRow, error) {
@@ -124,7 +122,6 @@ func (q *Queries) GetNotificationsForOrdersAfterCursor(ctx context.Context, arg 
 			&i.Price,
 			&i.PriceCurrency,
 			&i.Quantity,
-			&i.PriceCurrency_2,
 			&i.Username,
 		); err != nil {
 			return nil, err

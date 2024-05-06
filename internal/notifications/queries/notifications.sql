@@ -34,7 +34,6 @@ select orders_batch.order_id,
        p.price,
        p.price_currency,
        op.quantity,
-       p.price_currency,
        u.username
 from orders_batch
          join order_products op
