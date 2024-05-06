@@ -2,11 +2,12 @@ package products
 
 import (
 	"context"
+	"time"
+
 	"github.com/dgraph-io/ristretto"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	"time"
 )
 
 type (
@@ -85,10 +86,6 @@ func (s *Service) GetProducts(ctx context.Context, request GetProductsRequest) (
 	key := getProductsCacheKeyBase + request.WebAppID.String()
 	if res, ok := s.cache.Get(key); ok {
 		return res.(GetProductsResponse), nil
-	} else {
-		s.log.With(
-			zap.String("web_app_id", request.WebAppID.String()),
-		).Info("cache miss")
 	}
 
 	res, err := s.repo.GetProducts(ctx, request)
