@@ -28,9 +28,10 @@ type (
 
 	// Product is a marketplace product
 	Product struct {
-		Name     string
-		Quantity int
-		Price    float64
+		Name          string
+		Quantity      int
+		Price         float64
+		PriceCurrency string
 	}
 
 	// OrderNotification defines the structure of order notification
@@ -40,6 +41,7 @@ type (
 		CreatedAt       time.Time
 		UserNickname    string
 		WebAppID        uuid.UUID
+		WebAppName      string
 		Products        []Product
 	}
 
@@ -69,10 +71,14 @@ const (
 
 // BuildMessage creates a notification message for a new order
 func (o *OrderNotification) BuildMessage() (string, error) {
+	var subtotal float64
 	var productList strings.Builder
+	var currency string
 	for _, p := range o.Products {
-		productList.WriteString(fmt.Sprintf(`\- %d x %s по цене %d
-`, p.Quantity, p.Name, int(p.Price)))
+		subtotal += p.Price * float64(p.Quantity)
+		currency = p.PriceCurrency
+		productList.WriteString(fmt.Sprintf(`\- %dx %s по цене %s %s
+`, p.Quantity, p.Name, formatFloat(p.Price), formatCurrency(p.PriceCurrency)))
 	}
 
 	data, err := messageTemplate.ReadFile("message.md")
@@ -81,8 +87,11 @@ func (o *OrderNotification) BuildMessage() (string, error) {
 	}
 
 	return fmt.Sprintf(string(data),
-		o.ReadableOrderID,
+		o.WebAppName,
 		o.UserNickname,
+		o.ReadableOrderID,
+		formatRussianTime(o.CreatedAt),
+		formatFloat(subtotal)+" "+formatCurrency(currency),
 		strings.TrimRight(productList.String(), "; "),
 	), nil
 }
@@ -219,4 +228,51 @@ func (s *Service) sendOrderNotifications(orderNotifications []OrderNotification)
 	}
 
 	return nil
+}
+
+func formatFloat(num float64) string {
+	str := strconv.FormatFloat(num, 'f', -1, 64)
+	parts := strings.Split(str, ".")
+	intPart := parts[0]
+	var decimalPart string
+	if len(parts) > 1 {
+		decimalPart = "." + parts[1]
+	}
+
+	n := len(intPart)
+	if n <= 3 {
+		return intPart + decimalPart
+	}
+
+	var result string
+	for i := 0; i < n; i++ {
+		result = string(intPart[n-1-i]) + result
+		if (i+1)%3 == 0 && i != n-1 {
+			result = "," + result
+		}
+	}
+	return result + decimalPart
+}
+
+func formatCurrency(currency string) string {
+	currency = strings.ToLower(currency)
+	switch currency {
+	case "usd":
+		return "$"
+	case "eur":
+		return "€"
+	case "rub":
+		return "₽"
+	default:
+		return currency
+	}
+}
+
+func formatRussianTime(t time.Time) string {
+	loc, err := time.LoadLocation("Europe/Moscow")
+	if err != nil {
+		return ""
+	}
+	t = t.In(loc)
+	return strings.ReplaceAll(t.Format("02.01.2006 15:04:05"), ".", "\\.")
 }
