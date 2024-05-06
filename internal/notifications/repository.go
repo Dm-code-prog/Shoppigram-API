@@ -109,9 +109,10 @@ func (p *Pg) GetNotificationsForOrdersAfterCursor(ctx context.Context, cur Curso
 		if order, ok := ordersMap[orderID]; ok {
 			// If the order exists, append the new product to the existing order's product list
 			order.Products = append(order.Products, Product{
-				Name:     r.Name,
-				Quantity: int(r.Quantity),
-				Price:    r.Price,
+				Name:          r.Name,
+				Quantity:      int(r.Quantity),
+				Price:         r.Price,
+				PriceCurrency: r.PriceCurrency,
 			})
 			// Update the map after modification
 			ordersMap[orderID] = order
@@ -126,11 +127,13 @@ func (p *Pg) GetNotificationsForOrdersAfterCursor(ctx context.Context, cur Curso
 				ReadableOrderID: r.ReadableID.Int64,
 				CreatedAt:       r.CreatedAt.Time,
 				UserNickname:    r.Username.String,
-				WebAppID:        asUUID.Bytes, // fix this
+				WebAppID:        asUUID.Bytes,
+				WebAppName:      r.WebAppName,
 				Products: []Product{{
-					Name:     r.Name,
-					Quantity: int(r.Quantity),
-					Price:    r.Price,
+					Name:          r.Name,
+					Quantity:      int(r.Quantity),
+					Price:         r.Price,
+					PriceCurrency: r.PriceCurrency,
 				}},
 			}
 		}

@@ -29,14 +29,16 @@ select orders_batch.order_id,
        orders_batch.readable_id,
        orders_batch.created_at,
        p.web_app_id,
+       wa.name as web_app_name,
        p.name,
        p.price,
-       op.quantity,
        p.price_currency,
+       op.quantity,
        u.username
 from orders_batch
          join order_products op
               on orders_batch.order_id = op.order_id
          join products p on p.id = op.product_id
-         join telegram_users u on external_user_id = u.external_id;
+         join telegram_users u on external_user_id = u.external_id
+         join web_apps wa on orders_batch.web_app_id = wa.id;
 
