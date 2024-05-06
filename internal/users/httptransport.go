@@ -62,7 +62,7 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 		w.WriteHeader(http.StatusBadRequest)
 		err = ErrorInitDataNotFound
 	case errors.Is(err, ErrorInitDataIsInvalid):
-		w.WriteHeader(http.StatusBadRequest)
+		w.WriteHeader(http.StatusUnauthorized)
 		err = ErrorInitDataIsInvalid
 	case errors.Is(err, ErrorInitDataIsEmpty):
 		w.WriteHeader(http.StatusBadRequest)

@@ -2,11 +2,12 @@ package telegram_users
 
 import (
 	"context"
+	"net/http"
+	"time"
+
 	"github.com/go-chi/chi/v5"
 	kithttp "github.com/go-kit/kit/transport/http"
 	"github.com/shoppigram-com/marketplace-api/internal/logging"
-	"net/http"
-	"time"
 
 	"github.com/go-kit/kit/endpoint"
 	"github.com/google/uuid"
@@ -112,12 +113,13 @@ func MakeAuthMiddleware(log *zap.Logger, botToken string) endpoint.Middleware {
 		return func(ctx context.Context, request any) (any, error) {
 			xInitData, err := GetInitDataFromContext(ctx)
 			if err != nil {
-				log.Error("GetInitDataFromContext", logging.SilentError(err))
+				log.Info("GetInitDataFromContext", logging.SilentError(err))
 				return nil, err
 			}
 
 			err = initdata.Validate(xInitData, botToken, initDataTTL)
 			if err != nil {
+				log.Info("initdata.Validate", logging.SilentError(err))
 				return nil, ErrorInitDataIsInvalid
 			}
 
