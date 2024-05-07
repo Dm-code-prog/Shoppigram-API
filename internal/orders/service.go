@@ -56,7 +56,7 @@ type (
 type (
 	// Service is the order service
 	Service struct {
-		logger     *zap.Logger
+		log        *zap.Logger
 		repo       Repository
 		productSvc *products.Service
 	}
@@ -73,10 +73,10 @@ var (
 )
 
 // New returns new instance of Service
-func New(repo Repository, logger *zap.Logger) *Service {
+func New(repo Repository, log *zap.Logger) *Service {
 	return &Service{
-		logger: logger,
-		repo:   repo,
+		log:  log,
+		repo: repo,
 	}
 }
 
@@ -95,7 +95,7 @@ func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (Crea
 		ExternalUserID: int(u.ExternalId),
 	})
 	if err != nil {
-		s.logger.
+		s.log.
 			With(zap.String("web_app_id", req.WebAppID.String())).
 			Error("repository.CreateOrder()", logging.SilentError(err))
 		return CreateOrderResponse{}, errors.Wrap(err, "s.repo.CreateOrder")
