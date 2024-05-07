@@ -3,11 +3,12 @@ package products
 import (
 	"context"
 	"encoding/json"
-	"errors"
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 	kithttp "github.com/go-kit/kit/transport/http"
 	"github.com/google/uuid"
-	"net/http"
+	"github.com/pkg/errors"
 )
 
 // MakeHandler returns a handler for the booking service.
@@ -45,7 +46,7 @@ func decodeGetProductsRequest(_ context.Context, r *http.Request) (interface{}, 
 
 	webAppUUID, err := uuid.Parse(webAppID)
 	if err != nil {
-		return GetProductsRequest{}, ErrorInvalidWebAppID
+		return GetProductsRequest{}, errors.Wrap(ErrorInvalidWebAppID, "uuid.Parse")
 	}
 
 	return GetProductsRequest{
@@ -61,7 +62,7 @@ func decodeInvalidateProductsCacheRequest(_ context.Context, r *http.Request) (i
 
 	webAppUUID, err := uuid.Parse(webAppID)
 	if err != nil {
-		return InvalidateProductsCacheRequest{}, ErrorInvalidWebAppID
+		return InvalidateProductsCacheRequest{}, errors.Wrap(ErrorInvalidWebAppID, "uuid.Parse")
 	}
 
 	return InvalidateProductsCacheRequest{

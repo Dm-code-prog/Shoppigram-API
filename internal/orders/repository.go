@@ -2,12 +2,13 @@ package orders
 
 import (
 	"context"
+	"strings"
+
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pkg/errors"
 	"github.com/shoppigram-com/marketplace-api/internal/orders/generated"
-	"strings"
 )
 
 // Pg implements the Repository interface
@@ -26,7 +27,7 @@ func NewPg(pool *pgxpool.Pool) *Pg {
 func (pg *Pg) CreateOrder(ctx context.Context, req SaveOrderRequest) (SaveOrderResponse, error) {
 	tx, err := pg.pool.Begin(ctx)
 	if err != nil {
-		return SaveOrderResponse{}, err
+		return SaveOrderResponse{}, errors.Wrap(err, "pg.pool.Begin")
 	}
 	defer tx.Rollback(ctx)
 	qtx := pg.gen.WithTx(tx)
@@ -72,7 +73,7 @@ func (pg *Pg) CreateOrder(ctx context.Context, req SaveOrderRequest) (SaveOrderR
 
 	err = tx.Commit(ctx)
 	if err != nil {
-		return SaveOrderResponse{}, errors.Wrap(err, "qtx.SetOrderProducts")
+		return SaveOrderResponse{}, errors.Wrap(err, "tx.Commit")
 	}
 
 	return SaveOrderResponse{ReadableID: int(res.ReadableID.Int64)}, nil

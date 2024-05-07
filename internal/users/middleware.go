@@ -73,6 +73,7 @@ func GetInitDataFromContext(ctx context.Context) (string, error) {
 func PutWebAppIDToContext(ctx context.Context, webAppID string) context.Context {
 	asUUID, err := uuid.Parse(webAppID)
 	if err != nil {
+		// ASK: Should we log it?
 		return ctx
 	}
 

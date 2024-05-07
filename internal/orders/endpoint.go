@@ -2,6 +2,7 @@ package orders
 
 import (
 	"context"
+
 	"github.com/go-kit/kit/endpoint"
 	"github.com/pkg/errors"
 )
@@ -18,7 +19,7 @@ func makeCreateOrderEndpoint(svc *Service) endpoint.Endpoint {
 
 		res, err := svc.CreateOrder(ctx, req)
 		if err != nil {
-			return CreateOrderResponse{}, errors.Wrap(err, "svc.CreateOrder()")
+			return CreateOrderResponse{}, errors.Wrap(err, "svc.CreateOrder")
 		}
 
 		return res, nil

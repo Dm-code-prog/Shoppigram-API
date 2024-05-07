@@ -104,6 +104,7 @@ func New(repo Repository, log *zap.Logger, orderProcessingTimer time.Duration, b
 	}
 	if orderProcessingTimer == 0 {
 		log.Fatal("order processing timer is not specified")
+		return nil
 	}
 
 	cache, err := ristretto.NewCache(&ristretto.Config{
@@ -113,6 +114,7 @@ func New(repo Repository, log *zap.Logger, orderProcessingTimer time.Duration, b
 	})
 	if err != nil {
 		log.Fatal("cache *ristretto.Cache is nil, fatal")
+		return nil
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -150,6 +152,9 @@ func (s *Service) Run() error {
 func (s *Service) runOnce() error {
 	defer s.cache.Clear()
 	cursor, err := s.repo.GetNotifierCursor(s.ctx, notifierName)
+	if err != nil {
+		return errors.Wrap(err, "s.repo.GetNotifierCursor")
+	}
 
 	orderNotifications, err := s.repo.GetNotificationsForOrdersAfterCursor(s.ctx, cursor)
 	if err != nil {

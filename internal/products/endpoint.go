@@ -2,7 +2,9 @@ package products
 
 import (
 	"context"
+
 	"github.com/go-kit/kit/endpoint"
+	"github.com/pkg/errors"
 )
 
 // makeGetProductsEndpoint constructs a GetProducts endpoint wrapping the service.
@@ -16,7 +18,7 @@ func makeGetProductsEndpoint(s *Service) endpoint.Endpoint {
 		}
 		v0, err := s.GetProducts(ctx, req)
 		if err != nil {
-			return GetProductsResponse{}, err
+			return GetProductsResponse{}, errors.Wrap(err, "s.GetProducts")
 		}
 		return v0, nil
 	}

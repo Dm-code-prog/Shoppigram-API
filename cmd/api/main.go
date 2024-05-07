@@ -34,11 +34,13 @@ func main() {
 	var config Environment
 	if _, err := env.UnmarshalFromEnviron(&config); err != nil {
 		log.Fatal("failed to load environment variables", zap.Error(err))
+		return
 	}
 
 	db, err := pgxpool.New(ctx, config.Postgres.DSN)
 	if err != nil {
 		log.Fatal("failed to connect to database", zap.Error(err))
+		return
 	}
 	defer db.Close()
 	log.Debug("connected to database")
@@ -76,6 +78,7 @@ func main() {
 	})
 	if err != nil {
 		log.Fatal("failed to create cache", zap.Error(err))
+		return
 	}
 
 	authMw := telegramusers.MakeAuthMiddleware(log.With(zap.String("service", "users")), config.Bot.Token)
@@ -116,5 +119,6 @@ func main() {
 
 	if err := g.Run(); err != nil {
 		log.Fatal("api exited with error:", zap.Error(err))
+		return
 	}
 }

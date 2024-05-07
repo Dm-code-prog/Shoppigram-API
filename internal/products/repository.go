@@ -2,6 +2,7 @@ package products
 
 import (
 	"context"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/pkg/errors"
 	"github.com/shoppigram-com/marketplace-api/internal/products/generated"
@@ -23,7 +24,7 @@ func (p *Pg) GetProducts(ctx context.Context, request GetProductsRequest) (GetPr
 	prod, err := p.gen.GetProducts(ctx, request.WebAppID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return GetProductsResponse{}, ErrorNotFound
+			return GetProductsResponse{}, errors.Wrap(ErrorNotFound, "p.gen.GetProducts")
 		}
 		return GetProductsResponse{}, errors.Wrap(err, "p.gen.GetProducts")
 	}

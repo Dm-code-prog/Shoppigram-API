@@ -2,6 +2,7 @@ package orders
 
 import (
 	"context"
+
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/shoppigram-com/marketplace-api/internal/logging"
@@ -85,8 +86,7 @@ func New(repo Repository, logger *zap.Logger) *Service {
 func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (CreateOrderResponse, error) {
 	u, err := telegramusers.GetUserFromContext(ctx)
 	if err != nil {
-		s.logger.Error("telegramusers.GetUserFromContext()", logging.SilentError(err))
-		return CreateOrderResponse{}, errors.Wrap(err, "telegramusers.GetUserFromContext()")
+		return CreateOrderResponse{}, errors.Wrap(err, "telegramusers.GetUserFromContext")
 	}
 
 	res, err := s.repo.CreateOrder(ctx, SaveOrderRequest{
@@ -98,7 +98,7 @@ func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (Crea
 		s.logger.
 			With(zap.String("web_app_id", req.WebAppID.String())).
 			Error("repository.CreateOrder()", logging.SilentError(err))
-		return CreateOrderResponse{}, errors.Wrap(err, "s.repo.CreateOrder()")
+		return CreateOrderResponse{}, errors.Wrap(err, "s.repo.CreateOrder")
 	}
 	return CreateOrderResponse(res), nil
 }
