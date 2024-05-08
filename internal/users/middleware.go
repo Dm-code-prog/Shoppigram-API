@@ -114,7 +114,7 @@ func MakeAuthMiddleware(log *zap.Logger, botToken string) endpoint.Middleware {
 		return func(ctx context.Context, request any) (any, error) {
 			xInitData, err := GetInitDataFromContext(ctx)
 			if err != nil {
-				log.Info("GetInitDataFromContext", logging.SilentError(err))
+				log.Debug("GetInitDataFromContext", logging.SilentError(err))
 				return nil, err
 			}
 
