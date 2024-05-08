@@ -12,6 +12,7 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"github.com/shoppigram-com/marketplace-api/internal/logging"
 	"go.uber.org/zap"
 )
 
@@ -139,7 +140,7 @@ func (s *Service) Run() error {
 		case <-ticker.C:
 			err := s.runOnce()
 			if err != nil {
-				s.log.Error("runOnce failed", zap.Error(err))
+				s.log.Error("runOnce failed", logging.SilentError(err))
 				continue
 			}
 		case <-s.ctx.Done():

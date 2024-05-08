@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/shoppigram-com/marketplace-api/internal/logging"
 	"github.com/shoppigram-com/marketplace-api/internal/notifications"
 	"github.com/shoppigram-com/marketplace-api/internal/orders"
 	"go.uber.org/zap/zapcore"
@@ -33,13 +34,13 @@ func main() {
 
 	var config Environment
 	if _, err := env.UnmarshalFromEnviron(&config); err != nil {
-		log.Fatal("failed to load environment variables", zap.Error(err))
+		log.Fatal("failed to load environment variables", logging.SilentError(err))
 		return
 	}
 
 	db, err := pgxpool.New(ctx, config.Postgres.DSN)
 	if err != nil {
-		log.Fatal("failed to connect to database", zap.Error(err))
+		log.Fatal("failed to connect to database", logging.SilentError(err))
 		return
 	}
 	defer db.Close()
@@ -77,7 +78,7 @@ func main() {
 		BufferItems: 64,          // number of keys per Get buffer.
 	})
 	if err != nil {
-		log.Fatal("failed to create cache", zap.Error(err))
+		log.Fatal("failed to create cache", logging.SilentError(err))
 		return
 	}
 
@@ -118,7 +119,7 @@ func main() {
 	})
 
 	if err := g.Run(); err != nil {
-		log.Fatal("api exited with error:", zap.Error(err))
+		log.Fatal("api exited with error:", logging.SilentError(err))
 		return
 	}
 }
