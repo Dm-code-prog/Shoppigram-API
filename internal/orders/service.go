@@ -97,7 +97,7 @@ func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (Crea
 	if err != nil {
 		s.log.
 			With(zap.String("web_app_id", req.WebAppID.String())).
-			Error("repository.CreateOrder()", logging.SilentError(err))
+			Error("repository.CreateOrder", logging.SilentError(err))
 		return CreateOrderResponse{}, errors.Wrap(err, "s.repo.CreateOrder")
 	}
 	return CreateOrderResponse(res), nil
