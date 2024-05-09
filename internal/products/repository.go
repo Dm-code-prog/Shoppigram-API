@@ -24,7 +24,7 @@ func (p *Pg) GetProducts(ctx context.Context, request GetProductsRequest) (GetPr
 	prod, err := p.gen.GetProducts(ctx, request.WebAppID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return GetProductsResponse{}, errors.Wrap(ErrorNotFound, "p.gen.GetProducts")
+			return GetProductsResponse{}, errors.Wrap(ErrorProductsNotFound, "p.gen.GetProducts")
 		}
 		return GetProductsResponse{}, errors.Wrap(err, "p.gen.GetProducts")
 	}

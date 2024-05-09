@@ -2,6 +2,7 @@ package admins
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -14,6 +15,11 @@ type (
 		ID       uuid.UUID `json:"id"`
 		Name     string    `json:"name"`
 		ImageURL string    `json:"image_url"`
+	}
+
+	// GetMarketplacesByUserIDRequest defines the response for the GetMarketplacesByUserID endpoint
+	GetMarketplacesByUserIDRequest struct {
+		ExternalID int64
 	}
 
 	// GetMarketplacesByUserIDResponse defines the response for the GetMarketplacesByUserID endpoint
@@ -34,14 +40,9 @@ type (
 )
 
 var (
-	ErrorBadRequest        = errors.New("bad request")
-	ErrorUserNotFound      = errors.New("user not found")
-	ErrorInitDataIsMissing = errors.New("init data is missing, it must be present in x-init-data header")
-	ErrorInitDataNotFound  = errors.New("init data not found")
-	ErrorInitDataIsInvalid = errors.New("init data is invalid")
-	ErrorInitDataIsEmpty   = errors.New("init data is empty")
-	ErrorWebAppNotFound    = errors.New("web app id not found")
-	ErrorInternal          = errors.New("internal server error")
+	ErrorInvalidUserID = errors.New("invalid user id")
+	ErrorUserNotFound  = errors.New("user not found")
+	ErrorInternal      = errors.New("internal server error")
 )
 
 // New creates a new user service
@@ -58,9 +59,15 @@ func New(repo Repository, log *zap.Logger) *Service {
 }
 
 // CreateOrUpdateTgUser creates or updates a user record
-func (s *Service) GetMarketplacesByUserID(ctx context.Context, userID int32) (GetMarketplacesByUserIDResponse, error) {
-	marketplaces, err := s.repo.GetMarketplacesByUserID(ctx, userID)
+func (s *Service) GetMarketplacesByUserID(ctx context.Context, request GetMarketplacesByUserIDRequest) (GetMarketplacesByUserIDResponse, error) {
+	marketplaces, err := s.repo.GetMarketplacesByUserID(ctx, request.ExternalID)
 	if err != nil {
+		if !errors.Is(err, ErrorUserNotFound) {
+			s.log.With(
+				zap.String("method", "s.repo.GetProducts"),
+				zap.String("user_id", strconv.FormatInt(request.ExternalID, 10)),
+			).Error(err.Error())
+		}
 		return GetMarketplacesByUserIDResponse{}, errors.Wrap(err, "s.repo.CreateOrUpdateTgUser")
 	}
 

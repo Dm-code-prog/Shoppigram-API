@@ -3,6 +3,7 @@ package admins
 import (
 	"context"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -22,7 +23,7 @@ func NewPg(db *pgxpool.Pool, encryptionKey string) *Pg {
 }
 
 // GetMarketplacesByUserID gets all user-related marketplaces
-func (p *Pg) GetMarketplacesByUserID(ctx context.Context, userID int64) ([]Marketplace, error) {
+func (p *Pg) GetMarketplacesByUserID(ctx context.Context, userID int64) (GetMarketplacesByUserIDResponse, error) {
 	var marketplaces []Marketplace
 
 	rows, err := p.gen.GetMarketplacesByUserID(ctx, pgtype.Int4{
@@ -30,7 +31,10 @@ func (p *Pg) GetMarketplacesByUserID(ctx context.Context, userID int64) ([]Marke
 		Valid: true,
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "p.gen.GetMarketplacesByUserID")
+		if errors.Is(err, pgx.ErrNoRows) {
+			return GetMarketplacesByUserIDResponse{}, errors.Wrap(ErrorUserNotFound, "p.gen.GetMarketplacesByUserID")
+		}
+		return GetMarketplacesByUserIDResponse{}, errors.Wrap(err, "p.gen.GetMarketplacesByUserID")
 	}
 
 	for _, v := range rows {
@@ -41,5 +45,7 @@ func (p *Pg) GetMarketplacesByUserID(ctx context.Context, userID int64) ([]Marke
 		})
 	}
 
-	return marketplaces, nil
+	return GetMarketplacesByUserIDResponse{
+		Marketplaces: marketplaces,
+	}, nil
 }

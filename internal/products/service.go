@@ -58,9 +58,9 @@ const (
 )
 
 var (
-	ErrorNotFound        = errors.New("products not found")
-	ErrorInternal        = errors.New("internal server error")
-	ErrorInvalidWebAppID = errors.New("invalid web app id")
+	ErrorProductsNotFound = errors.New("products not found")
+	ErrorInternal         = errors.New("internal server error")
+	ErrorInvalidWebAppID  = errors.New("invalid web app id")
 )
 
 // New creates a new product service
@@ -90,7 +90,7 @@ func (s *Service) GetProducts(ctx context.Context, request GetProductsRequest) (
 
 	res, err := s.repo.GetProducts(ctx, request)
 	if err != nil {
-		if !errors.Is(err, ErrorNotFound) {
+		if !errors.Is(err, ErrorProductsNotFound) {
 			s.log.With(
 				zap.String("method", "s.repo.GetProducts"),
 				zap.String("web_app_id", request.WebAppID.String()),
