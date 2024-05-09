@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/go-kit/kit/endpoint"
+	telegramusers "github.com/shoppigram-com/marketplace-api/internal/users"
 	"go.uber.org/zap"
 )
 
@@ -12,17 +13,21 @@ import (
 //
 // Path: GET /api/v1/private/marketplaces/{user_id}
 func makeGetMarketplaces(s *Service) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (interface{}, error) {
-		req, ok := request.(int64)
-		if !ok {
-			return GetMarketplacesResponse{}, ErrorInvalidUserID
+	return func(ctx context.Context, _ interface{}) (interface{}, error) {
+		usr, err := telegramusers.GetUserFromContext(ctx)
+		if err != nil {
+			s.log.With(
+				zap.String("method", "GetUserFromContext"),
+				zap.String("external_id", strconv.FormatInt(usr.ExternalId, 10)),
+			).Error(err.Error())
+			return nil, err
 		}
 
-		v0, err := s.GetMarketplaces(ctx, req)
+		v0, err := s.GetMarketplaces(ctx, usr.ExternalId)
 		if err != nil {
 			s.log.With(
 				zap.String("method", "s.GetMarketplaces"),
-				zap.String("external_id", strconv.FormatInt(req, 10)),
+				zap.String("external_id", strconv.FormatInt(usr.ExternalId, 10)),
 			).Error(err.Error())
 			return nil, err
 		}
