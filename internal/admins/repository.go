@@ -22,8 +22,10 @@ func NewPg(db *pgxpool.Pool, encryptionKey string) *Pg {
 }
 
 // GetMarketplacesByUserID gets all user-related marketplaces
-func (p *Pg) GetMarketplacesByUserID(ctx context.Context, userID int32) (interface{}, error) {
-	val, err := p.gen.GetMarketplacesByUserID(ctx, pgtype.Int4{
+func (p *Pg) GetMarketplacesByUserID(ctx context.Context, userID int32) ([]Marketplace, error) {
+	var marketplaces []Marketplace
+
+	rows, err := p.gen.GetMarketplacesByUserID(ctx, pgtype.Int4{
 		Int32: int32(userID),
 		Valid: true,
 	})
@@ -31,5 +33,13 @@ func (p *Pg) GetMarketplacesByUserID(ctx context.Context, userID int32) (interfa
 		return nil, errors.Wrap(err, "p.gen.GetMarketplacesByUserID")
 	}
 
-	return val, nil
+	for _, v := range rows {
+		marketplaces = append(marketplaces, Marketplace{
+			ID:       v.ID,
+			Name:     v.Name,
+			ImageURL: v.ImageUrl.String,
+		})
+	}
+
+	return marketplaces, nil
 }
