@@ -25,7 +25,7 @@ func makeCreateOrUpdateTgUserEndpoint(s *Service) endpoint.Endpoint {
 		v0, err := s.CreateOrUpdateTgUser(ctx, CreateOrUpdateTgUserRequest(usr))
 		if err != nil {
 			s.log.With(
-				zap.String("method", "s.repo.CreateOrUpdateTgUser"),
+				zap.String("method", "s.CreateOrUpdateTgUser"),
 				zap.String("external_id", strconv.FormatInt(usr.ExternalId, 10)),
 			).Error(err.Error())
 			return nil, err

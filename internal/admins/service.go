@@ -23,7 +23,7 @@ type (
 
 	// Repository provides access to the user storage
 	Repository interface {
-		GetMarketplacesByUserID(ctx context.Context, userID int32) ([]Marketplace, error)
+		GetMarketplacesByUserID(ctx context.Context, userID int64) ([]Marketplace, error)
 	}
 
 	// Service provides user operations

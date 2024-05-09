@@ -22,7 +22,7 @@ func NewPg(db *pgxpool.Pool, encryptionKey string) *Pg {
 }
 
 // GetMarketplacesByUserID gets all user-related marketplaces
-func (p *Pg) GetMarketplacesByUserID(ctx context.Context, userID int32) ([]Marketplace, error) {
+func (p *Pg) GetMarketplacesByUserID(ctx context.Context, userID int64) ([]Marketplace, error) {
 	var marketplaces []Marketplace
 
 	rows, err := p.gen.GetMarketplacesByUserID(ctx, pgtype.Int4{
