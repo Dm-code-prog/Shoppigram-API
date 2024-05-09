@@ -17,19 +17,14 @@ type (
 		ImageURL string    `json:"image_url"`
 	}
 
-	// GetMarketplacesByUserIDRequest defines the response for the GetMarketplacesByUserID endpoint
-	GetMarketplacesByUserIDRequest struct {
-		ExternalID int64
-	}
-
-	// GetMarketplacesByUserIDResponse defines the response for the GetMarketplacesByUserID endpoint
-	GetMarketplacesByUserIDResponse struct {
+	// GetMarketplacesResponse defines the response for the GetMarketplaces endpoint
+	GetMarketplacesResponse struct {
 		Marketplaces []Marketplace `json:"marketplaces"`
 	}
 
 	// Repository provides access to the user storage
 	Repository interface {
-		GetMarketplacesByUserID(ctx context.Context, userID int64) ([]Marketplace, error)
+		GetMarketplaces(ctx context.Context, userID int64) (GetMarketplacesResponse, error)
 	}
 
 	// Service provides user operations
@@ -59,17 +54,17 @@ func New(repo Repository, log *zap.Logger) *Service {
 }
 
 // CreateOrUpdateTgUser creates or updates a user record
-func (s *Service) GetMarketplacesByUserID(ctx context.Context, request GetMarketplacesByUserIDRequest) (GetMarketplacesByUserIDResponse, error) {
-	marketplaces, err := s.repo.GetMarketplacesByUserID(ctx, request.ExternalID)
+func (s *Service) GetMarketplaces(ctx context.Context, userID int64) (GetMarketplacesResponse, error) {
+	marketplaces, err := s.repo.GetMarketplaces(ctx, userID)
 	if err != nil {
 		if !errors.Is(err, ErrorUserNotFound) {
 			s.log.With(
 				zap.String("method", "s.repo.GetProducts"),
-				zap.String("user_id", strconv.FormatInt(request.ExternalID, 10)),
+				zap.String("user_id", strconv.FormatInt(userID, 10)),
 			).Error(err.Error())
 		}
-		return GetMarketplacesByUserIDResponse{}, errors.Wrap(err, "s.repo.CreateOrUpdateTgUser")
+		return GetMarketplacesResponse{}, errors.Wrap(err, "s.repo.CreateOrUpdateTgUser")
 	}
 
-	return GetMarketplacesByUserIDResponse{Marketplaces: marketplaces}, nil
+	return marketplaces, nil
 }

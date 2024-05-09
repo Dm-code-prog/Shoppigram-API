@@ -12,27 +12,27 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const getMarketplacesByUserID = `-- name: GetMarketplacesByUserID :many
+const getMarketplaces = `-- name: GetMarketplaces :many
 select id, name, image_url
 from web_apps
 where owner_external_id = $1
 `
 
-type GetMarketplacesByUserIDRow struct {
+type GetMarketplacesRow struct {
 	ID       uuid.UUID
 	Name     string
 	ImageUrl pgtype.Text
 }
 
-func (q *Queries) GetMarketplacesByUserID(ctx context.Context, ownerExternalID pgtype.Int4) ([]GetMarketplacesByUserIDRow, error) {
-	rows, err := q.db.Query(ctx, getMarketplacesByUserID, ownerExternalID)
+func (q *Queries) GetMarketplaces(ctx context.Context, ownerExternalID pgtype.Int4) ([]GetMarketplacesRow, error) {
+	rows, err := q.db.Query(ctx, getMarketplaces, ownerExternalID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetMarketplacesByUserIDRow
+	var items []GetMarketplacesRow
 	for rows.Next() {
-		var i GetMarketplacesByUserIDRow
+		var i GetMarketplacesRow
 		if err := rows.Scan(&i.ID, &i.Name, &i.ImageUrl); err != nil {
 			return nil, err
 		}

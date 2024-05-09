@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	marketplaces "github.com/shoppigram-com/marketplace-api/internal/admins"
 	"github.com/shoppigram-com/marketplace-api/internal/logging"
 	"github.com/shoppigram-com/marketplace-api/internal/notifications"
 	"github.com/shoppigram-com/marketplace-api/internal/orders"
@@ -96,6 +97,10 @@ func main() {
 	ordersService := orders.New(ordersRepo, log.With(zap.String("service", "orders")))
 	ordersHandler := orders.MakeHandler(ordersService, authMw)
 
+	marketplacesRepo := marketplaces.NewPg(db)
+	marketplacesService := marketplaces.New(marketplacesRepo, log.With(zap.String("service", "admins")))
+	marketplacesHandler := marketplaces.MakeHandler(marketplacesService, authMw)
+
 	notificationsRepo := notifications.NewPg(db, config.Encryption.Key, config.OrderNotifications.BatchSize)
 	notificationsService := notifications.New(
 		notificationsRepo,
@@ -110,6 +115,7 @@ func main() {
 	r.Mount("/api/v1/public/products", productsHandler)
 	r.Mount("/api/v1/public/auth", tgUsersHandler)
 	r.Mount("/api/v1/public/orders", ordersHandler)
+	r.Mount("/api/v1/private/marketplaces/", marketplacesHandler)
 
 	g.Add(func() error {
 		log.Info("starting HTTP server", zap.String("port", config.HTTP.Port))

@@ -18,23 +18,23 @@ type Pg struct {
 }
 
 // NewPg creates a new Pg
-func NewPg(db *pgxpool.Pool, encryptionKey string) *Pg {
+func NewPg(db *pgxpool.Pool) *Pg {
 	return &Pg{gen: generated.New(db)}
 }
 
-// GetMarketplacesByUserID gets all user-related marketplaces
-func (p *Pg) GetMarketplacesByUserID(ctx context.Context, userID int64) (GetMarketplacesByUserIDResponse, error) {
+// GetMarketplaces gets all user-related marketplaces
+func (p *Pg) GetMarketplaces(ctx context.Context, userID int64) (GetMarketplacesResponse, error) {
 	var marketplaces []Marketplace
 
-	rows, err := p.gen.GetMarketplacesByUserID(ctx, pgtype.Int4{
+	rows, err := p.gen.GetMarketplaces(ctx, pgtype.Int4{
 		Int32: int32(userID),
 		Valid: true,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return GetMarketplacesByUserIDResponse{}, errors.Wrap(ErrorUserNotFound, "p.gen.GetMarketplacesByUserID")
+			return GetMarketplacesResponse{}, errors.Wrap(ErrorUserNotFound, "p.gen.GetMarketplaces")
 		}
-		return GetMarketplacesByUserIDResponse{}, errors.Wrap(err, "p.gen.GetMarketplacesByUserID")
+		return GetMarketplacesResponse{}, errors.Wrap(err, "p.gen.GetMarketplaces")
 	}
 
 	for _, v := range rows {
@@ -45,7 +45,7 @@ func (p *Pg) GetMarketplacesByUserID(ctx context.Context, userID int64) (GetMark
 		})
 	}
 
-	return GetMarketplacesByUserIDResponse{
+	return GetMarketplacesResponse{
 		Marketplaces: marketplaces,
 	}, nil
 }
