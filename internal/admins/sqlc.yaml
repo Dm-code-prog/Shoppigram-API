@@ -2,7 +2,7 @@ version: "2"
 sql:
   - engine: postgresql
     queries:
-      - ./queries/admin.sql
+      - ./queries/admins.sql
     schema:
       - ../products/schemas/20240411.sql
       - ./schemas/20240509.sql
