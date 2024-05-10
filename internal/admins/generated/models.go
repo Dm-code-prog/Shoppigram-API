@@ -43,5 +43,5 @@ type WebApp struct {
 	ID              uuid.UUID
 	Name            string
 	OwnerExternalID pgtype.Int4
-	ImageUrl        pgtype.Text
+	LogoUrl         pgtype.Text
 }
