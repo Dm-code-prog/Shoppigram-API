@@ -14,7 +14,7 @@ import (
 	telegramusers "github.com/shoppigram-com/marketplace-api/internal/users"
 )
 
-// MakeHandler returns a handler for the users service.
+// MakeHandler returns a handler for the admin service.
 func MakeHandler(bs *Service, authMw endpoint.Middleware) http.Handler {
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(encodeError),
@@ -51,12 +51,12 @@ func encodeResponse(_ context.Context, w http.ResponseWriter, response interface
 
 func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 	switch {
-	case errors.Is(err, ErrorInvalidUserID):
+	case errors.Is(err, ErrorInvalidAdminID):
 		w.WriteHeader(http.StatusBadRequest)
-		err = ErrorInvalidUserID
-	case errors.Is(err, ErrorUserNotFound):
+		err = ErrorInvalidAdminID
+	case errors.Is(err, ErrorAdminNotFound):
 		w.WriteHeader(http.StatusBadRequest)
-		err = ErrorUserNotFound
+		err = ErrorAdminNotFound
 	default:
 		w.WriteHeader(http.StatusInternalServerError)
 		err = ErrorInternal

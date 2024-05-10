@@ -22,26 +22,27 @@ func NewPg(db *pgxpool.Pool) *Pg {
 	return &Pg{gen: generated.New(db)}
 }
 
-// GetMarketplaces gets all user-related marketplaces
-func (p *Pg) GetMarketplaces(ctx context.Context, userID int64) (GetMarketplacesResponse, error) {
+// GetMarketplaces gets all marketplaces created by user
+func (p *Pg) GetMarketplaces(ctx context.Context, req GetMarketplacesRequest) (GetMarketplacesResponse, error) {
 	var marketplaces []Marketplace
 
 	rows, err := p.gen.GetMarketplaces(ctx, pgtype.Int4{
-		Int32: int32(userID),
+		Int32: int32(req.ExternalUserID),
 		Valid: true,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return GetMarketplacesResponse{}, errors.Wrap(ErrorUserNotFound, "p.gen.GetMarketplaces")
+			return GetMarketplacesResponse{}, errors.Wrap(ErrorAdminNotFound, "p.gen.GetMarketplaces")
 		}
 		return GetMarketplacesResponse{}, errors.Wrap(err, "p.gen.GetMarketplaces")
 	}
 
 	for _, v := range rows {
 		marketplaces = append(marketplaces, Marketplace{
-			ID:       v.ID,
-			Name:     v.Name,
-			ImageURL: v.ImageUrl.String,
+			ID:         v.ID,
+			Name:       v.Name,
+			LogoURL:    v.LogoUrl.String,
+			IsVerified: v.IsVerified.Bool,
 		})
 	}
 

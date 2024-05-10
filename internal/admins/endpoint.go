@@ -23,7 +23,9 @@ func makeGetMarketplaces(s *Service) endpoint.Endpoint {
 			return nil, err
 		}
 
-		v0, err := s.GetMarketplaces(ctx, usr.ExternalId)
+		v0, err := s.GetMarketplaces(ctx, GetMarketplacesRequest{
+			ExternalUserID: usr.ExternalId,
+		})
 		if err != nil {
 			s.log.With(
 				zap.String("method", "s.GetMarketplaces"),

@@ -18,17 +18,21 @@ type (
 		IsVerified bool      `json:"is_verified"`
 	}
 
+	// GetMarketplacesRequest defines the request for the GetMarketplaces endpoint
+	GetMarketplacesRequest struct {
+		ExternalUserID int64
+	}
 	// GetMarketplacesResponse defines the response for the GetMarketplaces endpoint
 	GetMarketplacesResponse struct {
 		Marketplaces []Marketplace `json:"marketplaces"`
 	}
 
-	// Repository provides access to the user storage
+	// Repository provides access to the admin storage
 	Repository interface {
-		GetMarketplaces(ctx context.Context, userID int64) (GetMarketplacesResponse, error)
+		GetMarketplaces(ctx context.Context, req GetMarketplacesRequest) (GetMarketplacesResponse, error)
 	}
 
-	// Service provides user operations
+	// Service provides admin operations
 	Service struct {
 		repo Repository
 		log  *zap.Logger
@@ -36,12 +40,12 @@ type (
 )
 
 var (
-	ErrorInvalidUserID = errors.New("invalid user id")
-	ErrorUserNotFound  = errors.New("user not found")
-	ErrorInternal      = errors.New("internal server error")
+	ErrorInvalidAdminID = errors.New("invalid admin id")
+	ErrorAdminNotFound  = errors.New("admin not found")
+	ErrorInternal       = errors.New("internal server error")
 )
 
-// New creates a new user service
+// New creates a new admin service
 func New(repo Repository, log *zap.Logger) *Service {
 	if log == nil {
 		log, _ = zap.NewProduction()
@@ -54,14 +58,14 @@ func New(repo Repository, log *zap.Logger) *Service {
 	}
 }
 
-// CreateOrUpdateTgUser creates or updates a user record
-func (s *Service) GetMarketplaces(ctx context.Context, userID int64) (GetMarketplacesResponse, error) {
-	marketplaces, err := s.repo.GetMarketplaces(ctx, userID)
+// GetMarketplaces gets all marketplaces created by user
+func (s *Service) GetMarketplaces(ctx context.Context, req GetMarketplacesRequest) (GetMarketplacesResponse, error) {
+	marketplaces, err := s.repo.GetMarketplaces(ctx, req)
 	if err != nil {
-		if !errors.Is(err, ErrorUserNotFound) {
+		if !errors.Is(err, ErrorAdminNotFound) {
 			s.log.With(
 				zap.String("method", "s.repo.GetProducts"),
-				zap.String("user_id", strconv.FormatInt(userID, 10)),
+				zap.String("user_id", strconv.FormatInt(req.ExternalUserID, 10)),
 			).Error(err.Error())
 		}
 		return GetMarketplacesResponse{}, errors.Wrap(err, "s.repo.CreateOrUpdateTgUser")
