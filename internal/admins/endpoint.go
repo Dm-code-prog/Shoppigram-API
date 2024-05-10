@@ -11,7 +11,7 @@ import (
 
 // makeGetMarketplaces constructs a GetMarketplaces endpoint wrapping the service.
 //
-// Path: GET /api/v1/private/marketplaces/{user_id}
+// Path: GET /api/v1/private/marketplaces
 func makeGetMarketplaces(s *Service) endpoint.Endpoint {
 	return func(ctx context.Context, _ interface{}) (interface{}, error) {
 		usr, err := telegramusers.GetUserFromContext(ctx)
