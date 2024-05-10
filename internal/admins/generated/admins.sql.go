@@ -13,15 +13,16 @@ import (
 )
 
 const getMarketplaces = `-- name: GetMarketplaces :many
-select id, name, logo_url
+select id, name, logo_url, is_verified
 from web_apps
 where owner_external_id = $1
 `
 
 type GetMarketplacesRow struct {
-	ID      uuid.UUID
-	Name    string
-	LogoUrl pgtype.Text
+	ID         uuid.UUID
+	Name       string
+	LogoUrl    pgtype.Text
+	IsVerified pgtype.Bool
 }
 
 func (q *Queries) GetMarketplaces(ctx context.Context, ownerExternalID pgtype.Int4) ([]GetMarketplacesRow, error) {
@@ -33,7 +34,12 @@ func (q *Queries) GetMarketplaces(ctx context.Context, ownerExternalID pgtype.In
 	var items []GetMarketplacesRow
 	for rows.Next() {
 		var i GetMarketplacesRow
-		if err := rows.Scan(&i.ID, &i.Name, &i.LogoUrl); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.LogoUrl,
+			&i.IsVerified,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

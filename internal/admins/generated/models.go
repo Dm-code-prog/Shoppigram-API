@@ -44,4 +44,5 @@ type WebApp struct {
 	Name            string
 	OwnerExternalID pgtype.Int4
 	LogoUrl         pgtype.Text
+	IsVerified      pgtype.Bool
 }

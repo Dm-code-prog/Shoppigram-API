@@ -12,9 +12,10 @@ import (
 type (
 	// Marketplace defines the structure for a Marketplace
 	Marketplace struct {
-		ID      uuid.UUID `json:"id"`
-		Name    string    `json:"name"`
-		LogoURL string    `json:"logo_url"`
+		ID         uuid.UUID `json:"id"`
+		Name       string    `json:"name"`
+		LogoURL    string    `json:"logo_url"`
+		IsVerified bool      `json:"is_verified"`
 	}
 
 	// GetMarketplacesResponse defines the response for the GetMarketplaces endpoint
