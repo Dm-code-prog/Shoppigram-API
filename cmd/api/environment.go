@@ -15,8 +15,9 @@ type Environment struct {
 	}
 
 	OrderNotifications struct {
-		BatchSize int `env:"ORDER_NOTIFICATIONS_BATCH_SIZE,required"`
-		Timeout   int `env:"ORDER_NOTIFICATIONS_TIMEOUT,required"`
+		Enable    bool `env:"ORDER_NOTIFICATIONS_ENABLE" default:"true"`
+		BatchSize int  `env:"ORDER_NOTIFICATIONS_BATCH_SIZE,required"`
+		Timeout   int  `env:"ORDER_NOTIFICATIONS_TIMEOUT,required"`
 	}
 
 	Bot struct {
