@@ -1,19 +1,20 @@
-package telegram_users
+package admins
 
 import (
 	"context"
 	"strconv"
 
 	"github.com/go-kit/kit/endpoint"
+	telegramusers "github.com/shoppigram-com/marketplace-api/internal/users"
 	"go.uber.org/zap"
 )
 
-// makeCreateOrUpdateTgUserEndpoint constructs a CreateOrUpdateTgUser endpoint wrapping the service.
+// makeGetMarketplaces constructs a GetMarketplaces endpoint wrapping the service.
 //
-// Path: PUT /api/v1/public/auth/telegram
-func makeCreateOrUpdateTgUserEndpoint(s *Service) endpoint.Endpoint {
+// Path: GET /api/v1/private/marketplaces
+func makeGetMarketplaces(s *Service) endpoint.Endpoint {
 	return func(ctx context.Context, _ interface{}) (interface{}, error) {
-		usr, err := GetUserFromContext(ctx)
+		usr, err := telegramusers.GetUserFromContext(ctx)
 		if err != nil {
 			s.log.With(
 				zap.String("method", "GetUserFromContext"),
@@ -22,10 +23,12 @@ func makeCreateOrUpdateTgUserEndpoint(s *Service) endpoint.Endpoint {
 			return nil, err
 		}
 
-		v0, err := s.CreateOrUpdateTgUser(ctx, CreateOrUpdateTgUserRequest(usr))
+		v0, err := s.GetMarketplaces(ctx, GetMarketplacesRequest{
+			ExternalUserID: usr.ExternalId,
+		})
 		if err != nil {
 			s.log.With(
-				zap.String("method", "s.CreateOrUpdateTgUser"),
+				zap.String("method", "s.GetMarketplaces"),
 				zap.String("external_id", strconv.FormatInt(usr.ExternalId, 10)),
 			).Error(err.Error())
 			return nil, err

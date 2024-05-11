@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/shoppigram-com/marketplace-api/internal/admins"
 	"github.com/shoppigram-com/marketplace-api/internal/logging"
 	"github.com/shoppigram-com/marketplace-api/internal/notifications"
 	"github.com/shoppigram-com/marketplace-api/internal/orders"
@@ -96,20 +97,27 @@ func main() {
 	ordersService := orders.New(ordersRepo, log.With(zap.String("service", "orders")))
 	ordersHandler := orders.MakeHandler(ordersService, authMw)
 
-	notificationsRepo := notifications.NewPg(db, config.Encryption.Key, config.OrderNotifications.BatchSize)
-	notificationsService := notifications.New(
-		notificationsRepo,
-		log.With(zap.String("service", "notifications")),
-		time.Duration(config.OrderNotifications.Timeout)*time.Second,
-		config.Bot.Token,
-	)
-	g.Add(notificationsService.Run, func(err error) {
-		_ = notificationsService.Shutdown()
-	})
+	adminsRepo := admins.NewPg(db)
+	adminsService := admins.New(adminsRepo, log.With(zap.String("service", "admins")))
+	adminsHandler := admins.MakeHandler(adminsService, authMw)
+
+	if config.OrderNotifications.IsEnabled {
+		notificationsRepo := notifications.NewPg(db, config.Encryption.Key, config.OrderNotifications.BatchSize)
+		notificationsService := notifications.New(
+			notificationsRepo,
+			log.With(zap.String("service", "notifications")),
+			time.Duration(config.OrderNotifications.Timeout)*time.Second,
+			config.Bot.Token,
+		)
+		g.Add(notificationsService.Run, func(err error) {
+			_ = notificationsService.Shutdown()
+		})
+	}
 
 	r.Mount("/api/v1/public/products", productsHandler)
 	r.Mount("/api/v1/public/auth", tgUsersHandler)
 	r.Mount("/api/v1/public/orders", ordersHandler)
+	r.Mount("/api/v1/private/marketplaces/", adminsHandler)
 
 	g.Add(func() error {
 		log.Info("starting HTTP server", zap.String("port", config.HTTP.Port))
