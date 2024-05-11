@@ -24,7 +24,7 @@ func MakeHandler(bs *Service, authMw endpoint.Middleware) http.Handler {
 	getMarketplaces := makeGetMarketplaces(bs)
 	getMarketplaces = authMw(getMarketplaces)
 
-	createOrUpdateTgUserHandler := kithttp.NewServer(
+	getMarketplacesHandler := kithttp.NewServer(
 		getMarketplaces,
 		decodeCreateOrUpdateTgUserRequest,
 		encodeResponse,
@@ -32,7 +32,7 @@ func MakeHandler(bs *Service, authMw endpoint.Middleware) http.Handler {
 	)
 
 	r := chi.NewRouter()
-	r.Get("/{user_id}", createOrUpdateTgUserHandler.ServeHTTP)
+	r.Get("/", getMarketplacesHandler.ServeHTTP)
 
 	return r
 }
