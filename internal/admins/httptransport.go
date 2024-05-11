@@ -26,7 +26,7 @@ func MakeHandler(bs *Service, authMw endpoint.Middleware) http.Handler {
 
 	getMarketplacesHandler := kithttp.NewServer(
 		getMarketplaces,
-		decodeCreateOrUpdateTgUserRequest,
+		decodeGetMarketplacesRequest,
 		encodeResponse,
 		opts...,
 	)
@@ -37,7 +37,7 @@ func MakeHandler(bs *Service, authMw endpoint.Middleware) http.Handler {
 	return r
 }
 
-func decodeCreateOrUpdateTgUserRequest(c context.Context, _ *http.Request) (interface{}, error) {
+func decodeGetMarketplacesRequest(c context.Context, _ *http.Request) (interface{}, error) {
 	return nil, nil
 }
 

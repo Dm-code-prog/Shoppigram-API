@@ -24,7 +24,7 @@ func NewPg(db *pgxpool.Pool) *Pg {
 
 // GetMarketplaces gets all marketplaces created by user
 func (p *Pg) GetMarketplaces(ctx context.Context, req GetMarketplacesRequest) (GetMarketplacesResponse, error) {
-	var marketplaces []Marketplace
+	marketplaces := make([]Marketplace, 0)
 
 	rows, err := p.gen.GetMarketplaces(ctx, pgtype.Int4{
 		Int32: int32(req.ExternalUserID),
