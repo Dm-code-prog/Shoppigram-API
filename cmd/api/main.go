@@ -101,7 +101,7 @@ func main() {
 	adminsService := admins.New(adminsRepo, log.With(zap.String("service", "admins")))
 	adminsHandler := admins.MakeHandler(adminsService, authMw)
 
-	if config.OrderNotifications.Enable {
+	if config.OrderNotifications.IsEnabled {
 		notificationsRepo := notifications.NewPg(db, config.Encryption.Key, config.OrderNotifications.BatchSize)
 		notificationsService := notifications.New(
 			notificationsRepo,
