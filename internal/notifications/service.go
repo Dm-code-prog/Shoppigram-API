@@ -79,7 +79,7 @@ func (o *OrderNotification) BuildMessage() (string, error) {
 		subtotal += p.Price * float64(p.Quantity)
 		currency = p.PriceCurrency
 		productList.WriteString(fmt.Sprintf(`\- %dx %s по цене %s %s
-`, p.Quantity, p.Name, formatFloat(p.Price), formatCurrency(p.PriceCurrency)))
+`, p.Quantity, escapeSpecialSymbols(p.Name), formatFloat(p.Price), formatCurrency(p.PriceCurrency)))
 	}
 
 	data, err := messageTemplate.ReadFile("message.md")
@@ -88,8 +88,8 @@ func (o *OrderNotification) BuildMessage() (string, error) {
 	}
 
 	return fmt.Sprintf(string(data),
-		o.WebAppName,
-		o.UserNickname,
+		escapeSpecialSymbols(o.WebAppName),
+		escapeSpecialSymbols(o.UserNickname),
 		o.ReadableOrderID,
 		formatRussianTime(o.CreatedAt),
 		formatFloat(subtotal)+" "+formatCurrency(currency),
@@ -281,4 +281,16 @@ func formatRussianTime(t time.Time) string {
 	}
 	t = t.In(loc)
 	return strings.ReplaceAll(t.Format("02.01.2006 15:04:05"), ".", "\\.")
+}
+
+var specialSymbols = []string{"*", "_", "#", "-"}
+
+func escapeSpecialSymbols(s string) string {
+	for _, sym := range specialSymbols {
+		if strings.Contains(s, sym) {
+			return strings.ReplaceAll(s, sym, "\\"+sym)
+		}
+	}
+
+	return s
 }
