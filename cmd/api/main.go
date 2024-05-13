@@ -73,20 +73,20 @@ func main() {
 		_ = json.NewEncoder(w).Encode(map[string]string{"error": "the path you requested does not exist"})
 	})
 
-	cache, err := ristretto.NewCache(&ristretto.Config{
+	productsCache, err := ristretto.NewCache(&ristretto.Config{
 		NumCounters: 1e7,         // number of keys to track frequency of (10M).
-		MaxCost:     200_000_000, // maximum cost of cache (200 MB).
+		MaxCost:     200_000_000, // maximum cost of productsCache (200 MB).
 		BufferItems: 64,          // number of keys per Get buffer.
 	})
 	if err != nil {
-		log.Fatal("failed to create cache", logging.SilentError(err))
+		log.Fatal("failed to create productsCache", logging.SilentError(err))
 		return
 	}
 
 	authMw := telegramusers.MakeAuthMiddleware(log.With(zap.String("service", "users")), config.Bot.Token)
 
 	productsRepo := products.NewPg(productsgenerated.New(db))
-	productsService := products.New(productsRepo, log.With(zap.String("service", "products")), cache)
+	productsService := products.New(productsRepo, log.With(zap.String("service", "products")), productsCache)
 	productsHandler := products.MakeHandler(productsService)
 
 	tgUsersRepo := telegramusers.NewPg(db, config.Encryption.Key)
@@ -112,12 +112,14 @@ func main() {
 		g.Add(notificationsService.Run, func(err error) {
 			_ = notificationsService.Shutdown()
 		})
+	} else {
+		log.Warn("order notifications job is disabled")
 	}
 
 	r.Mount("/api/v1/public/products", productsHandler)
 	r.Mount("/api/v1/public/auth", tgUsersHandler)
 	r.Mount("/api/v1/public/orders", ordersHandler)
-	r.Mount("/api/v1/private/marketplaces/", adminsHandler)
+	r.Mount("/api/v1/private/marketplaces", adminsHandler)
 
 	g.Add(func() error {
 		log.Info("starting HTTP server", zap.String("port", config.HTTP.Port))
