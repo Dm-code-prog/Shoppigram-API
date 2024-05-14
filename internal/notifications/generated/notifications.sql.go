@@ -61,7 +61,7 @@ func (q *Queries) GetAdminsNotificationList(ctx context.Context, webAppID pgtype
 	return items, nil
 }
 
-const getNotificationsForMarketplacesAfterCursor = `-- name: GetNotificationsForMarketplacesAfterCursor :many
+const getNotificationsForNewMarketplacesAfterCursor = `-- name: GetNotificationsForNewMarketplacesAfterCursor :many
 with markets_batch as (select id, name
                        from web_apps wa
                        where wa.is_verified = false
@@ -72,28 +72,28 @@ select markets_batch.id,
        markets_batch.name
 from markets_batch
          join new_order_notifications_list nonl
-              on nonl.web_app_id = wa.id
+              on nonl.web_app_id = markets_batch.id
 `
 
-type GetNotificationsForMarketplacesAfterCursorParams struct {
+type GetNotificationsForNewMarketplacesAfterCursorParams struct {
 	CreatedAt pgtype.Timestamp
 	Limit     int32
 }
 
-type GetNotificationsForMarketplacesAfterCursorRow struct {
+type GetNotificationsForNewMarketplacesAfterCursorRow struct {
 	ID   uuid.UUID
 	Name string
 }
 
-func (q *Queries) GetNotificationsForMarketplacesAfterCursor(ctx context.Context, arg GetNotificationsForMarketplacesAfterCursorParams) ([]GetNotificationsForMarketplacesAfterCursorRow, error) {
-	rows, err := q.db.Query(ctx, getNotificationsForMarketplacesAfterCursor, arg.CreatedAt, arg.Limit)
+func (q *Queries) GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, arg GetNotificationsForNewMarketplacesAfterCursorParams) ([]GetNotificationsForNewMarketplacesAfterCursorRow, error) {
+	rows, err := q.db.Query(ctx, getNotificationsForNewMarketplacesAfterCursor, arg.CreatedAt, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetNotificationsForMarketplacesAfterCursorRow
+	var items []GetNotificationsForNewMarketplacesAfterCursorRow
 	for rows.Next() {
-		var i GetNotificationsForMarketplacesAfterCursorRow
+		var i GetNotificationsForNewMarketplacesAfterCursorRow
 		if err := rows.Scan(&i.ID, &i.Name); err != nil {
 			return nil, err
 		}
@@ -105,7 +105,7 @@ func (q *Queries) GetNotificationsForMarketplacesAfterCursor(ctx context.Context
 	return items, nil
 }
 
-const getNotificationsForOrdersAfterCursor = `-- name: GetNotificationsForOrdersAfterCursor :many
+const getNotificationsForNewOrdersAfterCursor = `-- name: GetNotificationsForNewOrdersAfterCursor :many
 with orders_batch as (select id as order_id, created_at, readable_id, web_app_id, external_user_id
                       from orders o
                       where o.created_at > $1
@@ -129,12 +129,12 @@ from orders_batch
          join web_apps wa on orders_batch.web_app_id = wa.id
 `
 
-type GetNotificationsForOrdersAfterCursorParams struct {
+type GetNotificationsForNewOrdersAfterCursorParams struct {
 	CreatedAt pgtype.Timestamp
 	Limit     int32
 }
 
-type GetNotificationsForOrdersAfterCursorRow struct {
+type GetNotificationsForNewOrdersAfterCursorRow struct {
 	OrderID       uuid.UUID
 	ReadableID    pgtype.Int8
 	CreatedAt     pgtype.Timestamp
@@ -147,15 +147,15 @@ type GetNotificationsForOrdersAfterCursorRow struct {
 	Username      pgtype.Text
 }
 
-func (q *Queries) GetNotificationsForOrdersAfterCursor(ctx context.Context, arg GetNotificationsForOrdersAfterCursorParams) ([]GetNotificationsForOrdersAfterCursorRow, error) {
-	rows, err := q.db.Query(ctx, getNotificationsForOrdersAfterCursor, arg.CreatedAt, arg.Limit)
+func (q *Queries) GetNotificationsForNewOrdersAfterCursor(ctx context.Context, arg GetNotificationsForNewOrdersAfterCursorParams) ([]GetNotificationsForNewOrdersAfterCursorRow, error) {
+	rows, err := q.db.Query(ctx, getNotificationsForNewOrdersAfterCursor, arg.CreatedAt, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetNotificationsForOrdersAfterCursorRow
+	var items []GetNotificationsForNewOrdersAfterCursorRow
 	for rows.Next() {
-		var i GetNotificationsForOrdersAfterCursorRow
+		var i GetNotificationsForNewOrdersAfterCursorRow
 		if err := rows.Scan(
 			&i.OrderID,
 			&i.ReadableID,

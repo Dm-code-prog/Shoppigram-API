@@ -19,7 +19,7 @@ set cursor_date = $2,
     last_processed_id = $3
 where name = $1;
 
--- name: GetNotificationsForOrdersAfterCursor :many
+-- name: GetNotificationsForNewOrdersAfterCursor :many
 with orders_batch as (select id as order_id, created_at, readable_id, web_app_id, external_user_id
                       from orders o
                       where o.created_at > $1
@@ -47,7 +47,7 @@ select chat_id
 from new_web_apps_notifications_list
 where web_app_id = $1;
 
--- name: GetNotificationsForMarketplacesAfterCursor :many
+-- name: GetNotificationsForNewMarketplacesAfterCursor :many
 with markets_batch as (select id, name
                        from web_apps wa
                        where wa.is_verified = false

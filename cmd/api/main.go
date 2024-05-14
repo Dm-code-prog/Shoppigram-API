@@ -101,16 +101,21 @@ func main() {
 	adminsService := admins.New(adminsRepo, log.With(zap.String("service", "admins")))
 	adminsHandler := admins.MakeHandler(adminsService, authMw)
 
-	notificationsRepo := notifications.NewPg(db, config.Encryption.Key, config.OrderNotifications.BatchSize)
+	notificationsRepo := notifications.NewPg(
+		db,
+		config.Encryption.Key,
+		config.NewOrderNotifications.BatchSize,
+		config.NewMarketplaceNotifications.BatchSize,
+	)
 	notificationsService := notifications.New(
 		notificationsRepo,
 		log.With(zap.String("service", "notifications")),
-		time.Duration(config.OrderNotifications.Timeout)*time.Second,
+		time.Duration(config.NewOrderNotifications.Timeout)*time.Second,
 		time.Duration(config.NewMarketplaceNotifications.Timeout)*time.Second,
 		config.Bot.Token,
 	)
 
-	if config.OrderNotifications.IsEnabled {
+	if config.NewOrderNotifications.IsEnabled {
 		g.Add(notificationsService.RunOrderNotifier, func(err error) {
 			_ = notificationsService.Shutdown()
 		})

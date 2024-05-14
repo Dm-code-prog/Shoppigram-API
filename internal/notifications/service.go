@@ -35,8 +35,8 @@ type (
 		PriceCurrency string
 	}
 
-	// OrderNotification defines the structure of order notification
-	OrderNotification struct {
+	// NewOrderNotification defines the structure of order notification
+	NewOrderNotification struct {
 		ID              uuid.UUID
 		ReadableOrderID int64
 		CreatedAt       time.Time
@@ -46,13 +46,19 @@ type (
 		Products        []Product
 	}
 
+	// NewMarketplaceNotification defines the structure of new marketplace notification
+	NewMarketplaceNotification struct {
+		ID   uuid.UUID
+		Name string
+	}
+
 	// Repository provides access to the user storage
 	Repository interface {
 		GetAdminsNotificationList(ctx context.Context, webAppID uuid.UUID) ([]int64, error)
 		GetReviewersNotificationList(ctx context.Context, webAppID uuid.UUID) ([]int64, error)
 		GetNotifierCursor(ctx context.Context, name string) (Cursor, error)
 		UpdateNotifierCursor(ctx context.Context, cur Cursor) error
-		GetNotificationsForOrdersAfterCursor(ctx context.Context, cur Cursor) ([]OrderNotification, error)
+		GetNotificationsForNewOrdersAfterCursor(ctx context.Context, cur Cursor) ([]NewOrderNotification, error)
 	}
 
 	// Service provides user operations
@@ -74,7 +80,7 @@ const (
 )
 
 // BuildMessage creates a notification message for a new order
-func (o *OrderNotification) BuildMessage() (string, error) {
+func (o *NewOrderNotification) BuildMessage() (string, error) {
 	var subtotal float64
 	var productList strings.Builder
 	var currency string
@@ -161,7 +167,7 @@ func (s *Service) runOrderNotifierOnce() error {
 		return errors.Wrap(err, "s.repo.GetNotifierCursor")
 	}
 
-	orderNotifications, err := s.repo.GetNotificationsForOrdersAfterCursor(s.ctx, cursor)
+	orderNotifications, err := s.repo.GetNotificationsForNewOrdersAfterCursor(s.ctx, cursor)
 	if err != nil {
 		return errors.Wrap(err, "s.getOrderNotifications")
 	}
@@ -221,7 +227,7 @@ func (s *Service) Shutdown() error {
 	return nil
 }
 
-func (s *Service) sendOrderNotifications(orderNotifications []OrderNotification) error {
+func (s *Service) sendOrderNotifications(orderNotifications []NewOrderNotification) error {
 	var (
 		bot *tgbotapi.BotAPI
 		err error
