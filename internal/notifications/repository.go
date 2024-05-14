@@ -57,8 +57,8 @@ func (p *Pg) GetNotifierCursor(ctx context.Context, name string) (Cursor, error)
 		return Cursor{}, errors.Wrap(err, "p.gen.GetNotifierCursor")
 	}
 	return Cursor{
-		LastProcessedCreatedAt: cursor.LastProcessedCreatedAt.Time,
-		LastProcessedID:        cursor.LastProcessedID.Bytes,
+		CursorDate:      cursor.CursorDate.Time,
+		LastProcessedID: cursor.LastProcessedID.Bytes,
 	}, nil
 }
 
@@ -69,8 +69,8 @@ func (p *Pg) UpdateNotifierCursor(ctx context.Context, cur Cursor) error {
 			String: cur.Name,
 			Valid:  true,
 		},
-		LastProcessedCreatedAt: pgtype.Timestamp{
-			Time:  cur.LastProcessedCreatedAt,
+		CursorDate: pgtype.Timestamp{
+			Time:  cur.CursorDate,
 			Valid: true,
 		},
 		LastProcessedID: pgtype.UUID{
@@ -93,7 +93,7 @@ func (p *Pg) GetNotificationsForOrdersAfterCursor(ctx context.Context, cur Curso
 		ctx,
 		generated.GetNotificationsForOrdersAfterCursorParams{
 			CreatedAt: pgtype.Timestamp{
-				Time:  cur.LastProcessedCreatedAt,
+				Time:  cur.CursorDate,
 				Valid: true,
 			},
 			Limit: int32(p.orderFetchLimit),

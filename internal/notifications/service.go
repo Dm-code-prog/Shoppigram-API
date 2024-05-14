@@ -22,9 +22,9 @@ var messageTemplate embed.FS
 type (
 	// Cursor defines the structure for a notify list cursor
 	Cursor struct {
-		Name                   string
-		LastProcessedCreatedAt time.Time
-		LastProcessedID        uuid.UUID
+		Name            string
+		CursorDate      time.Time
+		LastProcessedID uuid.UUID
 	}
 
 	// Product is a marketplace product
@@ -175,9 +175,9 @@ func (s *Service) runOnce() error {
 	lastElem := orderNotifications[len(orderNotifications)-1]
 
 	err = s.repo.UpdateNotifierCursor(s.ctx, Cursor{
-		LastProcessedCreatedAt: lastElem.CreatedAt,
-		LastProcessedID:        lastElem.ID,
-		Name:                   notifierName,
+		CursorDate:      lastElem.CreatedAt,
+		LastProcessedID: lastElem.ID,
+		Name:            notifierName,
 	})
 	if err != nil {
 		return errors.Wrap(err, "s.repo.UpdateNotifierCursor")
