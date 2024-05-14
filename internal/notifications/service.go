@@ -108,6 +108,19 @@ func (o *NewOrderNotification) BuildMessage() (string, error) {
 	), nil
 }
 
+// BuildMessage creates a notification message for a new order
+func (m *NewMarketplaceNotification) BuildMessage() (string, error) {
+	data, err := messageTemplate.ReadFile("newMarketplaceMessage.md")
+	if err != nil {
+		return "", errors.Wrap(err, "messageTemplate.ReadFile")
+	}
+
+	return fmt.Sprintf(string(data),
+		escapeSpecialSymbols(m.ID.String()),
+		escapeSpecialSymbols(m.Name),
+	), nil
+}
+
 // New creates a new user service
 func New(repo Repository, log *zap.Logger, orderProcessingTimer time.Duration, newMarketplaceProcessingTimer time.Duration, botToken string) *Service {
 	if log == nil {
