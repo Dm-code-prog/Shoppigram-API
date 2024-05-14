@@ -101,20 +101,29 @@ func main() {
 	adminsService := admins.New(adminsRepo, log.With(zap.String("service", "admins")))
 	adminsHandler := admins.MakeHandler(adminsService, authMw)
 
+	notificationsRepo := notifications.NewPg(db, config.Encryption.Key, config.OrderNotifications.BatchSize)
+	notificationsService := notifications.New(
+		notificationsRepo,
+		log.With(zap.String("service", "notifications")),
+		time.Duration(config.OrderNotifications.Timeout)*time.Second,
+		time.Duration(config.NewMarketplaceNotifications.Timeout)*time.Second,
+		config.Bot.Token,
+	)
+
 	if config.OrderNotifications.IsEnabled {
-		notificationsRepo := notifications.NewPg(db, config.Encryption.Key, config.OrderNotifications.BatchSize)
-		notificationsService := notifications.New(
-			notificationsRepo,
-			log.With(zap.String("service", "notifications")),
-			time.Duration(config.OrderNotifications.Timeout)*time.Second,
-			time.Duration(config.NewMarketplaceNotifications.Timeout)*time.Second,
-			config.Bot.Token,
-		)
 		g.Add(notificationsService.RunOrderNotifier, func(err error) {
 			_ = notificationsService.Shutdown()
 		})
 	} else {
 		log.Warn("order notifications job is disabled")
+	}
+
+	if config.NewMarketplaceNotifications.IsEnabled {
+		g.Add(notificationsService.RunNewMarketplaceNotifier, func(err error) {
+			_ = notificationsService.Shutdown()
+		})
+	} else {
+		log.Warn("new marketplace notifications job is disabled")
 	}
 
 	r.Mount("/api/v1/public/products", productsHandler)
