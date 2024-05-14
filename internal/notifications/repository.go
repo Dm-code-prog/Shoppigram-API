@@ -47,6 +47,22 @@ func (p *Pg) GetAdminsNotificationList(ctx context.Context, webAppID uuid.UUID) 
 	return adminsNotificationList, nil
 }
 
+// GetReviewersNotificationList gets a list of reviewers to notify about a new marketplace
+func (p *Pg) GetReviewersNotificationList(ctx context.Context, webAppID uuid.UUID) ([]int64, error) {
+	var reviewersNotificationList []int64
+
+	rows, err := p.gen.GetReviewersNotificationList(ctx, webAppID)
+	if err != nil {
+		return nil, errors.Wrap(err, "p.gen.GetReviewersNotificationList")
+	}
+
+	for _, v := range rows {
+		reviewersNotificationList = append(reviewersNotificationList, v)
+	}
+
+	return reviewersNotificationList, nil
+}
+
 // GetNotifierCursor gets notifier cursor
 func (p *Pg) GetNotifierCursor(ctx context.Context, name string) (Cursor, error) {
 	cursor, err := p.gen.GetNotifierCursor(ctx, pgtype.Text{
