@@ -57,13 +57,14 @@ type (
 
 	// Service provides user operations
 	Service struct {
-		repo                 Repository
-		log                  *zap.Logger
-		cache                *ristretto.Cache
-		ctx                  context.Context
-		cancel               context.CancelFunc
-		orderProcessingTimer time.Duration
-		botToken             string
+		repo                          Repository
+		log                           *zap.Logger
+		cache                         *ristretto.Cache
+		ctx                           context.Context
+		cancel                        context.CancelFunc
+		orderProcessingTimer          time.Duration
+		newMarketplaceProcessingTimer time.Duration
+		botToken                      string
 	}
 )
 
@@ -99,7 +100,7 @@ func (o *OrderNotification) BuildMessage() (string, error) {
 }
 
 // New creates a new user service
-func New(repo Repository, log *zap.Logger, orderProcessingTimer time.Duration, botToken string) *Service {
+func New(repo Repository, log *zap.Logger, orderProcessingTimer time.Duration, newMarketplaceProcessingTimer time.Duration, botToken string) *Service {
 	if log == nil {
 		log, _ = zap.NewProduction()
 		log.Warn("log *zap.Logger is nil, using zap.NewProduction")
@@ -121,13 +122,14 @@ func New(repo Repository, log *zap.Logger, orderProcessingTimer time.Duration, b
 
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Service{
-		repo:                 repo,
-		log:                  log,
-		ctx:                  ctx,
-		cancel:               cancel,
-		cache:                cache,
-		orderProcessingTimer: orderProcessingTimer,
-		botToken:             botToken,
+		repo:                          repo,
+		log:                           log,
+		ctx:                           ctx,
+		cancel:                        cancel,
+		cache:                         cache,
+		orderProcessingTimer:          orderProcessingTimer,
+		newMarketplaceProcessingTimer: orderProcessingTimer,
+		botToken:                      botToken,
 	}
 }
 

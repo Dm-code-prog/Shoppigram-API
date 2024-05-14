@@ -107,6 +107,7 @@ func main() {
 			notificationsRepo,
 			log.With(zap.String("service", "notifications")),
 			time.Duration(config.OrderNotifications.Timeout)*time.Second,
+			time.Duration(config.NewMarketplaceNotifications.Timeout)*time.Second,
 			config.Bot.Token,
 		)
 		g.Add(notificationsService.Run, func(err error) {
