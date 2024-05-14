@@ -80,7 +80,7 @@ type (
 )
 
 const (
-	orderNotifierName          = "order_notifications"
+	newOrderNotifierName       = "order_notifications"
 	newMarketplaceNotifierName = "new_marketplace_notifications"
 )
 
@@ -180,7 +180,7 @@ func (s *Service) RunNewOrderNotifier() error {
 
 func (s *Service) runNewOrderNotifierOnce() error {
 	defer s.cache.Clear()
-	cursor, err := s.repo.GetNotifierCursor(s.ctx, orderNotifierName)
+	cursor, err := s.repo.GetNotifierCursor(s.ctx, newOrderNotifierName)
 	if err != nil {
 		return errors.Wrap(err, "s.repo.GetNotifierCursor")
 	}
@@ -205,7 +205,7 @@ func (s *Service) runNewOrderNotifierOnce() error {
 	err = s.repo.UpdateNotifierCursor(s.ctx, Cursor{
 		CursorDate:      lastElem.CreatedAt,
 		LastProcessedID: lastElem.ID,
-		Name:            orderNotifierName,
+		Name:            newOrderNotifierName,
 	})
 	if err != nil {
 		return errors.Wrap(err, "s.repo.UpdateNotifierCursor")
@@ -235,6 +235,38 @@ func (s *Service) RunNewMarketplaceNotifier() error {
 }
 
 func (s *Service) runNewMarketplaceNotifierOnce() error {
+	defer s.cache.Clear()
+	cursor, err := s.repo.GetNotifierCursor(s.ctx, newMarketplaceNotifierName)
+	if err != nil {
+		return errors.Wrap(err, "s.repo.GetNotifierCursor")
+	}
+
+	marketplaceNotifications, err := s.repo.GetNotificationsForNewMarketplacesAfterCursor(s.ctx, cursor)
+	if err != nil {
+		return errors.Wrap(err, "s.repo.GetNotificationsForNewMarketplacesAfterCursor")
+	}
+
+	if len(marketplaceNotifications) == 0 {
+		return nil
+	}
+
+	s.log.With(zap.String("count", strconv.Itoa(len(marketplaceNotifications)))).Info("sending notifications for new marketplaces")
+	err = s.sendNewMarketplaceNotifications(marketplaceNotifications)
+	if err != nil {
+		return errors.Wrap(err, "s.sendNewMarketplaceNotifications")
+	}
+
+	lastElem := marketplaceNotifications[len(marketplaceNotifications)-1]
+
+	err = s.repo.UpdateNotifierCursor(s.ctx, Cursor{
+		CursorDate:      lastElem.CreatedAt,
+		LastProcessedID: lastElem.ID,
+		Name:            newMarketplaceNotifierName,
+	})
+	if err != nil {
+		return errors.Wrap(err, "s.repo.UpdateNotifierCursor")
+	}
+
 	return nil
 }
 
@@ -267,6 +299,49 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 		nl, err := s.repo.GetAdminsNotificationList(s.ctx, a.WebAppID)
 		if err != nil {
 			return errors.Wrap(err, "s.repo.GetAdminsNotificationList")
+		}
+
+		// need to get chat id's of users, who we are going to send messages
+		for _, v := range nl {
+			msgTxt, err := a.BuildMessage()
+			if err != nil {
+				return errors.Wrap(err, "a.BuildMessage")
+			}
+			msg := tgbotapi.NewMessage(v, msgTxt)
+			msg.ParseMode = tgbotapi.ModeMarkdownV2
+			_, err = bot.Send(msg)
+			if err != nil {
+				return errors.Wrap(err, "bot.Send")
+			}
+		}
+
+	}
+
+	return nil
+}
+
+func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []NewMarketplaceNotification) error {
+	var (
+		bot *tgbotapi.BotAPI
+		err error
+	)
+
+	for _, a := range marketplaceNotifications {
+		val, ok := s.cache.Get(a.ID.String())
+		if ok {
+			bot = val.(*tgbotapi.BotAPI)
+		} else {
+			bot, err = tgbotapi.NewBotAPI(s.botToken)
+			if err != nil {
+				return errors.Wrap(err, "tgbotapi.NewBotAPI")
+			}
+
+			s.cache.SetWithTTL(a.ID.String(), bot, 0, 10*time.Minute)
+		}
+
+		nl, err := s.repo.GetReviewersNotificationList(s.ctx, a.ID)
+		if err != nil {
+			return errors.Wrap(err, "s.repo.GetReviewersNotificationList")
 		}
 
 		// need to get chat id's of users, who we are going to send messages
