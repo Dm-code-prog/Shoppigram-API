@@ -283,8 +283,8 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 		err error
 	)
 
-	for _, a := range orderNotifications {
-		val, ok := s.cache.Get(a.WebAppID.String())
+	for _, notification := range orderNotifications {
+		val, ok := s.cache.Get(notification.WebAppID.String())
 		if ok {
 			bot = val.(*tgbotapi.BotAPI)
 		} else {
@@ -293,17 +293,17 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 				return errors.Wrap(err, "tgbotapi.NewBotAPI")
 			}
 
-			s.cache.SetWithTTL(a.WebAppID.String(), bot, 0, 10*time.Minute)
+			s.cache.SetWithTTL(notification.WebAppID.String(), bot, 0, 10*time.Minute)
 		}
 
-		nl, err := s.repo.GetAdminsNotificationList(s.ctx, a.WebAppID)
+		nl, err := s.repo.GetAdminsNotificationList(s.ctx, notification.WebAppID)
 		if err != nil {
 			return errors.Wrap(err, "s.repo.GetAdminsNotificationList")
 		}
 
 		// need to get chat id's of users, who we are going to send messages
 		for _, v := range nl {
-			msgTxt, err := a.BuildMessage()
+			msgTxt, err := notification.BuildMessage()
 			if err != nil {
 				return errors.Wrap(err, "a.BuildMessage")
 			}
@@ -326,8 +326,8 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 		err error
 	)
 
-	for _, a := range marketplaceNotifications {
-		val, ok := s.cache.Get(a.ID.String())
+	for _, notification := range marketplaceNotifications {
+		val, ok := s.cache.Get(notification.ID.String())
 		if ok {
 			bot = val.(*tgbotapi.BotAPI)
 		} else {
@@ -336,17 +336,17 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 				return errors.Wrap(err, "tgbotapi.NewBotAPI")
 			}
 
-			s.cache.SetWithTTL(a.ID.String(), bot, 0, 10*time.Minute)
+			s.cache.SetWithTTL(notification.ID.String(), bot, 0, 10*time.Minute)
 		}
 
-		nl, err := s.repo.GetReviewersNotificationList(s.ctx, a.ID)
+		nl, err := s.repo.GetReviewersNotificationList(s.ctx, notification.ID)
 		if err != nil {
 			return errors.Wrap(err, "s.repo.GetReviewersNotificationList")
 		}
 
 		// need to get chat id's of users, who we are going to send messages
 		for _, v := range nl {
-			msgTxt, err := a.BuildMessage()
+			msgTxt, err := notification.BuildMessage()
 			if err != nil {
 				return errors.Wrap(err, "a.BuildMessage")
 			}
