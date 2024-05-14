@@ -32,7 +32,7 @@ func (q *Queries) GetAdminBotToken(ctx context.Context, arg GetAdminBotTokenPara
 
 const getAdminsNotificationList = `-- name: GetAdminsNotificationList :many
 select admin_username, admin_chat_id
-from notify_list
+from new_order_notifications_list
 where web_app_id = $1
 `
 
@@ -135,37 +135,37 @@ func (q *Queries) GetNotificationsForOrdersAfterCursor(ctx context.Context, arg 
 }
 
 const getNotifierCursor = `-- name: GetNotifierCursor :one
-select last_processed_created_at, last_processed_id
+select cursor_date, last_processed_id
 from notifier_cursors
 where name = $1
 `
 
 type GetNotifierCursorRow struct {
-	LastProcessedCreatedAt pgtype.Timestamp
-	LastProcessedID        pgtype.UUID
+	CursorDate      pgtype.Timestamp
+	LastProcessedID pgtype.UUID
 }
 
 func (q *Queries) GetNotifierCursor(ctx context.Context, name pgtype.Text) (GetNotifierCursorRow, error) {
 	row := q.db.QueryRow(ctx, getNotifierCursor, name)
 	var i GetNotifierCursorRow
-	err := row.Scan(&i.LastProcessedCreatedAt, &i.LastProcessedID)
+	err := row.Scan(&i.CursorDate, &i.LastProcessedID)
 	return i, err
 }
 
 const updateNotifierCursor = `-- name: UpdateNotifierCursor :exec
 update notifier_cursors
-set last_processed_created_at = $2,
+set cursor_date = $2,
     last_processed_id         = $3
 where name = $1
 `
 
 type UpdateNotifierCursorParams struct {
-	Name                   pgtype.Text
-	LastProcessedCreatedAt pgtype.Timestamp
-	LastProcessedID        pgtype.UUID
+	Name            pgtype.Text
+	CursorDate      pgtype.Timestamp
+	LastProcessedID pgtype.UUID
 }
 
 func (q *Queries) UpdateNotifierCursor(ctx context.Context, arg UpdateNotifierCursorParams) error {
-	_, err := q.db.Exec(ctx, updateNotifierCursor, arg.Name, arg.LastProcessedCreatedAt, arg.LastProcessedID)
+	_, err := q.db.Exec(ctx, updateNotifierCursor, arg.Name, arg.CursorDate, arg.LastProcessedID)
 	return err
 }

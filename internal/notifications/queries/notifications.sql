@@ -1,6 +1,6 @@
 -- name: GetAdminsNotificationList :many
 select admin_username, admin_chat_id
-from notify_list
+from new_order_notifications_list
 where web_app_id = $1;
 
 -- name: GetAdminBotToken :one
@@ -9,13 +9,13 @@ from web_apps
 where id = $1;
 
 -- name: GetNotifierCursor :one
-select last_processed_created_at, last_processed_id
+select cursor_date, last_processed_id
 from notifier_cursors
 where name = $1;
 
 -- name: UpdateNotifierCursor :exec
 update notifier_cursors
-set last_processed_created_at = $2,
+set cursor_date = $2,
     last_processed_id         = $3
 where name = $1;
 

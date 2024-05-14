@@ -16,16 +16,21 @@ type Channel struct {
 	AdminBotID   pgtype.UUID
 }
 
-type NotifierCursor struct {
-	LastProcessedCreatedAt pgtype.Timestamp
-	LastProcessedID        pgtype.UUID
-	Name                   pgtype.Text
-}
-
-type NotifyList struct {
+type NewOrderNotificationsList struct {
 	WebAppID      pgtype.UUID
 	AdminUsername pgtype.Text
 	AdminChatID   int64
+}
+
+type NewWebAppsNotificationsList struct {
+	WebAppID uuid.UUID
+	ChatID   int64
+}
+
+type NotifierCursor struct {
+	CursorDate      pgtype.Timestamp
+	LastProcessedID pgtype.UUID
+	Name            pgtype.Text
 }
 
 type Order struct {
@@ -74,4 +79,5 @@ type WebApp struct {
 	EndUserBotEncrToken []byte
 	AdminBotName        pgtype.Text
 	AdminBotEncrToken   []byte
+	VerifiedAt          pgtype.Timestamp
 }
