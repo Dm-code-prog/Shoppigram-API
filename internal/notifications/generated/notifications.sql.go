@@ -61,6 +61,50 @@ func (q *Queries) GetAdminsNotificationList(ctx context.Context, webAppID pgtype
 	return items, nil
 }
 
+const getNotificationsForMarketplacesAfterCursor = `-- name: GetNotificationsForMarketplacesAfterCursor :many
+with markets_batch as (select id, name
+                       from web_apps wa
+                       where wa.is_verified = false
+                       and wa.created_at > $1
+                       order by wa.created_at
+                       limit $2)
+select markets_batch.id,
+       markets_batch.name
+from markets_batch
+         join new_order_notifications_list nonl
+              on nonl.web_app_id = wa.id
+`
+
+type GetNotificationsForMarketplacesAfterCursorParams struct {
+	CreatedAt pgtype.Timestamp
+	Limit     int32
+}
+
+type GetNotificationsForMarketplacesAfterCursorRow struct {
+	ID   uuid.UUID
+	Name string
+}
+
+func (q *Queries) GetNotificationsForMarketplacesAfterCursor(ctx context.Context, arg GetNotificationsForMarketplacesAfterCursorParams) ([]GetNotificationsForMarketplacesAfterCursorRow, error) {
+	rows, err := q.db.Query(ctx, getNotificationsForMarketplacesAfterCursor, arg.CreatedAt, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetNotificationsForMarketplacesAfterCursorRow
+	for rows.Next() {
+		var i GetNotificationsForMarketplacesAfterCursorRow
+		if err := rows.Scan(&i.ID, &i.Name); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getNotificationsForOrdersAfterCursor = `-- name: GetNotificationsForOrdersAfterCursor :many
 with orders_batch as (select id as order_id, created_at, readable_id, web_app_id, external_user_id
                       from orders o
@@ -181,7 +225,7 @@ func (q *Queries) GetReviewersNotificationList(ctx context.Context, webAppID uui
 const updateNotifierCursor = `-- name: UpdateNotifierCursor :exec
 update notifier_cursors
 set cursor_date = $2,
-    last_processed_id         = $3
+    last_processed_id = $3
 where name = $1
 `
 

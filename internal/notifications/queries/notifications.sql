@@ -16,7 +16,7 @@ where name = $1;
 -- name: UpdateNotifierCursor :exec
 update notifier_cursors
 set cursor_date = $2,
-    last_processed_id         = $3
+    last_processed_id = $3
 where name = $1;
 
 -- name: GetNotificationsForOrdersAfterCursor :many
@@ -46,3 +46,16 @@ from orders_batch
 select chat_id
 from new_web_apps_notifications_list
 where web_app_id = $1;
+
+-- name: GetNotificationsForMarketplacesAfterCursor :many
+with markets_batch as (select id, name
+                       from web_apps wa
+                       where wa.is_verified = false
+                       and wa.created_at > $1
+                       order by wa.created_at
+                       limit $2)
+select markets_batch.id,
+       markets_batch.name
+from markets_batch
+         join new_order_notifications_list nonl
+              on nonl.web_app_id = markets_batch.id;

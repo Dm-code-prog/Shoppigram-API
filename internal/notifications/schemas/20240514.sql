@@ -8,4 +8,5 @@ create table new_web_apps_notifications_list (
 
 alter table notifier_cursors rename column last_processed_created_at to cursor_date;
 
+alter table web_apps add column created_at timestamp default now();
 alter table web_apps add column verified_at timestamp;

@@ -79,5 +79,6 @@ type WebApp struct {
 	EndUserBotEncrToken []byte
 	AdminBotName        pgtype.Text
 	AdminBotEncrToken   []byte
+	CreatedAt           pgtype.Timestamp
 	VerifiedAt          pgtype.Timestamp
 }
