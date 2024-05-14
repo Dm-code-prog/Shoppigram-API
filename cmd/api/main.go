@@ -116,11 +116,11 @@ func main() {
 	)
 
 	if config.NewOrderNotifications.IsEnabled {
-		g.Add(notificationsService.RunOrderNotifier, func(err error) {
+		g.Add(notificationsService.RunNewOrderNotifier, func(err error) {
 			_ = notificationsService.Shutdown()
 		})
 	} else {
-		log.Warn("order notifications job is disabled")
+		log.Warn("new order notifications job is disabled")
 	}
 
 	if config.NewMarketplaceNotifications.IsEnabled {

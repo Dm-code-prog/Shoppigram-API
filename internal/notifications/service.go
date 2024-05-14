@@ -16,8 +16,11 @@ import (
 	"go.uber.org/zap"
 )
 
-//go:embed message.md
-var messageTemplate embed.FS
+//go:embed newOrderMessage.md
+var newOrderMessageTemplate embed.FS
+
+//go:embed newMarketplaceMessage.md
+var newMarketplaceMessageTemplate embed.FS
 
 type (
 	// Cursor defines the structure for a notify list cursor
@@ -93,7 +96,7 @@ func (o *NewOrderNotification) BuildMessage() (string, error) {
 `, p.Quantity, escapeSpecialSymbols(p.Name), formatFloat(p.Price), formatCurrency(p.PriceCurrency)))
 	}
 
-	data, err := messageTemplate.ReadFile("newOrderMessage.md")
+	data, err := newOrderMessageTemplate.ReadFile("newOrderMessage.md")
 	if err != nil {
 		return "", errors.Wrap(err, "messageTemplate.ReadFile")
 	}
@@ -110,7 +113,7 @@ func (o *NewOrderNotification) BuildMessage() (string, error) {
 
 // BuildMessage creates a notification message for a new order
 func (m *NewMarketplaceNotification) BuildMessage() (string, error) {
-	data, err := messageTemplate.ReadFile("newMarketplaceMessage.md")
+	data, err := newMarketplaceMessageTemplate.ReadFile("newMarketplaceMessage.md")
 	if err != nil {
 		return "", errors.Wrap(err, "messageTemplate.ReadFile")
 	}
@@ -155,17 +158,17 @@ func New(repo Repository, log *zap.Logger, orderProcessingTimer time.Duration, n
 	}
 }
 
-// RunOrderNotifier starts a job that batch loads new orders
+// RunNewOrderNotifier starts a job that batch loads new orders
 // and sends notifications to the owners of marketplaces
-func (s *Service) RunOrderNotifier() error {
+func (s *Service) RunNewOrderNotifier() error {
 	ticker := time.NewTicker(s.orderProcessingTimer)
 
 	for {
 		select {
 		case <-ticker.C:
-			err := s.runOrderNotifierOnce()
+			err := s.runNewOrderNotifierOnce()
 			if err != nil {
-				s.log.Error("runOrderNotifierOnce failed", logging.SilentError(err))
+				s.log.Error("runNewOrderNotifierOnce failed", logging.SilentError(err))
 				continue
 			}
 		case <-s.ctx.Done():
@@ -175,7 +178,7 @@ func (s *Service) RunOrderNotifier() error {
 	}
 }
 
-func (s *Service) runOrderNotifierOnce() error {
+func (s *Service) runNewOrderNotifierOnce() error {
 	defer s.cache.Clear()
 	cursor, err := s.repo.GetNotifierCursor(s.ctx, orderNotifierName)
 	if err != nil {
@@ -192,9 +195,9 @@ func (s *Service) runOrderNotifierOnce() error {
 	}
 
 	s.log.With(zap.String("count", strconv.Itoa(len(orderNotifications)))).Info("sending notifications for new orders")
-	err = s.sendOrderNotifications(orderNotifications)
+	err = s.sendNewOrderNotifications(orderNotifications)
 	if err != nil {
-		return errors.Wrap(err, "s.sendOrderNotifications")
+		return errors.Wrap(err, "s.sendNewOrderNotifications")
 	}
 
 	lastElem := orderNotifications[len(orderNotifications)-1]
@@ -242,7 +245,7 @@ func (s *Service) Shutdown() error {
 	return nil
 }
 
-func (s *Service) sendOrderNotifications(orderNotifications []NewOrderNotification) error {
+func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotification) error {
 	var (
 		bot *tgbotapi.BotAPI
 		err error
