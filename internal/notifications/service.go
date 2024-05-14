@@ -190,6 +190,30 @@ func (s *Service) runOrderNotifierOnce() error {
 	return nil
 }
 
+// RunNewMarketplaceNotifier starts a job that batch loads new marketplaces
+// and sends notifications to the reviewers of marketplaces
+func (s *Service) RunNewMarketplaceNotifier() error {
+	ticker := time.NewTicker(s.newMarketplaceProcessingTimer)
+
+	for {
+		select {
+		case <-ticker.C:
+			err := s.runNewMarketplaceNotifierOnce()
+			if err != nil {
+				s.log.Error("runNewMarketplaceNotifierOnce failed", logging.SilentError(err))
+				continue
+			}
+		case <-s.ctx.Done():
+			ticker.Stop()
+			return nil
+		}
+	}
+}
+
+func (s *Service) runNewMarketplaceNotifierOnce() error {
+	return nil
+}
+
 // Shutdown stops the job
 func (s *Service) Shutdown() error {
 	s.cancel()
