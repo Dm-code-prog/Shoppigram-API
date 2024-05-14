@@ -48,8 +48,9 @@ type (
 
 	// NewMarketplaceNotification defines the structure of new marketplace notification
 	NewMarketplaceNotification struct {
-		ID   uuid.UUID
-		Name string
+		ID        uuid.UUID
+		Name      string
+		CreatedAt time.Time
 	}
 
 	// Repository provides access to the user storage
@@ -59,6 +60,7 @@ type (
 		GetNotifierCursor(ctx context.Context, name string) (Cursor, error)
 		UpdateNotifierCursor(ctx context.Context, cur Cursor) error
 		GetNotificationsForNewOrdersAfterCursor(ctx context.Context, cur Cursor) ([]NewOrderNotification, error)
+		GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]NewMarketplaceNotification, error)
 	}
 
 	// Service provides user operations
@@ -91,7 +93,7 @@ func (o *NewOrderNotification) BuildMessage() (string, error) {
 `, p.Quantity, escapeSpecialSymbols(p.Name), formatFloat(p.Price), formatCurrency(p.PriceCurrency)))
 	}
 
-	data, err := messageTemplate.ReadFile("message.md")
+	data, err := messageTemplate.ReadFile("newOrderMessage.md")
 	if err != nil {
 		return "", errors.Wrap(err, "messageTemplate.ReadFile")
 	}
@@ -169,7 +171,7 @@ func (s *Service) runOrderNotifierOnce() error {
 
 	orderNotifications, err := s.repo.GetNotificationsForNewOrdersAfterCursor(s.ctx, cursor)
 	if err != nil {
-		return errors.Wrap(err, "s.getOrderNotifications")
+		return errors.Wrap(err, "s.repo.GetNotificationsForNewOrdersAfterCursor")
 	}
 
 	if len(orderNotifications) == 0 {

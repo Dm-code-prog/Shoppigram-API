@@ -48,14 +48,15 @@ from new_web_apps_notifications_list
 where web_app_id = $1;
 
 -- name: GetNotificationsForNewMarketplacesAfterCursor :many
-with markets_batch as (select id, name
+with markets_batch as (select id, name, created_at
                        from web_apps wa
                        where wa.is_verified = false
                        and wa.created_at > $1
                        order by wa.created_at
                        limit $2)
 select markets_batch.id,
-       markets_batch.name
+       markets_batch.name,
+       markets_batch.created_at
 from markets_batch
          join new_order_notifications_list nonl
               on nonl.web_app_id = markets_batch.id;
