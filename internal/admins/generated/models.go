@@ -36,7 +36,8 @@ type Product struct {
 	Description   pgtype.Text
 	Price         float64
 	PriceCurrency string
-	ImageUrl      string
+	ImageUrl      pgtype.Text
+	Category      pgtype.Text
 }
 
 type WebApp struct {

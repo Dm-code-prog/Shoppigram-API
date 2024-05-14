@@ -47,6 +47,39 @@ type (
 		Name           string `json:"name"`
 		ExternalUserID int64
 	}
+
+	// CreateProductRequest specifies the information about a product
+	CreateProductRequest struct {
+		WebAppID      uuid.UUID
+		Name          string  `json:"name"`
+		Description   string  `json:"description"`
+		Price         float64 `json:"price"`
+		PriceCurrency string  `json:"price_currency"`
+		Category      string  `json:"category,omitempty"`
+	}
+
+	// CreateProductResponse returns the ID of the created product
+	CreateProductResponse struct {
+		ID uuid.UUID `json:"id"`
+	}
+
+	// UpdateProductRequest specifies the new information about a product
+	// in a marketplace
+	UpdateProductRequest struct {
+		ID            uuid.UUID `json:"id"`
+		WebAppID      uuid.UUID
+		Name          string  `json:"name"`
+		Description   string  `json:"description"`
+		Price         float64 `json:"price"`
+		PriceCurrency string  `json:"price_currency"`
+		Category      string  `json:"category,omitempty"`
+	}
+
+	// DeleteProductRequest specifies a product in a marketplace that needs to be deleted
+	DeleteProductRequest struct {
+		WebAppID uuid.UUID
+		ID       uuid.UUID `json:"id"`
+	}
 )
 
 type (
@@ -74,6 +107,9 @@ var (
 	ErrorInvalidName             = errors.New("invalid name")
 	ErrorMaxMarketplacesExceeded = errors.New("max marketplaces exceeded")
 
+	ErrorMaxProductsExceeded    = errors.New("max products exceeded")
+	ErrorInvalidProductCurrency = errors.New("invalid product currency")
+
 	ErrorOpNotAllowed = errors.New("operation not allowed")
 )
 
@@ -83,7 +119,8 @@ var (
 
 const (
 	// possibly make it configurable
-	maxMarketplacesThreshold = 5
+	maxMarketplacesThreshold = 8
+	maxMarketplaceProducts   = 128
 )
 
 // New creates a new admin service
@@ -115,11 +152,11 @@ func (s *Service) GetMarketplaces(ctx context.Context, req GetMarketplacesReques
 
 // CreateMarketplace creates and saves a new marketplace
 func (s *Service) CreateMarketplace(ctx context.Context, req CreateMarketplaceRequest) (CreateMarketplaceResponse, error) {
-	if !isNameValid(req.Name) {
+	if !isMarketplaceNameValid(req.Name) {
 		return CreateMarketplaceResponse{}, ErrorInvalidName
 	}
 
-	if !isShortNameValid(req.ShortName) {
+	if !isMarketplaceShortNameValid(req.ShortName) {
 		return CreateMarketplaceResponse{}, ErrorInvalidShortName
 	}
 
@@ -136,7 +173,7 @@ func (s *Service) CreateMarketplace(ctx context.Context, req CreateMarketplaceRe
 
 // UpdateMarketplace edits the name of an existing marketplace
 func (s *Service) UpdateMarketplace(ctx context.Context, req UpdateMarketplaceRequest) error {
-	if !isNameValid(req.Name) {
+	if !isMarketplaceNameValid(req.Name) {
 		return ErrorInvalidName
 	}
 
@@ -152,10 +189,28 @@ func (s *Service) UpdateMarketplace(ctx context.Context, req UpdateMarketplaceRe
 	return nil
 }
 
-func isShortNameValid(shortName string) bool {
+// CreateProduct creates a new product in a marketplace
+func (s *Service) CreateProduct(ctx context.Context, req CreateProductRequest) (CreateProductResponse, error) {
+}
+
+// UpdateProduct updates a product of a marketplace
+func (s *Service) UpdateProduct(ctx context.Context, req UpdateProductRequest) error {}
+
+func (s *Service) DeleteProduct(ctx context.Context, req DeleteProductRequest) error {}
+
+// isUserTheOwnerOfMarketplace checks if a user owns the marketplace
+// and therefore has the right to edit it and it's products
+func (s *Service) isUserTheOwnerOfMarketplace(ctx context.Context, externalUserID int64) (bool, error) {
+}
+
+func isMarketplaceShortNameValid(shortName string) bool {
 	return shortNameRegex.MatchString(shortName)
 }
 
-func isNameValid(name string) bool {
+func isMarketplaceNameValid(name string) bool {
 	return len(name) >= 3
+}
+
+func isProductNameValid(name string) bool {
+	return len(name) >= 3 && len(name) <= 30
 }

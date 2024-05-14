@@ -100,3 +100,34 @@ func (p *Pg) UpdateMarketplace(ctx context.Context, req UpdateMarketplaceRequest
 
 	return nil
 }
+
+// CreateProduct saves a product to the database
+// and returns the ID that it assigned to it
+func (p *Pg) CreateProduct(ctx context.Context, req CreateProductRequest) (CreateProductResponse, error) {
+	count, err := p.gen.CountMarketplaceProducts(ctx, req.WebAppID)
+	if err != nil {
+		return CreateProductResponse{}, errors.Wrap(err, "p.gen.CountMarketplaceProducts")
+	}
+
+	if count > maxMarketplaceProducts {
+		return CreateProductResponse{}, ErrorMaxProductsExceeded
+	}
+
+	id, err := p.gen.CreateProduct(ctx, generated.CreateProductParams{
+		WebAppID:      req.WebAppID,
+		Name:          req.Name,
+		Price:         req.Price,
+		PriceCurrency: req.PriceCurrency,
+		Description:   req.Description,
+		Category:      req.Category,
+	})
+	if err != nil {
+		if strings.Contains(err.Error(), pgerrcode.InvalidTextRepresentation) {
+			return CreateProductResponse{}, ErrorInvalidProductCurrency
+		}
+
+		return CreateProductResponse{}, errors.Wrap(err, "p.gen.CreateProduct")
+	}
+
+	return CreateProductResponse{ID: id}, err
+}
