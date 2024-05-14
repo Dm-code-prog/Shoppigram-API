@@ -88,3 +88,90 @@ func makeUpdateMarketplaceEndpoint(s *Service) endpoint.Endpoint {
 		return nil, nil
 	}
 }
+
+// makeCreateProductEndpoint creates a new endpoint for access to
+// CreateProduct service method
+//
+// Path: POST /api/v1/private/products
+func makeCreateProductEndpoint(s *Service) endpoint.Endpoint {
+	return func(ctx context.Context, req any) (any, error) {
+		usr, err := telegramusers.GetUserFromContext(ctx)
+		if err != nil {
+			s.log.With(
+				zap.String("method", "GetUserFromContext"),
+			).Error(err.Error())
+			return nil, err
+		}
+
+		request, ok := req.(CreateProductRequest)
+		if !ok {
+			return nil, ErrorBadRequest
+		}
+
+		request.ExternalUserID = usr.ExternalId
+		response, err := s.CreateProduct(ctx, request)
+		if err != nil {
+			return nil, errors.Wrap(err, "s.CreateProduct")
+		}
+
+		return response, nil
+	}
+}
+
+// makeUpdateProductEndpoint creates a new endpoint for access to
+// UpdateProduct service method
+//
+// Path: PUT /api/v1/private/products/<web_app_id>
+func makeUpdateProductEndpoint(s *Service) endpoint.Endpoint {
+	return func(ctx context.Context, req any) (any, error) {
+		usr, err := telegramusers.GetUserFromContext(ctx)
+		if err != nil {
+			s.log.With(
+				zap.String("method", "GetUserFromContext"),
+			).Error(err.Error())
+			return nil, err
+		}
+
+		request, ok := req.(UpdateProductRequest)
+		if !ok {
+			return nil, ErrorBadRequest
+		}
+
+		request.ExternalUserID = usr.ExternalId
+		err = s.UpdateProduct(ctx, request)
+		if err != nil {
+			return nil, errors.Wrap(err, "s.UpdateProduct")
+		}
+
+		return nil, nil
+	}
+}
+
+// makeDeleteProductEndpoint creates a new endpoint for access to
+// DeleteProduct service method
+//
+// Path: DELETE /api/v1/private/products/<web_app_id>
+func makeDeleteProductEndpoint(s *Service) endpoint.Endpoint {
+	return func(ctx context.Context, req any) (any, error) {
+		usr, err := telegramusers.GetUserFromContext(ctx)
+		if err != nil {
+			s.log.With(
+				zap.String("method", "GetUserFromContext"),
+			).Error(err.Error())
+			return nil, err
+		}
+
+		request, ok := req.(DeleteProductRequest)
+		if !ok {
+			return nil, ErrorBadRequest
+		}
+
+		request.ExternalUserID = usr.ExternalId
+		err = s.DeleteProduct(ctx, request)
+		if err != nil {
+			return nil, errors.Wrap(err, "s.DeleteProduct")
+		}
+
+		return nil, nil
+	}
+}

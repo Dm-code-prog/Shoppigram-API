@@ -61,20 +61,21 @@ func (q *Queries) CreateMarketplace(ctx context.Context, arg CreateMarketplacePa
 }
 
 const createProduct = `-- name: CreateProduct :one
-insert into products (web_app_id, name, description, price, price_currency, category)
+insert into products (web_app_id, name, description, price, price_currency, category, image_url)
 values ($4::uuid,
         $1,
         nullif($5::text, ''),
         $2,
         $3,
-        nullif($6::varchar(30), ''))
+        nullif($6::varchar(30), ''),
+        '')
 returning id
 `
 
 type CreateProductParams struct {
 	Name          string
 	Price         float64
-	PriceCurrency string
+	PriceCurrency ProductCurrency
 	WebAppID      uuid.UUID
 	Description   string
 	Category      string
@@ -97,12 +98,12 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (u
 const deleteProduct = `-- name: DeleteProduct :execresult
 delete
 from products
-where web_app_id = $1
-  and id = $2
+where web_app_id = $1::uuid
+  and id = $2::uuid
 `
 
 type DeleteProductParams struct {
-	WebAppID pgtype.UUID
+	WebAppID uuid.UUID
 	ID       uuid.UUID
 }
 
@@ -151,10 +152,16 @@ func (q *Queries) GetMarketplaces(ctx context.Context, ownerExternalID pgtype.In
 const isUserTheOwnerOfWebApp = `-- name: IsUserTheOwnerOfWebApp :one
 select owner_external_id = $1
 from web_apps
+where id = $2
 `
 
-func (q *Queries) IsUserTheOwnerOfWebApp(ctx context.Context, ownerExternalID pgtype.Int4) (bool, error) {
-	row := q.db.QueryRow(ctx, isUserTheOwnerOfWebApp, ownerExternalID)
+type IsUserTheOwnerOfWebAppParams struct {
+	OwnerExternalID pgtype.Int4
+	ID              uuid.UUID
+}
+
+func (q *Queries) IsUserTheOwnerOfWebApp(ctx context.Context, arg IsUserTheOwnerOfWebAppParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isUserTheOwnerOfWebApp, arg.OwnerExternalID, arg.ID)
 	var column_1 bool
 	err := row.Scan(&column_1)
 	return column_1, err
@@ -180,22 +187,22 @@ func (q *Queries) UpdateMarketplace(ctx context.Context, arg UpdateMarketplacePa
 const updateProduct = `-- name: UpdateProduct :execresult
 update products
 set name           = $1,
-    description    = nullif($6::text, ''),
+    description    = nullif($5::text, ''),
     price          = $2,
     price_currency = $3,
-    category       = nullif($7::varchar(30), '')
-where web_app_id = $4
-  and id = $5
+    category       = nullif($6::varchar(30), '')
+where web_app_id = $7::uuid
+  and id = $4
 `
 
 type UpdateProductParams struct {
 	Name          string
 	Price         float64
-	PriceCurrency string
-	WebAppID      pgtype.UUID
+	PriceCurrency ProductCurrency
 	ID            uuid.UUID
 	Description   string
 	Category      string
+	WebAppID      uuid.UUID
 }
 
 func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (pgconn.CommandTag, error) {
@@ -203,9 +210,9 @@ func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (p
 		arg.Name,
 		arg.Price,
 		arg.PriceCurrency,
-		arg.WebAppID,
 		arg.ID,
 		arg.Description,
 		arg.Category,
+		arg.WebAppID,
 	)
 }

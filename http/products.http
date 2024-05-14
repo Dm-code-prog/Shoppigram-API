@@ -1,0 +1,40 @@
+POST http://localhost:8080/api/v1/private/marketplaces/products/f2ad8404-c452-41c5-9200-56ff7c591858
+X-Init-Data: user=%7B%22id%22%3A1079068782%2C%22first_name%22%3A%22Dmitry%22%2C%22last_name%22%3A%22Kozlov%22%2C%22username%22%3A%22dmkozloff%22%2C%22language_code%22%3A%22en%22%2C%22is_premium%22%3Atrue%2C%22allows_write_to_pm%22%3Atrue%7D&chat_instance=814657611465912757&chat_type=sender&auth_date=1715690553&hash=53dfe0baf233bee798b36aef12d0ab03d9b64700aec27b76a3ff40066a76a331
+Content-Type: application/json
+
+{
+  "name": "Kubernetes course",
+  "price": 89999,
+  "price_currency": "rub"
+}
+
+###
+
+PUT https://marketplace-api-ordat.ondigitalocean.app/api/v1/public/products/f2ad8404-c452-41c5-9200-56ff7c591858/invalidate
+
+###
+
+PUT http://localhost:8080/api/v1/private/marketplaces/products/f2ad8404-c452-41c5-9200-56ff7c591858
+X-Init-Data: user=%7B%22id%22%3A1079068782%2C%22first_name%22%3A%22Dmitry%22%2C%22last_name%22%3A%22Kozlov%22%2C%22username%22%3A%22dmkozloff%22%2C%22language_code%22%3A%22en%22%2C%22is_premium%22%3Atrue%2C%22allows_write_to_pm%22%3Atrue%7D&chat_instance=814657611465912757&chat_type=sender&auth_date=1715690553&hash=53dfe0baf233bee798b36aef12d0ab03d9b64700aec27b76a3ff40066a76a331
+Content-Type: application/json
+
+{
+  "id": "8b821af8-fd14-4574-a251-a983040d5c22",
+  "name": "Kubernetes course",
+  "price": 99999,
+  "price_currency": "rub",
+  "description": "The course is designed for beginners and experienced DevOps engineers who want to learn how to deploy and manage Kubernetes clusters. The course covers the core concepts of Kubernetes and how to deploy and manage applications on Kubernetes. The course also covers advanced topics such as monitoring, logging, and security. The course is hands-on and includes labs to help you practice what you learn. By the end of the course, you will have the skills and knowledge to deploy and manage Kubernetes clusters in production.",
+  "category": "DevOps"
+}
+
+
+###
+
+DELETE http://localhost:8080/api/v1/private/marketplaces/products/f2ad8404-c452-41c5-9200-56ff7c591858
+X-Init-Data: user=%7B%22id%22%3A1079068782%2C%22first_name%22%3A%22Dmitry%22%2C%22last_name%22%3A%22Kozlov%22%2C%22username%22%3A%22dmkozloff%22%2C%22language_code%22%3A%22en%22%2C%22is_premium%22%3Atrue%2C%22allows_write_to_pm%22%3Atrue%7D&chat_instance=814657611465912757&chat_type=sender&auth_date=1715690553&hash=53dfe0baf233bee798b36aef12d0ab03d9b64700aec27b76a3ff40066a76a331
+Content-Type: application/json
+
+{
+  "id": "8b821af8-fd14-4574-a251-a983040d5c22"
+}
+

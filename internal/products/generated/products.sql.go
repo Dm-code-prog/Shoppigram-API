@@ -34,7 +34,7 @@ type GetProductsRow struct {
 	Category      pgtype.Text
 	Price         float64
 	PriceCurrency string
-	ImageUrl      string
+	ImageUrl      pgtype.Text
 }
 
 func (q *Queries) GetProducts(ctx context.Context, id uuid.UUID) ([]GetProductsRow, error) {

@@ -50,12 +50,13 @@ type (
 
 	// CreateProductRequest specifies the information about a product
 	CreateProductRequest struct {
-		WebAppID      uuid.UUID
-		Name          string  `json:"name"`
-		Description   string  `json:"description"`
-		Price         float64 `json:"price"`
-		PriceCurrency string  `json:"price_currency"`
-		Category      string  `json:"category,omitempty"`
+		WebAppID       uuid.UUID
+		ExternalUserID int64
+		Name           string  `json:"name"`
+		Description    string  `json:"description"`
+		Price          float64 `json:"price"`
+		PriceCurrency  string  `json:"price_currency"`
+		Category       string  `json:"category,omitempty"`
 	}
 
 	// CreateProductResponse returns the ID of the created product
@@ -66,19 +67,21 @@ type (
 	// UpdateProductRequest specifies the new information about a product
 	// in a marketplace
 	UpdateProductRequest struct {
-		ID            uuid.UUID `json:"id"`
-		WebAppID      uuid.UUID
-		Name          string  `json:"name"`
-		Description   string  `json:"description"`
-		Price         float64 `json:"price"`
-		PriceCurrency string  `json:"price_currency"`
-		Category      string  `json:"category,omitempty"`
+		ID             uuid.UUID `json:"id"`
+		WebAppID       uuid.UUID
+		ExternalUserID int64
+		Name           string  `json:"name"`
+		Description    string  `json:"description"`
+		Price          float64 `json:"price"`
+		PriceCurrency  string  `json:"price_currency"`
+		Category       string  `json:"category,omitempty"`
 	}
 
 	// DeleteProductRequest specifies a product in a marketplace that needs to be deleted
 	DeleteProductRequest struct {
-		WebAppID uuid.UUID
-		ID       uuid.UUID `json:"id"`
+		WebAppID       uuid.UUID
+		ID             uuid.UUID `json:"id"`
+		ExternalUserID int64
 	}
 )
 
@@ -88,6 +91,12 @@ type (
 		GetMarketplaces(ctx context.Context, req GetMarketplacesRequest) (GetMarketplacesResponse, error)
 		CreateMarketplace(ctx context.Context, req CreateMarketplaceRequest) (CreateMarketplaceResponse, error)
 		UpdateMarketplace(ctx context.Context, req UpdateMarketplaceRequest) error
+
+		CreateProduct(ctx context.Context, req CreateProductRequest) (CreateProductResponse, error)
+		UpdateProduct(ctx context.Context, req UpdateProductRequest) error
+		DeleteProduct(ctx context.Context, req DeleteProductRequest) error
+
+		IsUserTheOwnerOfMarketplace(ctx context.Context, externalUserID int64, webAppID uuid.UUID) (bool, error)
 	}
 
 	// Service provides admin operations
@@ -191,16 +200,88 @@ func (s *Service) UpdateMarketplace(ctx context.Context, req UpdateMarketplaceRe
 
 // CreateProduct creates a new product in a marketplace
 func (s *Service) CreateProduct(ctx context.Context, req CreateProductRequest) (CreateProductResponse, error) {
+	ok, err := s.repo.IsUserTheOwnerOfMarketplace(ctx, req.ExternalUserID, req.WebAppID)
+	if err != nil {
+		return CreateProductResponse{}, errors.Wrap(err, "s.repo.IsUserTheOwnerOfMarketplace")
+	}
+
+	if !ok {
+		return CreateProductResponse{}, ErrorOpNotAllowed
+	}
+
+	if !isProductNameValid(req.Name) {
+		return CreateProductResponse{}, ErrorInvalidName
+	}
+
+	if req.Price <= 0 {
+		return CreateProductResponse{}, ErrorBadRequest
+	}
+
+	res, err := s.repo.CreateProduct(ctx, req)
+	if err != nil {
+		s.log.With(
+			zap.String("method", "s.repo.CreateProducts"),
+			zap.String("web_app_id", req.WebAppID.String()),
+		).Error(err.Error())
+		return CreateProductResponse{}, errors.Wrap(err, "s.repo.CreateProduct")
+	}
+
+	return res, err
 }
 
 // UpdateProduct updates a product of a marketplace
-func (s *Service) UpdateProduct(ctx context.Context, req UpdateProductRequest) error {}
+func (s *Service) UpdateProduct(ctx context.Context, req UpdateProductRequest) error {
+	ok, err := s.repo.IsUserTheOwnerOfMarketplace(ctx, req.ExternalUserID, req.WebAppID)
+	if err != nil {
+		return errors.Wrap(err, "s.repo.IsUserTheOwnerOfMarketplace")
+	}
 
-func (s *Service) DeleteProduct(ctx context.Context, req DeleteProductRequest) error {}
+	if !ok {
+		return ErrorOpNotAllowed
+	}
 
-// isUserTheOwnerOfMarketplace checks if a user owns the marketplace
-// and therefore has the right to edit it and it's products
-func (s *Service) isUserTheOwnerOfMarketplace(ctx context.Context, externalUserID int64) (bool, error) {
+	if !isProductNameValid(req.Name) {
+		return ErrorInvalidName
+	}
+
+	if req.Price <= 0 {
+		return ErrorBadRequest
+	}
+
+	err = s.repo.UpdateProduct(ctx, req)
+	if err != nil {
+		s.log.With(
+			zap.String("method", "s.repo.UpdateProducts"),
+			zap.String("web_app_id", req.WebAppID.String()),
+			zap.String("product_id", req.ID.String()),
+		).Error(err.Error())
+		return errors.Wrap(err, "s.repo.UpdateProduct")
+	}
+
+	return nil
+}
+
+func (s *Service) DeleteProduct(ctx context.Context, req DeleteProductRequest) error {
+	ok, err := s.repo.IsUserTheOwnerOfMarketplace(ctx, req.ExternalUserID, req.WebAppID)
+	if err != nil {
+		return errors.Wrap(err, "s.repo.IsUserTheOwnerOfMarketplace")
+	}
+
+	if !ok {
+		return ErrorOpNotAllowed
+	}
+
+	err = s.repo.DeleteProduct(ctx, req)
+	if err != nil {
+		s.log.With(
+			zap.String("method", "s.repo.DeleteProduct"),
+			zap.String("web_app_id", req.WebAppID.String()),
+			zap.String("product_id", req.ID.String()),
+		).Error(err.Error())
+		return errors.Wrap(err, "s.repo.DeleteProduct")
+	}
+
+	return nil
 }
 
 func isMarketplaceShortNameValid(shortName string) bool {

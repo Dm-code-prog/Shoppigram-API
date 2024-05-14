@@ -20,7 +20,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/oklog/run"
-	"github.com/shoppigram-com/marketplace-api/internal/cors"
+	"github.com/shoppigram-com/marketplace-api/internal/httputils"
 	"github.com/shoppigram-com/marketplace-api/internal/products"
 	productsgenerated "github.com/shoppigram-com/marketplace-api/internal/products/generated"
 	telegramusers "github.com/shoppigram-com/marketplace-api/internal/users"
@@ -63,7 +63,7 @@ func main() {
 		middleware.Timeout(10*time.Second),
 		middleware.Recoverer,
 		middleware.Compress(5, "application/json"),
-		cors.Middleware,
+		httputils.CORSMiddleware,
 		middleware.Throttle(500),
 	)
 
