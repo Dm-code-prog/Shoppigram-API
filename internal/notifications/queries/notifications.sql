@@ -42,3 +42,7 @@ from orders_batch
          join telegram_users u on external_user_id = u.external_id
          join web_apps wa on orders_batch.web_app_id = wa.id;
 
+-- name: GetReviewersNotificationList :many
+select chat_id
+from new_web_apps_notifications_list
+where web_app_id = $1;
