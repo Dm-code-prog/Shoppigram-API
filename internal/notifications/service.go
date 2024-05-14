@@ -68,7 +68,7 @@ type (
 )
 
 const (
-	notifierName = "order_notifications"
+	orderNotifierName = "order_notifications"
 )
 
 // BuildMessage creates a notification message for a new order
@@ -153,7 +153,7 @@ func (s *Service) Run() error {
 
 func (s *Service) runOnce() error {
 	defer s.cache.Clear()
-	cursor, err := s.repo.GetNotifierCursor(s.ctx, notifierName)
+	cursor, err := s.repo.GetNotifierCursor(s.ctx, orderNotifierName)
 	if err != nil {
 		return errors.Wrap(err, "s.repo.GetNotifierCursor")
 	}
@@ -178,7 +178,7 @@ func (s *Service) runOnce() error {
 	err = s.repo.UpdateNotifierCursor(s.ctx, Cursor{
 		CursorDate:      lastElem.CreatedAt,
 		LastProcessedID: lastElem.ID,
-		Name:            notifierName,
+		Name:            orderNotifierName,
 	})
 	if err != nil {
 		return errors.Wrap(err, "s.repo.UpdateNotifierCursor")
