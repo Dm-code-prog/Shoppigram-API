@@ -13,6 +13,19 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countMarketplaceProducts = `-- name: CountMarketplaceProducts :one
+select count(*)
+from products
+where web_app_id = $1::uuid
+`
+
+func (q *Queries) CountMarketplaceProducts(ctx context.Context, webAppID uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countMarketplaceProducts, webAppID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const countUserMarketplaces = `-- name: CountUserMarketplaces :one
 select count(*)
 from web_apps
@@ -45,6 +58,57 @@ func (q *Queries) CreateMarketplace(ctx context.Context, arg CreateMarketplacePa
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const createProduct = `-- name: CreateProduct :one
+insert into products (web_app_id, name, description, price, price_currency, category, image_url)
+values ($4::uuid,
+        $1,
+        nullif($5::text, ''),
+        $2,
+        $3,
+        nullif($6::varchar(30), ''),
+        '')
+returning id
+`
+
+type CreateProductParams struct {
+	Name          string
+	Price         float64
+	PriceCurrency ProductCurrency
+	WebAppID      uuid.UUID
+	Description   string
+	Category      string
+}
+
+func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, createProduct,
+		arg.Name,
+		arg.Price,
+		arg.PriceCurrency,
+		arg.WebAppID,
+		arg.Description,
+		arg.Category,
+	)
+	var id uuid.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const deleteProduct = `-- name: DeleteProduct :execresult
+delete
+from products
+where web_app_id = $1::uuid
+  and id = $2::uuid
+`
+
+type DeleteProductParams struct {
+	WebAppID uuid.UUID
+	ID       uuid.UUID
+}
+
+func (q *Queries) DeleteProduct(ctx context.Context, arg DeleteProductParams) (pgconn.CommandTag, error) {
+	return q.db.Exec(ctx, deleteProduct, arg.WebAppID, arg.ID)
 }
 
 const getMarketplaces = `-- name: GetMarketplaces :many
@@ -85,6 +149,24 @@ func (q *Queries) GetMarketplaces(ctx context.Context, ownerExternalID pgtype.In
 	return items, nil
 }
 
+const isUserTheOwnerOfWebApp = `-- name: IsUserTheOwnerOfWebApp :one
+select owner_external_id = $1
+from web_apps
+where id = $2
+`
+
+type IsUserTheOwnerOfWebAppParams struct {
+	OwnerExternalID pgtype.Int4
+	ID              uuid.UUID
+}
+
+func (q *Queries) IsUserTheOwnerOfWebApp(ctx context.Context, arg IsUserTheOwnerOfWebAppParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isUserTheOwnerOfWebApp, arg.OwnerExternalID, arg.ID)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const updateMarketplace = `-- name: UpdateMarketplace :execresult
 update web_apps
 set name = $1
@@ -100,4 +182,37 @@ type UpdateMarketplaceParams struct {
 
 func (q *Queries) UpdateMarketplace(ctx context.Context, arg UpdateMarketplaceParams) (pgconn.CommandTag, error) {
 	return q.db.Exec(ctx, updateMarketplace, arg.Name, arg.ID, arg.OwnerExternalID)
+}
+
+const updateProduct = `-- name: UpdateProduct :execresult
+update products
+set name           = $1,
+    description    = nullif($5::text, ''),
+    price          = $2,
+    price_currency = $3,
+    category       = nullif($6::varchar(30), '')
+where web_app_id = $7::uuid
+  and id = $4
+`
+
+type UpdateProductParams struct {
+	Name          string
+	Price         float64
+	PriceCurrency ProductCurrency
+	ID            uuid.UUID
+	Description   string
+	Category      string
+	WebAppID      uuid.UUID
+}
+
+func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (pgconn.CommandTag, error) {
+	return q.db.Exec(ctx, updateProduct,
+		arg.Name,
+		arg.Price,
+		arg.PriceCurrency,
+		arg.ID,
+		arg.Description,
+		arg.Category,
+		arg.WebAppID,
+	)
 }

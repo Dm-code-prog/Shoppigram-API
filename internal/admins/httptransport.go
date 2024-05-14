@@ -52,10 +52,35 @@ func MakeHandler(bs *Service, authMw endpoint.Middleware) http.Handler {
 		opts...,
 	)
 
+	createProductHandler := kithttp.NewServer(
+		authMw(makeCreateProductEndpoint(bs)),
+		decodeCreateProductRequest,
+		encodeResponse,
+		opts...,
+	)
+
+	updateProductHandler := kithttp.NewServer(
+		authMw(makeUpdateProductEndpoint(bs)),
+		decodeUpdateProductRequest,
+		encodeResponse,
+		opts...,
+	)
+
+	deleteProductHandler := kithttp.NewServer(
+		authMw(makeDeleteProductEndpoint(bs)),
+		decodeDeleteProductRequest,
+		encodeResponse,
+		opts...,
+	)
+
 	r := chi.NewRouter()
 	r.Get("/", getMarketplacesHandler.ServeHTTP)
 	r.Post("/", createMarketplaceHandler.ServeHTTP)
 	r.Put("/{web_app_id}", updateMarketplaceHandler.ServeHTTP)
+
+	r.Post("/products/{web_app_id}", createProductHandler.ServeHTTP)
+	r.Put("/products/{web_app_id}", updateProductHandler.ServeHTTP)
+	r.Delete("/products/{web_app_id}", deleteProductHandler.ServeHTTP)
 
 	return r
 }
@@ -93,6 +118,67 @@ func decodeUpdateMarketplaceRequest(c context.Context, r *http.Request) (interfa
 	return request, nil
 }
 
+func decodeCreateProductRequest(c context.Context, r *http.Request) (interface{}, error) {
+	var request CreateProductRequest
+
+	webAppID := chi.URLParam(r, "web_app_id")
+	if webAppID == "" {
+		return nil, ErrorBadRequest
+	}
+
+	asUUID, err := uuid.Parse(webAppID)
+	if err != nil {
+		return nil, ErrorBadRequest
+	}
+	request.WebAppID = asUUID
+
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		return nil, ErrorBadRequest
+	}
+
+	return request, nil
+}
+
+func decodeUpdateProductRequest(c context.Context, r *http.Request) (interface{}, error) {
+	var request UpdateProductRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		return nil, ErrorBadRequest
+	}
+
+	webAppID := chi.URLParam(r, "web_app_id")
+	if webAppID == "" {
+		return nil, ErrorBadRequest
+	}
+
+	asUUID, err := uuid.Parse(webAppID)
+	if err != nil {
+		return nil, ErrorBadRequest
+	}
+	request.WebAppID = asUUID
+
+	return request, nil
+}
+
+func decodeDeleteProductRequest(c context.Context, r *http.Request) (interface{}, error) {
+	var request DeleteProductRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		return nil, ErrorBadRequest
+	}
+
+	webAppID := chi.URLParam(r, "web_app_id")
+	if webAppID == "" {
+		return nil, ErrorBadRequest
+	}
+
+	asUUID, err := uuid.Parse(webAppID)
+	if err != nil {
+		return nil, ErrorBadRequest
+	}
+	request.WebAppID = asUUID
+
+	return request, nil
+}
+
 func encodeResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
 	if response == nil {
 		w.WriteHeader(http.StatusNoContent)
@@ -111,6 +197,8 @@ var badRequestErrors = []error{
 	ErrorAdminNotFound,
 	ErrorMaxMarketplacesExceeded,
 	ErrorOpNotAllowed,
+	ErrorMaxProductsExceeded,
+	ErrorInvalidProductCurrency,
 }
 
 func encodeError(_ context.Context, err error, w http.ResponseWriter) {

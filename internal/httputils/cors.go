@@ -1,4 +1,4 @@
-package cors
+package httputils
 
 import (
 	"net/http"
@@ -20,8 +20,8 @@ var allowedPatterns = []*regexp.Regexp{
 	regexp.MustCompile(`^https://[\w-]+shoppigram\.vercel\.app$`),
 }
 
-// Middleware checks the request's origin and sets CORS headers accordingly.
-func Middleware(next http.Handler) http.Handler {
+// CORSMiddleware checks the request's origin and sets CORS headers accordingly.
+func CORSMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 

@@ -5,9 +5,11 @@ sql:
       - ./queries/admins.sql
     schema:
       - ../products/schemas/20240411.sql
+      - ../products/schemas/20240501.sql
       - ./schemas/20240509.sql
       - ./schemas/20240510.sql
       - ./schemas/20240513.sql
+      - ./schemas/20240514.sql
     gen:
       go:
         package: generated

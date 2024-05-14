@@ -2,6 +2,7 @@ package admins
 
 import (
 	"context"
+	"github.com/google/uuid"
 	"github.com/jackc/pgerrcode"
 	"strings"
 
@@ -99,4 +100,87 @@ func (p *Pg) UpdateMarketplace(ctx context.Context, req UpdateMarketplaceRequest
 	}
 
 	return nil
+}
+
+// CreateProduct saves a product to the database
+// and returns the ID that it assigned to it
+func (p *Pg) CreateProduct(ctx context.Context, req CreateProductRequest) (CreateProductResponse, error) {
+	count, err := p.gen.CountMarketplaceProducts(ctx, req.WebAppID)
+	if err != nil {
+		return CreateProductResponse{}, errors.Wrap(err, "p.gen.CountMarketplaceProducts")
+	}
+
+	if count > maxMarketplaceProducts {
+		return CreateProductResponse{}, ErrorMaxProductsExceeded
+	}
+
+	id, err := p.gen.CreateProduct(ctx, generated.CreateProductParams{
+		WebAppID:      req.WebAppID,
+		Name:          req.Name,
+		Price:         req.Price,
+		PriceCurrency: generated.ProductCurrency(req.PriceCurrency),
+		Description:   req.Description,
+		Category:      req.Category,
+	})
+	if err != nil {
+		if strings.Contains(err.Error(), pgerrcode.InvalidTextRepresentation) {
+			return CreateProductResponse{}, ErrorInvalidProductCurrency
+		}
+
+		return CreateProductResponse{}, errors.Wrap(err, "p.gen.CreateProduct")
+	}
+
+	return CreateProductResponse{ID: id}, err
+}
+
+// UpdateProduct updates the product of a marketplace in the database
+func (p *Pg) UpdateProduct(ctx context.Context, req UpdateProductRequest) error {
+	execRes, err := p.gen.UpdateProduct(ctx, generated.UpdateProductParams{
+		ID:            req.ID,
+		WebAppID:      req.WebAppID,
+		Name:          req.Name,
+		Price:         req.Price,
+		PriceCurrency: generated.ProductCurrency(req.PriceCurrency),
+		Description:   req.Description,
+		Category:      req.Category,
+	})
+	if err != nil {
+		if strings.Contains(err.Error(), pgerrcode.InvalidTextRepresentation) {
+			return ErrorInvalidProductCurrency
+		}
+		return errors.Wrap(err, "p.gen.UpdateProduct")
+	}
+
+	if execRes.RowsAffected() == 0 {
+		return ErrorOpNotAllowed
+	}
+
+	return nil
+}
+
+// DeleteProduct deletes a product from a marketplace
+func (p *Pg) DeleteProduct(ctx context.Context, req DeleteProductRequest) error {
+	execRes, err := p.gen.DeleteProduct(ctx, generated.DeleteProductParams{WebAppID: req.WebAppID, ID: req.ID})
+	if err != nil {
+		return errors.Wrap(err, "p.gen.DeleteProduct")
+	}
+
+	if execRes.RowsAffected() == 0 {
+		return ErrorOpNotAllowed
+	}
+
+	return nil
+}
+
+// IsUserTheOwnerOfMarketplace checks if the user is the owner of the marketplace
+func (p *Pg) IsUserTheOwnerOfMarketplace(ctx context.Context, userID int64, webAppID uuid.UUID) (bool, error) {
+	ok, err := p.gen.IsUserTheOwnerOfWebApp(ctx, generated.IsUserTheOwnerOfWebAppParams{
+		OwnerExternalID: pgtype.Int4{Int32: int32(userID), Valid: true},
+		ID:              webAppID,
+	})
+	if err != nil {
+		return false, errors.Wrap(err, "p.gen.IsUserTheOwnerOfWebApp")
+	}
+
+	return ok, nil
 }
