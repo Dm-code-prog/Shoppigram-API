@@ -69,7 +69,8 @@ type (
 )
 
 const (
-	orderNotifierName = "order_notifications"
+	orderNotifierName          = "order_notifications"
+	newMarketplaceNotifierName = "new_marketplace_notifications"
 )
 
 // BuildMessage creates a notification message for a new order
@@ -133,17 +134,17 @@ func New(repo Repository, log *zap.Logger, orderProcessingTimer time.Duration, n
 	}
 }
 
-// Run starts a job that batch loads new orders
+// RunOrderNotifier starts a job that batch loads new orders
 // and sends notifications to the owners of marketplaces
-func (s *Service) Run() error {
+func (s *Service) RunOrderNotifier() error {
 	ticker := time.NewTicker(s.orderProcessingTimer)
 
 	for {
 		select {
 		case <-ticker.C:
-			err := s.runOnce()
+			err := s.runOrderNotifierOnce()
 			if err != nil {
-				s.log.Error("runOnce failed", logging.SilentError(err))
+				s.log.Error("runOrderNotifierOnce failed", logging.SilentError(err))
 				continue
 			}
 		case <-s.ctx.Done():
@@ -153,7 +154,7 @@ func (s *Service) Run() error {
 	}
 }
 
-func (s *Service) runOnce() error {
+func (s *Service) runOrderNotifierOnce() error {
 	defer s.cache.Clear()
 	cursor, err := s.repo.GetNotifierCursor(s.ctx, orderNotifierName)
 	if err != nil {

@@ -110,7 +110,7 @@ func main() {
 			time.Duration(config.NewMarketplaceNotifications.Timeout)*time.Second,
 			config.Bot.Token,
 		)
-		g.Add(notificationsService.Run, func(err error) {
+		g.Add(notificationsService.RunOrderNotifier, func(err error) {
 			_ = notificationsService.Shutdown()
 		})
 	} else {
