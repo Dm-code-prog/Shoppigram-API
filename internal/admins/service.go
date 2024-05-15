@@ -368,10 +368,10 @@ func (s *Service) CreateProductImageUploadURL(ctx context.Context, request Creat
 
 	key := shortName + "/" + request.ProductID.String() + "." + request.Extension
 	req, _ := s.spaces.PutObjectRequest(&s3.PutObjectInput{
-		Bucket:   aws.String(s.bucket),
-		Key:      aws.String(key),
-		ACL:      aws.String("public"),
-		Metadata: map[string]*string{},
+		Bucket:      aws.String(s.bucket),
+		Key:         aws.String(key),
+		ACL:         aws.String("public-read"),
+		ContentType: aws.String("image/" + request.Extension),
 	})
 
 	url, err := req.Presign(time.Minute)
@@ -413,12 +413,13 @@ func (s *Service) CreateMarketplaceLogoUploadURL(ctx context.Context, request Cr
 
 	key := shortName + "/logo." + request.Extension
 	req, _ := s.spaces.PutObjectRequest(&s3.PutObjectInput{
-		Bucket: aws.String(s.bucket),
-		Key:    aws.String(key),
-		ACL:    aws.String("public"),
+		Bucket:      aws.String(s.bucket),
+		Key:         aws.String(key),
+		ACL:         aws.String("private"),
+		ContentType: aws.String("image/" + request.Extension),
 	})
 
-	url, err := req.Presign(time.Minute)
+	url, err := req.Presign(10 * time.Minute)
 	if err != nil {
 		return CreateMarketplaceLogoUploadURLResponse{}, errors.Wrap(err, "req.Presign")
 	}

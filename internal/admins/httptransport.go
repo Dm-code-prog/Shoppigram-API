@@ -270,6 +270,16 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 		}
 	}
 
+	if errors.Is(err, telegramusers.ErrorInitDataIsInvalid) ||
+		errors.Is(err, telegramusers.ErrorInitDataIsEmpty) {
+		w.WriteHeader(http.StatusUnauthorized)
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]interface{}{
+			"error": err.Error(),
+		})
+		return
+	}
+
 	if errors.Is(err, ErrorOpNotAllowed) {
 		w.WriteHeader(http.StatusForbidden)
 		w.Header().Set("Content-Type", "application/json")
