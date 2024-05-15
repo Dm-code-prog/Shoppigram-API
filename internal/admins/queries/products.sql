@@ -1,26 +1,3 @@
--- name: GetMarketplaces :many
-select id, name, logo_url, is_verified
-from web_apps
-where owner_external_id = $1;
-
--- name: CreateMarketplace :one
-insert into web_apps (name, owner_external_id, short_name)
-values ($1,
-        $2,
-        $3)
-returning id;
-
--- name: CountUserMarketplaces :one
-select count(*)
-from web_apps
-where owner_external_id = $1;
-
--- name: UpdateMarketplace :execresult
-update web_apps
-set name = $1
-where id = $2
-  and owner_external_id = $3;
-
 -- name: CreateProduct :one
 insert into products (web_app_id, name, description, price, price_currency, category, image_url)
 values (@web_app_id::uuid,
@@ -57,3 +34,8 @@ where web_app_id = @web_app_id::uuid
 select owner_external_id = $1
 from web_apps
 where id = $2;
+
+-- name: IsUserTheOwnerOfProduct :one
+select wa.owner_external_id = $1 from products p
+join web_apps wa on p.web_app_id = wa.id
+where p.id = @id::uuid;

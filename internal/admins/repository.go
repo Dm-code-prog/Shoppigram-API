@@ -184,3 +184,23 @@ func (p *Pg) IsUserTheOwnerOfMarketplace(ctx context.Context, userID int64, webA
 
 	return ok, nil
 }
+
+// IsUserTheOwnerOfProduct checks if the user is the owner of the product
+func (p *Pg) IsUserTheOwnerOfProduct(ctx context.Context, userID int64, productID uuid.UUID) (bool, error) {
+	ok, err := p.gen.IsUserTheOwnerOfProduct(ctx, generated.IsUserTheOwnerOfProductParams{
+		OwnerExternalID: pgtype.Int4{Int32: int32(userID), Valid: true},
+		ID:              productID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, ErrorOpNotAllowed
+		}
+		return false, errors.Wrap(err, "p.gen.IsUserTheOwnerOfProduct")
+	}
+
+	return ok, nil
+}
+
+func (p *Pg) GetMarketplaceShortName(ctx context.Context, id uuid.UUID) (string, error) {
+	return p.gen.GetMarketplaceShortName(ctx, id)
+}
