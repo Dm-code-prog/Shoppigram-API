@@ -30,6 +30,7 @@ func (p *Pg) GetProducts(ctx context.Context, request GetProductsRequest) (GetPr
 	}
 
 	var name string
+	var shortName string
 	var products []Product
 	for _, p := range prod {
 		products = append(products, Product{
@@ -42,10 +43,12 @@ func (p *Pg) GetProducts(ctx context.Context, request GetProductsRequest) (GetPr
 			ImageURL:      p.ImageUrl.String,
 		})
 		name = p.WebAppName
+		shortName = p.WebAppShortName
 	}
 
 	return GetProductsResponse{
-		WebAppName: name,
-		Products:   products,
+		WebAppName:      name,
+		WebAppShortName: shortName,
+		Products:        products,
 	}, nil
 }

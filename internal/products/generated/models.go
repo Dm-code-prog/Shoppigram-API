@@ -34,4 +34,5 @@ type WebApp struct {
 	EndUserBotEncrToken []byte
 	AdminBotName        pgtype.Text
 	AdminBotEncrToken   []byte
+	ShortName           string
 }

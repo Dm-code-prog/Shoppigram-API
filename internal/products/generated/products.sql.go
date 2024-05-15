@@ -13,7 +13,8 @@ import (
 )
 
 const getProducts = `-- name: GetProducts :many
-select w.name as web_app_name,
+select w.name       as web_app_name,
+       w.short_name as web_app_short_name,
        p.id,
        p.name,
        p.description,
@@ -27,14 +28,15 @@ where w.id = $1
 `
 
 type GetProductsRow struct {
-	WebAppName    string
-	ID            uuid.UUID
-	Name          string
-	Description   pgtype.Text
-	Category      pgtype.Text
-	Price         float64
-	PriceCurrency string
-	ImageUrl      pgtype.Text
+	WebAppName      string
+	WebAppShortName string
+	ID              uuid.UUID
+	Name            string
+	Description     pgtype.Text
+	Category        pgtype.Text
+	Price           float64
+	PriceCurrency   string
+	ImageUrl        pgtype.Text
 }
 
 func (q *Queries) GetProducts(ctx context.Context, id uuid.UUID) ([]GetProductsRow, error) {
@@ -48,6 +50,7 @@ func (q *Queries) GetProducts(ctx context.Context, id uuid.UUID) ([]GetProductsR
 		var i GetProductsRow
 		if err := rows.Scan(
 			&i.WebAppName,
+			&i.WebAppShortName,
 			&i.ID,
 			&i.Name,
 			&i.Description,

@@ -31,8 +31,9 @@ type (
 
 	// GetProductsResponse defines the response body for the GetProducts endpoint
 	GetProductsResponse struct {
-		WebAppName string    `json:"web_app_name,omitempty"`
-		Products   []Product `json:"products,omitempty"`
+		WebAppName      string    `json:"web_app_name,omitempty"`
+		WebAppShortName string    `json:"web_app_short_name,omitempty"`
+		Products        []Product `json:"products,omitempty"`
 	}
 
 	// InvalidateProductsCacheRequest defines the request for the InvalidateProductsCache endpoint
