@@ -98,7 +98,12 @@ func main() {
 	ordersHandler := orders.MakeHandler(ordersService, authMw)
 
 	adminsRepo := admins.NewPg(db)
-	adminsService := admins.New(adminsRepo, log.With(zap.String("service", "admins")))
+	adminsService := admins.New(adminsRepo, log.With(zap.String("service", "admins")), admins.DOSpacesConfig{
+		Endpoint: config.DigitalOcean.Spaces.Endpoint,
+		Bucket:   config.DigitalOcean.Spaces.Bucket,
+		ID:       config.DigitalOcean.Spaces.Key,
+		Secret:   config.DigitalOcean.Spaces.Secret,
+	})
 	adminsHandler := admins.MakeHandler(adminsService, authMw)
 
 	if config.OrderNotifications.IsEnabled {

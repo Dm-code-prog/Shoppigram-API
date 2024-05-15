@@ -2,11 +2,16 @@ package admins
 
 import (
 	"context"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 	"regexp"
 	"strconv"
+	"time"
 )
 
 type (
@@ -83,12 +88,43 @@ type (
 		ID             uuid.UUID `json:"id"`
 		ExternalUserID int64
 	}
+
+	// CreateProductImageUploadURLRequest specifies the request for creating a new product image upload URL
+	// for a product in a marketplace
+	//
+	// The user will be able to upload an image directly to the DigitalOcean Space
+	CreateProductImageUploadURLRequest struct {
+		WebAppID       uuid.UUID
+		ProductID      uuid.UUID `json:"product_id"`
+		Extension      string    `json:"extension"`
+		ExternalUserID int64
+	}
+
+	// CreateProductImageUploadURLResponse specifies the response for creating a new product image upload URL
+	CreateProductImageUploadURLResponse struct {
+		UploadURL string `json:"upload_url"`
+		Key       string `json:"key"`
+	}
+
+	// CreateMarketplaceLogoUploadURLRequest specifies the request for creating a new marketplace logo upload URL
+	CreateMarketplaceLogoUploadURLRequest struct {
+		WebAppID       uuid.UUID
+		Extension      string `json:"extension"`
+		ExternalUserID int64
+	}
+
+	// CreateMarketplaceLogoUploadURLResponse specifies the response for creating a new marketplace logo upload URL
+	CreateMarketplaceLogoUploadURLResponse struct {
+		UploadURL string `json:"upload_url"`
+		Key       string `json:"key"`
+	}
 )
 
 type (
 	// Repository provides access to the admin storage
 	Repository interface {
 		GetMarketplaces(ctx context.Context, req GetMarketplacesRequest) (GetMarketplacesResponse, error)
+		GetMarketplaceShortName(ctx context.Context, id uuid.UUID) (string, error)
 		CreateMarketplace(ctx context.Context, req CreateMarketplaceRequest) (CreateMarketplaceResponse, error)
 		UpdateMarketplace(ctx context.Context, req UpdateMarketplaceRequest) error
 
@@ -97,12 +133,23 @@ type (
 		DeleteProduct(ctx context.Context, req DeleteProductRequest) error
 
 		IsUserTheOwnerOfMarketplace(ctx context.Context, externalUserID int64, webAppID uuid.UUID) (bool, error)
+		IsUserTheOwnerOfProduct(ctx context.Context, externalUserID int64, productID uuid.UUID) (bool, error)
+	}
+
+	// DOSpacesConfig holds the credentials for the S3 bucket
+	DOSpacesConfig struct {
+		Endpoint string
+		ID       string
+		Secret   string
+		Bucket   string
 	}
 
 	// Service provides admin operations
 	Service struct {
-		repo Repository
-		log  *zap.Logger
+		repo   Repository
+		spaces *s3.S3
+		log    *zap.Logger
+		bucket string
 	}
 )
 
@@ -120,6 +167,8 @@ var (
 	ErrorInvalidProductCurrency = errors.New("invalid product currency")
 
 	ErrorOpNotAllowed = errors.New("operation not allowed")
+
+	ErrorInvalidImageExtension = errors.New("invalid image extension, only png, jpg, jpeg are allowed")
 )
 
 var (
@@ -133,15 +182,28 @@ const (
 )
 
 // New creates a new admin service
-func New(repo Repository, log *zap.Logger) *Service {
+func New(repo Repository, log *zap.Logger, conf DOSpacesConfig) *Service {
 	if log == nil {
 		log, _ = zap.NewProduction()
 		log.Warn("log *zap.Logger is nil, using zap.NewProduction")
 	}
 
+	sess := session.Must(session.NewSession(&aws.Config{
+		Region: aws.String("fra1"),
+		Credentials: credentials.NewStaticCredentials(
+			conf.ID,
+			conf.Secret,
+			"",
+		),
+		Endpoint:         aws.String(conf.Endpoint),
+		S3ForcePathStyle: aws.Bool(false),
+	}))
+
 	return &Service{
-		repo: repo,
-		log:  log,
+		repo:   repo,
+		log:    log,
+		spaces: s3.New(sess),
+		bucket: conf.Bucket,
 	}
 }
 
@@ -231,12 +293,9 @@ func (s *Service) CreateProduct(ctx context.Context, req CreateProductRequest) (
 
 // UpdateProduct updates a product of a marketplace
 func (s *Service) UpdateProduct(ctx context.Context, req UpdateProductRequest) error {
-	ok, err := s.repo.IsUserTheOwnerOfMarketplace(ctx, req.ExternalUserID, req.WebAppID)
-	if err != nil {
-		return errors.Wrap(err, "s.repo.IsUserTheOwnerOfMarketplace")
-	}
-
-	if !ok {
+	if ok, err := s.repo.IsUserTheOwnerOfProduct(ctx, req.ExternalUserID, req.ID); err != nil {
+		return errors.Wrap(err, "s.repo.IsUserTheOwnerOfProduct")
+	} else if !ok {
 		return ErrorOpNotAllowed
 	}
 
@@ -248,7 +307,7 @@ func (s *Service) UpdateProduct(ctx context.Context, req UpdateProductRequest) e
 		return ErrorBadRequest
 	}
 
-	err = s.repo.UpdateProduct(ctx, req)
+	err := s.repo.UpdateProduct(ctx, req)
 	if err != nil {
 		s.log.With(
 			zap.String("method", "s.repo.UpdateProducts"),
@@ -262,16 +321,13 @@ func (s *Service) UpdateProduct(ctx context.Context, req UpdateProductRequest) e
 }
 
 func (s *Service) DeleteProduct(ctx context.Context, req DeleteProductRequest) error {
-	ok, err := s.repo.IsUserTheOwnerOfMarketplace(ctx, req.ExternalUserID, req.WebAppID)
-	if err != nil {
-		return errors.Wrap(err, "s.repo.IsUserTheOwnerOfMarketplace")
-	}
-
-	if !ok {
+	if ok, err := s.repo.IsUserTheOwnerOfProduct(ctx, req.ExternalUserID, req.ID); err != nil {
+		return errors.Wrap(err, "s.repo.IsUserTheOwnerOfProduct")
+	} else if !ok {
 		return ErrorOpNotAllowed
 	}
 
-	err = s.repo.DeleteProduct(ctx, req)
+	err := s.repo.DeleteProduct(ctx, req)
 	if err != nil {
 		s.log.With(
 			zap.String("method", "s.repo.DeleteProduct"),
@@ -284,6 +340,96 @@ func (s *Service) DeleteProduct(ctx context.Context, req DeleteProductRequest) e
 	return nil
 }
 
+// CreateProductImageUploadURL creates a new upload URL for a product image
+func (s *Service) CreateProductImageUploadURL(ctx context.Context, request CreateProductImageUploadURLRequest) (CreateProductImageUploadURLResponse, error) {
+	if ok, err := s.repo.IsUserTheOwnerOfProduct(ctx, request.ExternalUserID, request.ProductID); err != nil {
+		s.log.With(
+			zap.String("method", "s.repo.IsUserTheOwnerOfProduct"),
+			zap.String("user_id", strconv.FormatInt(request.ExternalUserID, 10)),
+			zap.String("product_id", request.ProductID.String())).Error(err.Error())
+		return CreateProductImageUploadURLResponse{}, errors.Wrap(err, "s.repo.IsUserTheOwnerOfProduct")
+	} else if !ok {
+		return CreateProductImageUploadURLResponse{}, ErrorOpNotAllowed
+	}
+
+	// validate extension
+	if !isValidImageExtension(request.Extension) {
+		return CreateProductImageUploadURLResponse{}, ErrorInvalidImageExtension
+	}
+
+	shortName, err := s.repo.GetMarketplaceShortName(ctx, request.WebAppID)
+	if err != nil {
+		return CreateProductImageUploadURLResponse{}, errors.Wrap(err, "s.repo.GetMarketplaceShortName")
+	}
+
+	if shortName == "" {
+		return CreateProductImageUploadURLResponse{}, errors.New("s.repo.GetMarketplaceShortName: short name is empty")
+	}
+
+	key := shortName + "/" + request.ProductID.String() + "." + request.Extension
+	req, _ := s.spaces.PutObjectRequest(&s3.PutObjectInput{
+		Bucket:      aws.String(s.bucket),
+		Key:         aws.String(key),
+		ACL:         aws.String("public-read"),
+		ContentType: aws.String("image/" + request.Extension),
+	})
+
+	url, err := req.Presign(time.Minute)
+	if err != nil {
+		return CreateProductImageUploadURLResponse{}, errors.Wrap(err, "req.Presign")
+	}
+
+	return CreateProductImageUploadURLResponse{
+		UploadURL: url,
+		Key:       key,
+	}, nil
+}
+
+// CreateMarketplaceLogoUploadURL creates a new upload URL for a marketplace logo
+func (s *Service) CreateMarketplaceLogoUploadURL(ctx context.Context, request CreateMarketplaceLogoUploadURLRequest) (CreateMarketplaceLogoUploadURLResponse, error) {
+	if ok, err := s.repo.IsUserTheOwnerOfMarketplace(ctx, request.ExternalUserID, request.WebAppID); err != nil {
+		s.log.With(
+			zap.String("method", "s.repo.IsUserTheOwnerOfMarketplace"),
+			zap.String("user_id", strconv.FormatInt(request.ExternalUserID, 10)),
+			zap.String("web_app_id", request.WebAppID.String())).Error(err.Error())
+		return CreateMarketplaceLogoUploadURLResponse{}, errors.Wrap(err, "s.repo.IsUserTheOwnerOfMarketplace")
+	} else if !ok {
+		return CreateMarketplaceLogoUploadURLResponse{}, ErrorOpNotAllowed
+	}
+
+	// validate extension
+	if !isValidImageExtension(request.Extension) {
+		return CreateMarketplaceLogoUploadURLResponse{}, ErrorInvalidImageExtension
+	}
+
+	shortName, err := s.repo.GetMarketplaceShortName(ctx, request.WebAppID)
+	if err != nil {
+		return CreateMarketplaceLogoUploadURLResponse{}, errors.Wrap(err, "s.repo.GetMarketplaceShortName")
+	}
+
+	if shortName == "" {
+		return CreateMarketplaceLogoUploadURLResponse{}, errors.New("s.repo.GetMarketplaceShortName: short name is empty")
+	}
+
+	key := shortName + "/logo." + request.Extension
+	req, _ := s.spaces.PutObjectRequest(&s3.PutObjectInput{
+		Bucket:      aws.String(s.bucket),
+		Key:         aws.String(key),
+		ACL:         aws.String("private"),
+		ContentType: aws.String("image/" + request.Extension),
+	})
+
+	url, err := req.Presign(10 * time.Minute)
+	if err != nil {
+		return CreateMarketplaceLogoUploadURLResponse{}, errors.Wrap(err, "req.Presign")
+	}
+
+	return CreateMarketplaceLogoUploadURLResponse{
+		UploadURL: url,
+		Key:       key,
+	}, nil
+}
+
 func isMarketplaceShortNameValid(shortName string) bool {
 	return shortNameRegex.MatchString(shortName)
 }
@@ -294,4 +440,13 @@ func isMarketplaceNameValid(name string) bool {
 
 func isProductNameValid(name string) bool {
 	return len(name) >= 3 && len(name) <= 30
+}
+
+func isValidImageExtension(ext string) bool {
+	switch ext {
+	case "png", "jpg", "jpeg":
+		return true
+	}
+
+	return false
 }

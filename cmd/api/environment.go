@@ -23,4 +23,13 @@ type Environment struct {
 	Bot struct {
 		Token string `env:"BOT_TOKEN,required"`
 	}
+
+	DigitalOcean struct {
+		Spaces struct {
+			Endpoint string `env:"DIGITALOCEAN_SPACES_ENDPOINT,required"`
+			Bucket   string `env:"DIGITALOCEAN_SPACES_BUCKET,required"`
+			Key      string `env:"DIGITALOCEAN_SPACES_KEY,required"`
+			Secret   string `env:"DIGITALOCEAN_SPACES_SECRET,required"`
+		}
+	}
 }

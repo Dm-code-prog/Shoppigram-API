@@ -92,7 +92,7 @@ func makeUpdateMarketplaceEndpoint(s *Service) endpoint.Endpoint {
 // makeCreateProductEndpoint creates a new endpoint for access to
 // CreateProduct service method
 //
-// Path: POST /api/v1/private/products
+// Path: POST /api/v1/private/marketplaces/products/<web_app_id>
 func makeCreateProductEndpoint(s *Service) endpoint.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
 		usr, err := telegramusers.GetUserFromContext(ctx)
@@ -121,7 +121,7 @@ func makeCreateProductEndpoint(s *Service) endpoint.Endpoint {
 // makeUpdateProductEndpoint creates a new endpoint for access to
 // UpdateProduct service method
 //
-// Path: PUT /api/v1/private/products/<web_app_id>
+// Path: PUT /api/v1/private/marketplaces/products/<web_app_id>
 func makeUpdateProductEndpoint(s *Service) endpoint.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
 		usr, err := telegramusers.GetUserFromContext(ctx)
@@ -150,7 +150,7 @@ func makeUpdateProductEndpoint(s *Service) endpoint.Endpoint {
 // makeDeleteProductEndpoint creates a new endpoint for access to
 // DeleteProduct service method
 //
-// Path: DELETE /api/v1/private/products/<web_app_id>
+// Path: DELETE /api/v1/private/marketplaces/products/<web_app_id>
 func makeDeleteProductEndpoint(s *Service) endpoint.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
 		usr, err := telegramusers.GetUserFromContext(ctx)
@@ -173,5 +173,63 @@ func makeDeleteProductEndpoint(s *Service) endpoint.Endpoint {
 		}
 
 		return nil, nil
+	}
+}
+
+// makeCreateProductImageUploadURLEndpoint creates a new endpoint for access to
+// CreateProductImageUploadURL service method
+//
+// Path: POST /api/v1/private/marketplaces/products/upload-image-url/<web_app_id>
+func makeCreateProductImageUploadURLEndpoint(s *Service) endpoint.Endpoint {
+	return func(ctx context.Context, req any) (any, error) {
+		usr, err := telegramusers.GetUserFromContext(ctx)
+		if err != nil {
+			s.log.With(
+				zap.String("method", "GetUserFromContext"),
+			).Error(err.Error())
+			return nil, err
+		}
+
+		request, ok := req.(CreateProductImageUploadURLRequest)
+		if !ok {
+			return nil, ErrorBadRequest
+		}
+
+		request.ExternalUserID = usr.ExternalId
+		response, err := s.CreateProductImageUploadURL(ctx, request)
+		if err != nil {
+			return nil, errors.Wrap(err, "s.CreateUploadURL")
+		}
+
+		return response, nil
+	}
+}
+
+// makeCreateMarketplaceLogoUploadURLEndpoint creates a new endpoint for access to
+// CreateMarketplaceLogoUploadURL service method
+//
+// Path: POST /api/v1/private/marketplaces/upload-logo-url/<web_app_id>
+func makeCreateMarketplaceLogoUploadURLEndpoint(s *Service) endpoint.Endpoint {
+	return func(ctx context.Context, req any) (any, error) {
+		usr, err := telegramusers.GetUserFromContext(ctx)
+		if err != nil {
+			s.log.With(
+				zap.String("method", "GetUserFromContext"),
+			).Error(err.Error())
+			return nil, err
+		}
+
+		request, ok := req.(CreateMarketplaceLogoUploadURLRequest)
+		if !ok {
+			return nil, ErrorBadRequest
+		}
+
+		request.ExternalUserID = usr.ExternalId
+		response, err := s.CreateMarketplaceLogoUploadURL(ctx, request)
+		if err != nil {
+			return nil, errors.Wrap(err, "s.CreateUploadURL")
+		}
+
+		return response, nil
 	}
 }
