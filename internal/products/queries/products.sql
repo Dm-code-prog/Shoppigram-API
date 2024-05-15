@@ -1,5 +1,6 @@
 -- name: GetProducts :many
-select w.name as web_app_name,
+select w.name       as web_app_name,
+       w.short_name as web_app_short_name,
        p.id,
        p.name,
        p.description,

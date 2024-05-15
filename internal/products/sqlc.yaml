@@ -9,6 +9,8 @@ sql:
       - ./schemas/20240424.sql
       - ./schemas/20240501.sql
       - ./schemas/20240514.sql
+      - ./schemas/20240514.sql
+      - ./schemas/20240515.sql
     gen:
       go:
         package: generated
