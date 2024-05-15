@@ -44,8 +44,7 @@ from orders_batch
 
 -- name: GetReviewersNotificationList :many
 select chat_id
-from new_web_apps_notifications_list
-where web_app_id = $1;
+from new_web_apps_notifications_list;
 
 -- name: GetNotificationsForNewMarketplacesAfterCursor :many
 with markets_batch as (select id, name, created_at

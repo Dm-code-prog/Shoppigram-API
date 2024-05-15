@@ -201,11 +201,10 @@ func (q *Queries) GetNotifierCursor(ctx context.Context, name pgtype.Text) (GetN
 const getReviewersNotificationList = `-- name: GetReviewersNotificationList :many
 select chat_id
 from new_web_apps_notifications_list
-where web_app_id = $1
 `
 
-func (q *Queries) GetReviewersNotificationList(ctx context.Context, webAppID uuid.UUID) ([]int64, error) {
-	rows, err := q.db.Query(ctx, getReviewersNotificationList, webAppID)
+func (q *Queries) GetReviewersNotificationList(ctx context.Context) ([]int64, error) {
+	rows, err := q.db.Query(ctx, getReviewersNotificationList)
 	if err != nil {
 		return nil, err
 	}
