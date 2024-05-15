@@ -368,8 +368,10 @@ func (s *Service) CreateProductImageUploadURL(ctx context.Context, request Creat
 
 	key := shortName + "/" + request.ProductID.String() + "." + request.Extension
 	req, _ := s.spaces.PutObjectRequest(&s3.PutObjectInput{
-		Bucket: aws.String(s.bucket),
-		Key:    aws.String(key),
+		Bucket:   aws.String(s.bucket),
+		Key:      aws.String(key),
+		ACL:      aws.String("public"),
+		Metadata: map[string]*string{},
 	})
 
 	url, err := req.Presign(time.Minute)
@@ -413,6 +415,7 @@ func (s *Service) CreateMarketplaceLogoUploadURL(ctx context.Context, request Cr
 	req, _ := s.spaces.PutObjectRequest(&s3.PutObjectInput{
 		Bucket: aws.String(s.bucket),
 		Key:    aws.String(key),
+		ACL:    aws.String("public"),
 	})
 
 	url, err := req.Presign(time.Minute)
