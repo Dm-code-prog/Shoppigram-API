@@ -180,6 +180,7 @@ func (p *Pg) GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, 
 		newMarketplaceNotifications = append(newMarketplaceNotifications, NewMarketplaceNotification{
 			ID:            r.ID,
 			Name:          r.Name,
+			ShortName:     r.ShortName,
 			CreatedAt:     r.CreatedAt.Time,
 			OwnerUsername: r.Username.String,
 		})

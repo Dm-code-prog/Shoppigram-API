@@ -64,6 +64,7 @@ func (q *Queries) GetAdminsNotificationList(ctx context.Context, webAppID pgtype
 const getNotificationsForNewMarketplacesAfterCursor = `-- name: GetNotificationsForNewMarketplacesAfterCursor :many
 with marketplaces_batch as (select wa.id,
                                    wa.name,
+                                   wa.short_name,
                                    wa.created_at,
                                    wa.owner_external_id
          from web_apps wa
@@ -73,6 +74,7 @@ with marketplaces_batch as (select wa.id,
          limit $2)
 select marketplaces_batch.id,
        marketplaces_batch.name,
+       marketplaces_batch.short_name,
        marketplaces_batch.created_at,
        u.username
 from marketplaces_batch
@@ -88,6 +90,7 @@ type GetNotificationsForNewMarketplacesAfterCursorParams struct {
 type GetNotificationsForNewMarketplacesAfterCursorRow struct {
 	ID        uuid.UUID
 	Name      string
+	ShortName string
 	CreatedAt pgtype.Timestamp
 	Username  pgtype.Text
 }
@@ -104,6 +107,7 @@ func (q *Queries) GetNotificationsForNewMarketplacesAfterCursor(ctx context.Cont
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
+			&i.ShortName,
 			&i.CreatedAt,
 			&i.Username,
 		); err != nil {

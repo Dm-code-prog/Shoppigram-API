@@ -1,3 +1,6 @@
-New marketplaces has been created by @*%s* and needs to be reviewed
+New marketplace has been created by @*%s* and needs to be reviewed
 
-Web app [link](*%s*)
+Name: *%s*
+Short name: *%s*
+
+Web app link: %s

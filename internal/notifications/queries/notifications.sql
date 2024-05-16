@@ -49,6 +49,7 @@ from new_web_apps_notifications_list;
 -- name: GetNotificationsForNewMarketplacesAfterCursor :many
 with marketplaces_batch as (select wa.id,
                                    wa.name,
+                                   wa.short_name,
                                    wa.created_at,
                                    wa.owner_external_id
          from web_apps wa
@@ -58,6 +59,7 @@ with marketplaces_batch as (select wa.id,
          limit $2)
 select marketplaces_batch.id,
        marketplaces_batch.name,
+       marketplaces_batch.short_name,
        marketplaces_batch.created_at,
        u.username
 from marketplaces_batch

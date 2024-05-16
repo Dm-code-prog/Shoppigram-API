@@ -11,7 +11,9 @@ sql:
       - ../users/schemas/20240423.sql
       - ../users/schemas/20240503.sql
       - ../admins/schemas/20240509.sql
+      - ../admins/schemas/20240513.sql
       - ./schemas/20240514.sql
+      - ./schemas/20240516.sql
     gen:
       go:
         package: generated

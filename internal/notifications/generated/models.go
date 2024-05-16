@@ -23,8 +23,7 @@ type NewOrderNotificationsList struct {
 }
 
 type NewWebAppsNotificationsList struct {
-	WebAppID uuid.UUID
-	ChatID   int64
+	ChatID int64
 }
 
 type NotifierCursor struct {
@@ -81,6 +80,7 @@ type WebApp struct {
 	AdminBotEncrToken   []byte
 	OwnerExternalID     pgtype.Int4
 	ImageUrl            pgtype.Text
+	ShortName           string
 	CreatedAt           pgtype.Timestamp
 	VerifiedAt          pgtype.Timestamp
 }

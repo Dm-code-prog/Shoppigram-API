@@ -53,6 +53,7 @@ type (
 	NewMarketplaceNotification struct {
 		ID            uuid.UUID
 		Name          string
+		ShortName     string
 		CreatedAt     time.Time
 		OwnerUsername string
 	}
@@ -122,6 +123,8 @@ func (m *NewMarketplaceNotification) BuildMessage() (string, error) {
 
 	return fmt.Sprintf(string(data),
 		escapeSpecialSymbols(m.OwnerUsername),
+		escapeSpecialSymbols(m.Name),
+		escapeSpecialSymbols(m.ShortName),
 		escapeSpecialSymbols(marketplaceURL+m.ID.String()),
 	), nil
 }
