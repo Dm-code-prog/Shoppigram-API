@@ -82,7 +82,7 @@ type (
 )
 
 const (
-	newOrderNotifierName       = "order_notifications"
+	newOrderNotifierName       = "new_order_notifications"
 	newMarketplaceNotifierName = "new_marketplace_notifications"
 	marketplaceURL             = "https://web-app.shoppigram.com/app/"
 )
