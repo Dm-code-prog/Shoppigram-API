@@ -114,7 +114,7 @@ func (o *NewOrderNotification) BuildMessage() (string, error) {
 	), nil
 }
 
-// BuildMessage creates a notification message for a new order
+// BuildMessage creates a notification message for a new marketplace
 func (m *NewMarketplaceNotification) BuildMessage() (string, error) {
 	data, err := newMarketplaceMessageTemplate.ReadFile("newMarketplaceMessage.md")
 	if err != nil {
@@ -187,6 +187,8 @@ func (s *Service) RunNewOrderNotifier() error {
 	}
 }
 
+// runNewOrderNotifierOnce executes one iteration of loading a batch of new
+// orders and sending notifications to the owners of marketplaces
 func (s *Service) runNewOrderNotifierOnce() error {
 	defer s.cache.Clear()
 	cursor, err := s.repo.GetNotifierCursor(s.ctx, newOrderNotifierName)
@@ -243,6 +245,8 @@ func (s *Service) RunNewMarketplaceNotifier() error {
 	}
 }
 
+// runNewMarketplaceNotifierOnce executes one iteration of loading a batch of new
+// marketplaces and sending notifications to the reviewers of marketplaces
 func (s *Service) runNewMarketplaceNotifierOnce() error {
 	defer s.cache.Clear()
 	cursor, err := s.repo.GetNotifierCursor(s.ctx, newMarketplaceNotifierName)
@@ -279,13 +283,14 @@ func (s *Service) runNewMarketplaceNotifierOnce() error {
 	return nil
 }
 
-// Shutdown stops the job
+// Shutdown stops all of the notifications
 func (s *Service) Shutdown() error {
 	s.cancel()
 	<-s.ctx.Done()
 	return nil
 }
 
+// sendNewOrderNotifications sends batch of notifications for new orders
 func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotification) error {
 	var (
 		bot *tgbotapi.BotAPI
@@ -329,6 +334,7 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 	return nil
 }
 
+// sendNewMarketplaceNotifications sends batch of notifications for new marketplaces
 func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []NewMarketplaceNotification) error {
 	var (
 		bot *tgbotapi.BotAPI
