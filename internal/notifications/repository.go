@@ -176,10 +176,12 @@ func (p *Pg) GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, 
 		return nil, errors.Wrap(err, "p.gen.GetNotificationsForNewMarketplacesAfterCursor")
 	}
 
-	for _, marketplace := range rows {
+	for _, r := range rows {
 		newMarketplaceNotifications = append(newMarketplaceNotifications, NewMarketplaceNotification{
-			ID:   marketplace.ID,
-			Name: marketplace.Name,
+			ID:            r.ID,
+			Name:          r.Name,
+			CreatedAt:     r.CreatedAt.Time,
+			OwnerUsername: r.Username.String,
 		})
 	}
 

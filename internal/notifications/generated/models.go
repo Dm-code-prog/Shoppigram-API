@@ -79,6 +79,8 @@ type WebApp struct {
 	EndUserBotEncrToken []byte
 	AdminBotName        pgtype.Text
 	AdminBotEncrToken   []byte
+	OwnerExternalID     pgtype.Int4
+	ImageUrl            pgtype.Text
 	CreatedAt           pgtype.Timestamp
 	VerifiedAt          pgtype.Timestamp
 }

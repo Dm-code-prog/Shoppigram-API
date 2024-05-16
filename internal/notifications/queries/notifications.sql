@@ -47,15 +47,19 @@ select chat_id
 from new_web_apps_notifications_list;
 
 -- name: GetNotificationsForNewMarketplacesAfterCursor :many
-with markets_batch as (select id, name, created_at
-                       from web_apps wa
-                       where wa.is_verified = false
-                       and wa.created_at > $1
-                       order by wa.created_at
-                       limit $2)
-select markets_batch.id,
-       markets_batch.name,
-       markets_batch.created_at
-from markets_batch
-         join new_order_notifications_list nonl
-              on nonl.web_app_id = markets_batch.id;
+with marketplaces_batch as (select wa.id,
+                                   wa.name,
+                                   wa.created_at,
+                                   wa.owner_external_id
+         from web_apps wa
+         where wa.is_verified = false
+         and wa.created_at > $1
+         order by wa.created_at
+         limit $2)
+select marketplaces_batch.id,
+       marketplaces_batch.name,
+       marketplaces_batch.created_at,
+       u.username
+from marketplaces_batch
+         join telegram_users u
+              on marketplaces_batch.owner_external_id = u.external_id;

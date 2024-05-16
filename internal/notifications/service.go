@@ -51,9 +51,10 @@ type (
 
 	// NewMarketplaceNotification defines the structure of new marketplace notification
 	NewMarketplaceNotification struct {
-		ID        uuid.UUID
-		Name      string
-		CreatedAt time.Time
+		ID            uuid.UUID
+		Name          string
+		CreatedAt     time.Time
+		OwnerUsername string
 	}
 
 	// Repository provides access to the user storage
@@ -82,6 +83,7 @@ type (
 const (
 	newOrderNotifierName       = "order_notifications"
 	newMarketplaceNotifierName = "new_marketplace_notifications"
+	marketplaceURL             = "https://web-app.shoppigram.com/app/"
 )
 
 // BuildMessage creates a notification message for a new order
@@ -119,8 +121,8 @@ func (m *NewMarketplaceNotification) BuildMessage() (string, error) {
 	}
 
 	return fmt.Sprintf(string(data),
-		escapeSpecialSymbols(m.ID.String()),
-		escapeSpecialSymbols(m.Name),
+		escapeSpecialSymbols(m.OwnerUsername),
+		escapeSpecialSymbols(marketplaceURL+m.ID.String()),
 	), nil
 }
 
@@ -410,12 +412,12 @@ func formatRussianTime(t time.Time) string {
 	return strings.ReplaceAll(t.Format("02.01.2006 15:04:05"), ".", "\\.")
 }
 
-var specialSymbols = []string{"*", "_", "#", "-"}
+var specialSymbols = []string{"*", "_", "#", "-", "."}
 
 func escapeSpecialSymbols(s string) string {
 	for _, sym := range specialSymbols {
 		if strings.Contains(s, sym) {
-			return strings.ReplaceAll(s, sym, "\\"+sym)
+			s = strings.ReplaceAll(s, sym, "\\"+sym)
 		}
 	}
 
