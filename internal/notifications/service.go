@@ -75,7 +75,7 @@ type (
 		cache                         *ristretto.Cache
 		ctx                           context.Context
 		cancel                        context.CancelFunc
-		orderProcessingTimer          time.Duration
+		newOrderProcessingTimer       time.Duration
 		newMarketplaceProcessingTimer time.Duration
 		botToken                      string
 	}
@@ -130,13 +130,17 @@ func (m *NewMarketplaceNotification) BuildMessage() (string, error) {
 }
 
 // New creates a new user service
-func New(repo Repository, log *zap.Logger, orderProcessingTimer time.Duration, newMarketplaceProcessingTimer time.Duration, botToken string) *Service {
+func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration, newMarketplaceProcessingTimer time.Duration, botToken string) *Service {
 	if log == nil {
 		log, _ = zap.NewProduction()
 		log.Warn("log *zap.Logger is nil, using zap.NewProduction")
 	}
-	if orderProcessingTimer == 0 {
-		log.Fatal("order processing timer is not specified")
+	if newOrderProcessingTimer == 0 {
+		log.Fatal("new order processing timer is not specified")
+		return nil
+	}
+	if newMarketplaceProcessingTimer == 0 {
+		log.Fatal("new marketplace processing timer is not specified")
 		return nil
 	}
 
@@ -157,8 +161,8 @@ func New(repo Repository, log *zap.Logger, orderProcessingTimer time.Duration, n
 		ctx:                           ctx,
 		cancel:                        cancel,
 		cache:                         cache,
-		orderProcessingTimer:          orderProcessingTimer,
-		newMarketplaceProcessingTimer: orderProcessingTimer,
+		newOrderProcessingTimer:       newOrderProcessingTimer,
+		newMarketplaceProcessingTimer: newMarketplaceProcessingTimer,
 		botToken:                      botToken,
 	}
 }
@@ -166,7 +170,7 @@ func New(repo Repository, log *zap.Logger, orderProcessingTimer time.Duration, n
 // RunNewOrderNotifier starts a job that batch loads new orders
 // and sends notifications to the owners of marketplaces
 func (s *Service) RunNewOrderNotifier() error {
-	ticker := time.NewTicker(s.orderProcessingTimer)
+	ticker := time.NewTicker(s.newOrderProcessingTimer)
 
 	for {
 		select {
