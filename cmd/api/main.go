@@ -28,7 +28,35 @@ import (
 )
 
 func main() {
-	log, _ := zap.NewProductionConfig().Build(zap.AddStacktrace(zapcore.PanicLevel))
+	var (
+		logLevel  zapcore.Level
+		zapConfig zap.Config
+	)
+
+	envLogLevel := os.Getenv("LOG_LEVEL")
+
+	switch envLogLevel {
+	case "DEBUG":
+		logLevel = zapcore.DebugLevel
+	case "INFO":
+		logLevel = zapcore.InfoLevel
+	case "WARN", "WARNING":
+		logLevel = zapcore.WarnLevel
+	case "ERROR":
+		logLevel = zapcore.ErrorLevel
+	default:
+		logLevel = zapcore.InfoLevel
+	}
+
+	if envLogLevel == "DEBUG" {
+		zapConfig = zap.NewDevelopmentConfig()
+	} else {
+		zapConfig = zap.NewProductionConfig()
+	}
+
+	zapConfig.Level.SetLevel(logLevel)
+
+	log, _ := zapConfig.Build(zap.AddStacktrace(zapcore.PanicLevel))
 	defer log.Sync()
 
 	ctx := context.Background()
