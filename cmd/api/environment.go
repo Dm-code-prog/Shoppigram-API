@@ -2,6 +2,10 @@ package main
 
 // Environment is the configuration struct for the application
 type Environment struct {
+	Zap struct {
+		LogLevel string `env:"LOG_LEVEL,required"`
+	}
+
 	Postgres struct {
 		DSN string `env:"POSTGRES_DSN,required"`
 	}

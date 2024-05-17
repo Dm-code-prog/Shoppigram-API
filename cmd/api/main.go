@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"syscall"
@@ -33,9 +34,15 @@ func main() {
 		zapConfig zap.Config
 	)
 
-	envLogLevel := os.Getenv("LOG_LEVEL")
+	ctx := context.Background()
 
-	switch envLogLevel {
+	var config Environment
+	if _, err := env.UnmarshalFromEnviron(&config); err != nil {
+		fmt.Println("failed to load environment variables", logging.SilentError(err))
+		return
+	}
+
+	switch config.Zap.LogLevel {
 	case "DEBUG":
 		logLevel = zapcore.DebugLevel
 	case "INFO":
@@ -48,7 +55,7 @@ func main() {
 		logLevel = zapcore.InfoLevel
 	}
 
-	if envLogLevel == "DEBUG" {
+	if config.Zap.LogLevel == "DEBUG" {
 		zapConfig = zap.NewDevelopmentConfig()
 	} else {
 		zapConfig = zap.NewProductionConfig()
@@ -58,14 +65,6 @@ func main() {
 
 	log, _ := zapConfig.Build(zap.AddStacktrace(zapcore.PanicLevel))
 	defer log.Sync()
-
-	ctx := context.Background()
-
-	var config Environment
-	if _, err := env.UnmarshalFromEnviron(&config); err != nil {
-		log.Fatal("failed to load environment variables", logging.SilentError(err))
-		return
-	}
 
 	db, err := pgxpool.New(ctx, config.Postgres.DSN)
 	if err != nil {
