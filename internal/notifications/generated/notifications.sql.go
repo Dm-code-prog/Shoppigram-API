@@ -62,6 +62,7 @@ select marketplaces_batch.id,
 from marketplaces_batch
          join telegram_users u
               on marketplaces_batch.owner_external_id = u.external_id
+order by marketplaces_batch.created_at
 `
 
 type GetNotificationsForNewMarketplacesAfterCursorParams struct {
@@ -125,6 +126,7 @@ from orders_batch
          join products p on p.id = op.product_id
          join telegram_users u on external_user_id = u.external_id
          join web_apps wa on orders_batch.web_app_id = wa.id
+order by orders_batch.created_at
 `
 
 type GetNotificationsForNewOrdersAfterCursorParams struct {
