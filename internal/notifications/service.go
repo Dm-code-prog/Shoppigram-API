@@ -16,15 +16,15 @@ import (
 	"go.uber.org/zap"
 )
 
-//go:embed message.md
-var messageTemplate embed.FS
+//go:embed templates/*.md
+var templates embed.FS
 
 type (
 	// Cursor defines the structure for a notify list cursor
 	Cursor struct {
-		Name                   string
-		LastProcessedCreatedAt time.Time
-		LastProcessedID        uuid.UUID
+		Name            string
+		CursorDate      time.Time
+		LastProcessedID uuid.UUID
 	}
 
 	// Product is a marketplace product
@@ -35,8 +35,8 @@ type (
 		PriceCurrency string
 	}
 
-	// OrderNotification defines the structure of order notification
-	OrderNotification struct {
+	// NewOrderNotification defines the structure of order notification
+	NewOrderNotification struct {
 		ID              uuid.UUID
 		ReadableOrderID int64
 		CreatedAt       time.Time
@@ -46,32 +46,46 @@ type (
 		Products        []Product
 	}
 
+	// NewMarketplaceNotification defines the structure of new marketplace notification
+	NewMarketplaceNotification struct {
+		ID            uuid.UUID
+		Name          string
+		ShortName     string
+		CreatedAt     time.Time
+		OwnerUsername string
+	}
+
 	// Repository provides access to the user storage
 	Repository interface {
 		GetAdminsNotificationList(ctx context.Context, webAppID uuid.UUID) ([]int64, error)
+		GetReviewersNotificationList(ctx context.Context, webAppID uuid.UUID) ([]int64, error)
 		GetNotifierCursor(ctx context.Context, name string) (Cursor, error)
 		UpdateNotifierCursor(ctx context.Context, cur Cursor) error
-		GetNotificationsForOrdersAfterCursor(ctx context.Context, cur Cursor) ([]OrderNotification, error)
+		GetNotificationsForNewOrdersAfterCursor(ctx context.Context, cur Cursor) ([]NewOrderNotification, error)
+		GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]NewMarketplaceNotification, error)
 	}
 
 	// Service provides user operations
 	Service struct {
-		repo                 Repository
-		log                  *zap.Logger
-		cache                *ristretto.Cache
-		ctx                  context.Context
-		cancel               context.CancelFunc
-		orderProcessingTimer time.Duration
-		botToken             string
+		repo                          Repository
+		log                           *zap.Logger
+		cache                         *ristretto.Cache
+		ctx                           context.Context
+		cancel                        context.CancelFunc
+		newOrderProcessingTimer       time.Duration
+		newMarketplaceProcessingTimer time.Duration
+		botToken                      string
 	}
 )
 
 const (
-	notifierName = "order_notifications"
+	newOrderNotifierName       = "new_order_notifications"
+	newMarketplaceNotifierName = "new_marketplace_notifications"
+	marketplaceURL             = "https://web-app.shoppigram.com/app/"
 )
 
 // BuildMessage creates a notification message for a new order
-func (o *OrderNotification) BuildMessage() (string, error) {
+func (o *NewOrderNotification) BuildMessage() (string, error) {
 	var subtotal float64
 	var productList strings.Builder
 	var currency string
@@ -82,12 +96,12 @@ func (o *OrderNotification) BuildMessage() (string, error) {
 `, p.Quantity, escapeSpecialSymbols(p.Name), formatFloat(p.Price), formatCurrency(p.PriceCurrency)))
 	}
 
-	data, err := messageTemplate.ReadFile("message.md")
+	newOrderMessageTemplate, err := templates.ReadFile("templates/new_order_message.md")
 	if err != nil {
-		return "", errors.Wrap(err, "messageTemplate.ReadFile")
+		return "", errors.Wrap(err, "templates.ReadFile")
 	}
 
-	return fmt.Sprintf(string(data),
+	return fmt.Sprintf(string(newOrderMessageTemplate),
 		escapeSpecialSymbols(o.WebAppName),
 		escapeSpecialSymbols(o.UserNickname),
 		o.ReadableOrderID,
@@ -97,14 +111,33 @@ func (o *OrderNotification) BuildMessage() (string, error) {
 	), nil
 }
 
+// BuildMessage creates a notification message for a new marketplace
+func (m *NewMarketplaceNotification) BuildMessage() (string, error) {
+	newMarketplaceMessageTemplate, err := templates.ReadFile("templates/new_marketplace_message.md")
+	if err != nil {
+		return "", errors.Wrap(err, "templates.ReadFile")
+	}
+
+	return fmt.Sprintf(string(newMarketplaceMessageTemplate),
+		escapeSpecialSymbols(m.OwnerUsername),
+		escapeSpecialSymbols(m.Name),
+		escapeSpecialSymbols(m.ShortName),
+		escapeSpecialSymbols(marketplaceURL+m.ID.String()),
+	), nil
+}
+
 // New creates a new user service
-func New(repo Repository, log *zap.Logger, orderProcessingTimer time.Duration, botToken string) *Service {
+func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration, newMarketplaceProcessingTimer time.Duration, botToken string) *Service {
 	if log == nil {
 		log, _ = zap.NewProduction()
 		log.Warn("log *zap.Logger is nil, using zap.NewProduction")
 	}
-	if orderProcessingTimer == 0 {
-		log.Fatal("order processing timer is not specified")
+	if newOrderProcessingTimer == 0 {
+		log.Fatal("new order processing timer is not specified")
+		return nil
+	}
+	if newMarketplaceProcessingTimer == 0 {
+		log.Fatal("new marketplace processing timer is not specified")
 		return nil
 	}
 
@@ -120,27 +153,28 @@ func New(repo Repository, log *zap.Logger, orderProcessingTimer time.Duration, b
 
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Service{
-		repo:                 repo,
-		log:                  log,
-		ctx:                  ctx,
-		cancel:               cancel,
-		cache:                cache,
-		orderProcessingTimer: orderProcessingTimer,
-		botToken:             botToken,
+		repo:                          repo,
+		log:                           log,
+		ctx:                           ctx,
+		cancel:                        cancel,
+		cache:                         cache,
+		newOrderProcessingTimer:       newOrderProcessingTimer,
+		newMarketplaceProcessingTimer: newMarketplaceProcessingTimer,
+		botToken:                      botToken,
 	}
 }
 
-// Run starts a job that batch loads new orders
+// RunNewOrderNotifier starts a job that batch loads new orders
 // and sends notifications to the owners of marketplaces
-func (s *Service) Run() error {
-	ticker := time.NewTicker(s.orderProcessingTimer)
+func (s *Service) RunNewOrderNotifier() error {
+	ticker := time.NewTicker(s.newOrderProcessingTimer)
 
 	for {
 		select {
 		case <-ticker.C:
-			err := s.runOnce()
+			err := s.runNewOrderNotifierOnce()
 			if err != nil {
-				s.log.Error("runOnce failed", logging.SilentError(err))
+				s.log.Error("runNewOrderNotifierOnce failed", logging.SilentError(err))
 				continue
 			}
 		case <-s.ctx.Done():
@@ -150,16 +184,18 @@ func (s *Service) Run() error {
 	}
 }
 
-func (s *Service) runOnce() error {
+// runNewOrderNotifierOnce executes one iteration of loading a batch of new
+// orders and sending notifications to the owners of marketplaces
+func (s *Service) runNewOrderNotifierOnce() error {
 	defer s.cache.Clear()
-	cursor, err := s.repo.GetNotifierCursor(s.ctx, notifierName)
+	cursor, err := s.repo.GetNotifierCursor(s.ctx, newOrderNotifierName)
 	if err != nil {
 		return errors.Wrap(err, "s.repo.GetNotifierCursor")
 	}
 
-	orderNotifications, err := s.repo.GetNotificationsForOrdersAfterCursor(s.ctx, cursor)
+	orderNotifications, err := s.repo.GetNotificationsForNewOrdersAfterCursor(s.ctx, cursor)
 	if err != nil {
-		return errors.Wrap(err, "s.getOrderNotifications")
+		return errors.Wrap(err, "s.repo.GetNotificationsForNewOrdersAfterCursor")
 	}
 
 	if len(orderNotifications) == 0 {
@@ -167,17 +203,17 @@ func (s *Service) runOnce() error {
 	}
 
 	s.log.With(zap.String("count", strconv.Itoa(len(orderNotifications)))).Info("sending notifications for new orders")
-	err = s.sendOrderNotifications(orderNotifications)
+	err = s.sendNewOrderNotifications(orderNotifications)
 	if err != nil {
-		return errors.Wrap(err, "s.sendOrderNotifications")
+		return errors.Wrap(err, "s.sendNewOrderNotifications")
 	}
 
 	lastElem := orderNotifications[len(orderNotifications)-1]
 
 	err = s.repo.UpdateNotifierCursor(s.ctx, Cursor{
-		LastProcessedCreatedAt: lastElem.CreatedAt,
-		LastProcessedID:        lastElem.ID,
-		Name:                   notifierName,
+		CursorDate:      lastElem.CreatedAt,
+		LastProcessedID: lastElem.ID,
+		Name:            newOrderNotifierName,
 	})
 	if err != nil {
 		return errors.Wrap(err, "s.repo.UpdateNotifierCursor")
@@ -186,21 +222,80 @@ func (s *Service) runOnce() error {
 	return nil
 }
 
-// Shutdown stops the job
+// RunNewMarketplaceNotifier starts a job that batch loads new marketplaces
+// and sends notifications to the reviewers of marketplaces
+func (s *Service) RunNewMarketplaceNotifier() error {
+	ticker := time.NewTicker(s.newMarketplaceProcessingTimer)
+
+	for {
+		select {
+		case <-ticker.C:
+			err := s.runNewMarketplaceNotifierOnce()
+			if err != nil {
+				s.log.Error("runNewMarketplaceNotifierOnce failed", logging.SilentError(err))
+				continue
+			}
+		case <-s.ctx.Done():
+			ticker.Stop()
+			return nil
+		}
+	}
+}
+
+// runNewMarketplaceNotifierOnce executes one iteration of loading a batch of new
+// marketplaces and sending notifications to the reviewers of marketplaces
+func (s *Service) runNewMarketplaceNotifierOnce() error {
+	defer s.cache.Clear()
+	cursor, err := s.repo.GetNotifierCursor(s.ctx, newMarketplaceNotifierName)
+	if err != nil {
+		return errors.Wrap(err, "s.repo.GetNotifierCursor")
+	}
+
+	marketplaceNotifications, err := s.repo.GetNotificationsForNewMarketplacesAfterCursor(s.ctx, cursor)
+	if err != nil {
+		return errors.Wrap(err, "s.repo.GetNotificationsForNewMarketplacesAfterCursor")
+	}
+
+	if len(marketplaceNotifications) == 0 {
+		return nil
+	}
+
+	s.log.With(zap.String("count", strconv.Itoa(len(marketplaceNotifications)))).Info("sending notifications for new marketplaces")
+	err = s.sendNewMarketplaceNotifications(marketplaceNotifications)
+	if err != nil {
+		return errors.Wrap(err, "s.sendNewMarketplaceNotifications")
+	}
+
+	lastElem := marketplaceNotifications[len(marketplaceNotifications)-1]
+
+	err = s.repo.UpdateNotifierCursor(s.ctx, Cursor{
+		CursorDate:      lastElem.CreatedAt,
+		LastProcessedID: lastElem.ID,
+		Name:            newMarketplaceNotifierName,
+	})
+	if err != nil {
+		return errors.Wrap(err, "s.repo.UpdateNotifierCursor")
+	}
+
+	return nil
+}
+
+// Shutdown stops all of the notifications
 func (s *Service) Shutdown() error {
 	s.cancel()
 	<-s.ctx.Done()
 	return nil
 }
 
-func (s *Service) sendOrderNotifications(orderNotifications []OrderNotification) error {
+// sendNewOrderNotifications sends batch of notifications for new orders
+func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotification) error {
 	var (
 		bot *tgbotapi.BotAPI
 		err error
 	)
 
-	for _, a := range orderNotifications {
-		val, ok := s.cache.Get(a.WebAppID.String())
+	for _, notification := range orderNotifications {
+		val, ok := s.cache.Get(notification.WebAppID.String())
 		if ok {
 			bot = val.(*tgbotapi.BotAPI)
 		} else {
@@ -209,17 +304,61 @@ func (s *Service) sendOrderNotifications(orderNotifications []OrderNotification)
 				return errors.Wrap(err, "tgbotapi.NewBotAPI")
 			}
 
-			s.cache.SetWithTTL(a.WebAppID.String(), bot, 0, 10*time.Minute)
+			s.cache.SetWithTTL(notification.WebAppID.String(), bot, 0, 10*time.Minute)
 		}
 
-		nl, err := s.repo.GetAdminsNotificationList(s.ctx, a.WebAppID)
+		nl, err := s.repo.GetAdminsNotificationList(s.ctx, notification.WebAppID)
 		if err != nil {
 			return errors.Wrap(err, "s.repo.GetAdminsNotificationList")
 		}
 
 		// need to get chat id's of users, who we are going to send messages
 		for _, v := range nl {
-			msgTxt, err := a.BuildMessage()
+			msgTxt, err := notification.BuildMessage()
+			if err != nil {
+				return errors.Wrap(err, "a.BuildMessage")
+			}
+			msg := tgbotapi.NewMessage(v, msgTxt)
+			msg.ParseMode = tgbotapi.ModeMarkdownV2
+			_, err = bot.Send(msg)
+			if err != nil {
+				return errors.Wrap(err, "bot.Send")
+			}
+		}
+
+	}
+
+	return nil
+}
+
+// sendNewMarketplaceNotifications sends batch of notifications for new marketplaces
+func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []NewMarketplaceNotification) error {
+	var (
+		bot *tgbotapi.BotAPI
+		err error
+	)
+
+	for _, notification := range marketplaceNotifications {
+		val, ok := s.cache.Get(notification.ID.String())
+		if ok {
+			bot = val.(*tgbotapi.BotAPI)
+		} else {
+			bot, err = tgbotapi.NewBotAPI(s.botToken)
+			if err != nil {
+				return errors.Wrap(err, "tgbotapi.NewBotAPI")
+			}
+
+			s.cache.SetWithTTL(notification.ID.String(), bot, 0, 10*time.Minute)
+		}
+
+		nl, err := s.repo.GetReviewersNotificationList(s.ctx, notification.ID)
+		if err != nil {
+			return errors.Wrap(err, "s.repo.GetReviewersNotificationList")
+		}
+
+		// need to get chat id's of users, who we are going to send messages
+		for _, v := range nl {
+			msgTxt, err := notification.BuildMessage()
 			if err != nil {
 				return errors.Wrap(err, "a.BuildMessage")
 			}
@@ -283,12 +422,12 @@ func formatRussianTime(t time.Time) string {
 	return strings.ReplaceAll(t.Format("02.01.2006 15:04:05"), ".", "\\.")
 }
 
-var specialSymbols = []string{"*", "_", "#", "-"}
+var specialSymbols = []string{"*", "_", "#", "-", "."}
 
 func escapeSpecialSymbols(s string) string {
 	for _, sym := range specialSymbols {
 		if strings.Contains(s, sym) {
-			return strings.ReplaceAll(s, sym, "\\"+sym)
+			s = strings.ReplaceAll(s, sym, "\\"+sym)
 		}
 	}
 

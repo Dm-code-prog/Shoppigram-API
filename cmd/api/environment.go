@@ -2,6 +2,10 @@ package main
 
 // Environment is the configuration struct for the application
 type Environment struct {
+	Zap struct {
+		LogLevel string `env:"LOG_LEVEL,required"`
+	}
+
 	Postgres struct {
 		DSN string `env:"POSTGRES_DSN,required"`
 	}
@@ -14,10 +18,16 @@ type Environment struct {
 		Key string `env:"ENCRYPTION_KEY,required"`
 	}
 
-	OrderNotifications struct {
-		IsEnabled bool `env:"ORDER_NOTIFICATIONS_IS_ENABLED"`
-		BatchSize int  `env:"ORDER_NOTIFICATIONS_BATCH_SIZE,required"`
-		Timeout   int  `env:"ORDER_NOTIFICATIONS_TIMEOUT,required"`
+	NewOrderNotifications struct {
+		IsEnabled bool `env:"NEW_ORDER_NOTIFICATIONS_IS_ENABLED"`
+		BatchSize int  `env:"NEW_ORDER_NOTIFICATIONS_BATCH_SIZE,required"`
+		Timeout   int  `env:"NEW_ORDER_NOTIFICATIONS_TIMEOUT,required"`
+	}
+
+	NewMarketplaceNotifications struct {
+		IsEnabled bool `env:"NEW_MARKETPLACE_NOTIFICATIONS_IS_ENABLED"`
+		BatchSize int  `env:"NEW_MARKETPLACE_NOTIFICATIONS_BATCH_SIZE,required"`
+		Timeout   int  `env:"NEW_MARKETPLACE_NOTIFICATIONS_TIMEOUT,required"`
 	}
 
 	Bot struct {

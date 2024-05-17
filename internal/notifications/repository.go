@@ -14,17 +14,17 @@ import (
 // Pg implements the Repository interface
 // using PostgreSQL as the backing store.
 type Pg struct {
-	gen             *generated.Queries
-	encryptionKey   string
-	orderFetchLimit int
+	gen                      *generated.Queries
+	newOrderFetchLimit       int
+	newMarketplaceFetchLimit int
 }
 
 // NewPg creates a new Pg
-func NewPg(db *pgxpool.Pool, encryptionKey string, orderFetchLimit int) *Pg {
+func NewPg(db *pgxpool.Pool, newOrderFetchLimit int, newMarketplaceFetchLimit int) *Pg {
 	return &Pg{
-		gen:             generated.New(db),
-		encryptionKey:   encryptionKey,
-		orderFetchLimit: orderFetchLimit,
+		gen:                      generated.New(db),
+		newOrderFetchLimit:       newOrderFetchLimit,
+		newMarketplaceFetchLimit: newMarketplaceFetchLimit,
 	}
 }
 
@@ -47,6 +47,16 @@ func (p *Pg) GetAdminsNotificationList(ctx context.Context, webAppID uuid.UUID) 
 	return adminsNotificationList, nil
 }
 
+// GetReviewersNotificationList gets a list of reviewers to notify about a new marketplace
+func (p *Pg) GetReviewersNotificationList(ctx context.Context, webAppID uuid.UUID) ([]int64, error) {
+	reviewersNotificationList, err := p.gen.GetReviewersNotificationList(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "p.gen.GetReviewersNotificationList")
+	}
+
+	return reviewersNotificationList, nil
+}
+
 // GetNotifierCursor gets notifier cursor
 func (p *Pg) GetNotifierCursor(ctx context.Context, name string) (Cursor, error) {
 	cursor, err := p.gen.GetNotifierCursor(ctx, pgtype.Text{
@@ -57,8 +67,8 @@ func (p *Pg) GetNotifierCursor(ctx context.Context, name string) (Cursor, error)
 		return Cursor{}, errors.Wrap(err, "p.gen.GetNotifierCursor")
 	}
 	return Cursor{
-		LastProcessedCreatedAt: cursor.LastProcessedCreatedAt.Time,
-		LastProcessedID:        cursor.LastProcessedID.Bytes,
+		CursorDate:      cursor.CursorDate.Time,
+		LastProcessedID: cursor.LastProcessedID.Bytes,
 	}, nil
 }
 
@@ -69,8 +79,8 @@ func (p *Pg) UpdateNotifierCursor(ctx context.Context, cur Cursor) error {
 			String: cur.Name,
 			Valid:  true,
 		},
-		LastProcessedCreatedAt: pgtype.Timestamp{
-			Time:  cur.LastProcessedCreatedAt,
+		CursorDate: pgtype.Timestamp{
+			Time:  cur.CursorDate,
 			Valid: true,
 		},
 		LastProcessedID: pgtype.UUID{
@@ -84,25 +94,25 @@ func (p *Pg) UpdateNotifierCursor(ctx context.Context, cur Cursor) error {
 	return nil
 }
 
-// GetNotificationsForOrdersAfterCursor gets notifcations for orders which were
+// GetNotificationsForNewOrdersAfterCursor gets notifcations for orders which were
 // created after date specified in cursor
-func (p *Pg) GetNotificationsForOrdersAfterCursor(ctx context.Context, cur Cursor) ([]OrderNotification, error) {
-	var orderNotifications []OrderNotification
+func (p *Pg) GetNotificationsForNewOrdersAfterCursor(ctx context.Context, cur Cursor) ([]NewOrderNotification, error) {
+	var newOrderNotifications []NewOrderNotification
 
-	rows, err := p.gen.GetNotificationsForOrdersAfterCursor(
+	rows, err := p.gen.GetNotificationsForNewOrdersAfterCursor(
 		ctx,
-		generated.GetNotificationsForOrdersAfterCursorParams{
+		generated.GetNotificationsForNewOrdersAfterCursorParams{
 			CreatedAt: pgtype.Timestamp{
-				Time:  cur.LastProcessedCreatedAt,
+				Time:  cur.CursorDate,
 				Valid: true,
 			},
-			Limit: int32(p.orderFetchLimit),
+			Limit: int32(p.newOrderFetchLimit),
 		})
 	if err != nil {
-		return nil, errors.Wrap(err, "p.gen.GetNotificationsForOrdersAfterCursor")
+		return nil, errors.Wrap(err, "p.gen.GetNotificationsForNewOrdersAfterCursor")
 	}
 
-	ordersMap := map[string]OrderNotification{}
+	ordersMap := map[string]NewOrderNotification{}
 
 	for _, r := range rows {
 		orderID := r.OrderID.String()
@@ -119,10 +129,10 @@ func (p *Pg) GetNotificationsForOrdersAfterCursor(ctx context.Context, cur Curso
 		} else {
 			asUUID, err := r.WebAppID.UUIDValue()
 			if err != nil {
-				return nil, errors.Wrap(err, "p.gen.GetNotificationsForOrdersAfterCursor")
+				return nil, errors.Wrap(err, "p.gen.GetNotificationsForNewOrdersAfterCursor")
 			}
 
-			ordersMap[orderID] = OrderNotification{
+			ordersMap[orderID] = NewOrderNotification{
 				ID:              r.OrderID,
 				ReadableOrderID: r.ReadableID.Int64,
 				CreatedAt:       r.CreatedAt.Time,
@@ -140,8 +150,39 @@ func (p *Pg) GetNotificationsForOrdersAfterCursor(ctx context.Context, cur Curso
 	}
 
 	for _, order := range ordersMap {
-		orderNotifications = append(orderNotifications, order)
+		newOrderNotifications = append(newOrderNotifications, order)
 	}
 
-	return orderNotifications, nil
+	return newOrderNotifications, nil
+}
+
+// GetNotificationsForNewMarketplacesAfterCursor gets notifcations for marketplaces
+// which were created after date specified in cursor
+func (p *Pg) GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]NewMarketplaceNotification, error) {
+	var newMarketplaceNotifications []NewMarketplaceNotification
+
+	rows, err := p.gen.GetNotificationsForNewMarketplacesAfterCursor(
+		ctx,
+		generated.GetNotificationsForNewMarketplacesAfterCursorParams{
+			CreatedAt: pgtype.Timestamp{
+				Time:  cur.CursorDate,
+				Valid: true,
+			},
+			Limit: int32(p.newMarketplaceFetchLimit),
+		})
+	if err != nil {
+		return nil, errors.Wrap(err, "p.gen.GetNotificationsForNewMarketplacesAfterCursor")
+	}
+
+	for _, r := range rows {
+		newMarketplaceNotifications = append(newMarketplaceNotifications, NewMarketplaceNotification{
+			ID:            r.ID,
+			Name:          r.Name,
+			ShortName:     r.ShortName,
+			CreatedAt:     r.CreatedAt.Time,
+			OwnerUsername: r.Username.String,
+		})
+	}
+
+	return newMarketplaceNotifications, nil
 }

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"syscall"
@@ -28,16 +29,42 @@ import (
 )
 
 func main() {
-	log, _ := zap.NewProductionConfig().Build(zap.AddStacktrace(zapcore.PanicLevel))
-	defer log.Sync()
+	var (
+		logLevel  zapcore.Level
+		zapConfig zap.Config
+	)
 
 	ctx := context.Background()
 
 	var config Environment
 	if _, err := env.UnmarshalFromEnviron(&config); err != nil {
-		log.Fatal("failed to load environment variables", logging.SilentError(err))
+		fmt.Println("failed to load environment variables", logging.SilentError(err))
 		return
 	}
+
+	switch config.Zap.LogLevel {
+	case "DEBUG":
+		logLevel = zapcore.DebugLevel
+	case "INFO":
+		logLevel = zapcore.InfoLevel
+	case "WARN", "WARNING":
+		logLevel = zapcore.WarnLevel
+	case "ERROR":
+		logLevel = zapcore.ErrorLevel
+	default:
+		logLevel = zapcore.InfoLevel
+	}
+
+	if config.Zap.LogLevel == "DEBUG" {
+		zapConfig = zap.NewDevelopmentConfig()
+	} else {
+		zapConfig = zap.NewProductionConfig()
+	}
+
+	zapConfig.Level.SetLevel(logLevel)
+
+	log, _ := zapConfig.Build(zap.AddStacktrace(zapcore.PanicLevel))
+	defer log.Sync()
 
 	db, err := pgxpool.New(ctx, config.Postgres.DSN)
 	if err != nil {
@@ -106,19 +133,33 @@ func main() {
 	})
 	adminsHandler := admins.MakeHandler(adminsService, authMw)
 
-	if config.OrderNotifications.IsEnabled {
-		notificationsRepo := notifications.NewPg(db, config.Encryption.Key, config.OrderNotifications.BatchSize)
-		notificationsService := notifications.New(
-			notificationsRepo,
-			log.With(zap.String("service", "notifications")),
-			time.Duration(config.OrderNotifications.Timeout)*time.Second,
-			config.Bot.Token,
-		)
-		g.Add(notificationsService.Run, func(err error) {
+	notificationsRepo := notifications.NewPg(
+		db,
+		config.NewOrderNotifications.BatchSize,
+		config.NewMarketplaceNotifications.BatchSize,
+	)
+	notificationsService := notifications.New(
+		notificationsRepo,
+		log.With(zap.String("service", "notifications")),
+		time.Duration(config.NewOrderNotifications.Timeout)*time.Second,
+		time.Duration(config.NewMarketplaceNotifications.Timeout)*time.Second,
+		config.Bot.Token,
+	)
+
+	if config.NewOrderNotifications.IsEnabled {
+		g.Add(notificationsService.RunNewOrderNotifier, func(err error) {
 			_ = notificationsService.Shutdown()
 		})
 	} else {
-		log.Warn("order notifications job is disabled")
+		log.Warn("new order notifications job is disabled")
+	}
+
+	if config.NewMarketplaceNotifications.IsEnabled {
+		g.Add(notificationsService.RunNewMarketplaceNotifier, func(err error) {
+			_ = notificationsService.Shutdown()
+		})
+	} else {
+		log.Warn("new marketplace notifications job is disabled")
 	}
 
 	r.Mount("/api/v1/public/products", productsHandler)
