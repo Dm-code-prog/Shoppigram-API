@@ -16,10 +16,10 @@ import (
 	"go.uber.org/zap"
 )
 
-//go:embed newOrderMessage.md
+//go:embed templates/new_order_message.md
 var newOrderMessageTemplate embed.FS
 
-//go:embed newMarketplaceMessage.md
+//go:embed templates/new_marketplace_message.md
 var newMarketplaceMessageTemplate embed.FS
 
 type (
