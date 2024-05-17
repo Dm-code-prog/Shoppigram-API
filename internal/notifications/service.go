@@ -16,11 +16,8 @@ import (
 	"go.uber.org/zap"
 )
 
-//go:embed templates/new_order_message.md
-var newOrderMessageTemplate embed.FS
-
-//go:embed templates/new_marketplace_message.md
-var newMarketplaceMessageTemplate embed.FS
+//go:embed templates/*.md
+var templates embed.FS
 
 type (
 	// Cursor defines the structure for a notify list cursor
@@ -99,12 +96,12 @@ func (o *NewOrderNotification) BuildMessage() (string, error) {
 `, p.Quantity, escapeSpecialSymbols(p.Name), formatFloat(p.Price), formatCurrency(p.PriceCurrency)))
 	}
 
-	data, err := newOrderMessageTemplate.ReadFile("newOrderMessage.md")
+	newOrderMessageTemplate, err := templates.ReadFile("templates/new_order_message.md")
 	if err != nil {
-		return "", errors.Wrap(err, "messageTemplate.ReadFile")
+		return "", errors.Wrap(err, "templates.ReadFile")
 	}
 
-	return fmt.Sprintf(string(data),
+	return fmt.Sprintf(string(newOrderMessageTemplate),
 		escapeSpecialSymbols(o.WebAppName),
 		escapeSpecialSymbols(o.UserNickname),
 		o.ReadableOrderID,
@@ -116,12 +113,12 @@ func (o *NewOrderNotification) BuildMessage() (string, error) {
 
 // BuildMessage creates a notification message for a new marketplace
 func (m *NewMarketplaceNotification) BuildMessage() (string, error) {
-	data, err := newMarketplaceMessageTemplate.ReadFile("newMarketplaceMessage.md")
+	newMarketplaceMessageTemplate, err := templates.ReadFile("templates/new_marketplace_message.md")
 	if err != nil {
-		return "", errors.Wrap(err, "messageTemplate.ReadFile")
+		return "", errors.Wrap(err, "templates.ReadFile")
 	}
 
-	return fmt.Sprintf(string(data),
+	return fmt.Sprintf(string(newMarketplaceMessageTemplate),
 		escapeSpecialSymbols(m.OwnerUsername),
 		escapeSpecialSymbols(m.Name),
 		escapeSpecialSymbols(m.ShortName),
