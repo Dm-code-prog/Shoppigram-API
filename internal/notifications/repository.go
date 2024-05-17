@@ -15,16 +15,14 @@ import (
 // using PostgreSQL as the backing store.
 type Pg struct {
 	gen                      *generated.Queries
-	encryptionKey            string
 	newOrderFetchLimit       int
 	newMarketplaceFetchLimit int
 }
 
 // NewPg creates a new Pg
-func NewPg(db *pgxpool.Pool, encryptionKey string, newOrderFetchLimit int, newMarketplaceFetchLimit int) *Pg {
+func NewPg(db *pgxpool.Pool, newOrderFetchLimit int, newMarketplaceFetchLimit int) *Pg {
 	return &Pg{
 		gen:                      generated.New(db),
-		encryptionKey:            encryptionKey,
 		newOrderFetchLimit:       newOrderFetchLimit,
 		newMarketplaceFetchLimit: newMarketplaceFetchLimit,
 	}

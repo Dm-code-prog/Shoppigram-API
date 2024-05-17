@@ -131,7 +131,6 @@ func main() {
 
 	notificationsRepo := notifications.NewPg(
 		db,
-		config.Encryption.Key,
 		config.NewOrderNotifications.BatchSize,
 		config.NewMarketplaceNotifications.BatchSize,
 	)
