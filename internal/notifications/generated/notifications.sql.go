@@ -12,24 +12,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const getAdminBotToken = `-- name: GetAdminBotToken :one
-select pgp_sym_decrypt(admin_bot_encr_token, $2::text)
-from web_apps
-where id = $1
-`
-
-type GetAdminBotTokenParams struct {
-	ID            uuid.UUID
-	EncryptionKey string
-}
-
-func (q *Queries) GetAdminBotToken(ctx context.Context, arg GetAdminBotTokenParams) (interface{}, error) {
-	row := q.db.QueryRow(ctx, getAdminBotToken, arg.ID, arg.EncryptionKey)
-	var pgp_sym_decrypt interface{}
-	err := row.Scan(&pgp_sym_decrypt)
-	return pgp_sym_decrypt, err
-}
-
 const getAdminsNotificationList = `-- name: GetAdminsNotificationList :many
 select admin_username, admin_chat_id
 from new_order_notifications_list
