@@ -415,7 +415,7 @@ func (s *Service) CreateMarketplaceLogoUploadURL(ctx context.Context, request Cr
 	req, _ := s.spaces.PutObjectRequest(&s3.PutObjectInput{
 		Bucket:      aws.String(s.bucket),
 		Key:         aws.String(key),
-		ACL:         aws.String("private"),
+		ACL:         aws.String("public-read"),
 		ContentType: aws.String("image/" + request.Extension),
 	})
 
