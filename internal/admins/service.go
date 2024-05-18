@@ -366,7 +366,7 @@ func (s *Service) CreateProductImageUploadURL(ctx context.Context, request Creat
 		return CreateProductImageUploadURLResponse{}, errors.New("s.repo.GetMarketplaceShortName: short name is empty")
 	}
 
-	key := shortName + "/" + request.ProductID.String() + "." + request.Extension
+	key := shortName + "/" + request.ProductID.String()
 	req, _ := s.spaces.PutObjectRequest(&s3.PutObjectInput{
 		Bucket:      aws.String(s.bucket),
 		Key:         aws.String(key),
@@ -411,7 +411,7 @@ func (s *Service) CreateMarketplaceLogoUploadURL(ctx context.Context, request Cr
 		return CreateMarketplaceLogoUploadURLResponse{}, errors.New("s.repo.GetMarketplaceShortName: short name is empty")
 	}
 
-	key := shortName + "/logo." + request.Extension
+	key := shortName + "/logo"
 	req, _ := s.spaces.PutObjectRequest(&s3.PutObjectInput{
 		Bucket:      aws.String(s.bucket),
 		Key:         aws.String(key),
