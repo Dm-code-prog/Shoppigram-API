@@ -30,7 +30,7 @@ func MakeHandler(bs *Service, authMw endpoint.Middleware) http.Handler {
 	)
 
 	r := chi.NewRouter()
-	r.Put("/{web_app_id}/telegram", createOrUpdateTgUserHandler.ServeHTTP)
+	r.Put("/telegram", createOrUpdateTgUserHandler.ServeHTTP)
 
 	return r
 }
