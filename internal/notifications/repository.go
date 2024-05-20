@@ -14,17 +14,19 @@ import (
 // Pg implements the Repository interface
 // using PostgreSQL as the backing store.
 type Pg struct {
-	gen                      *generated.Queries
-	newOrderFetchLimit       int
-	newMarketplaceFetchLimit int
+	gen                           *generated.Queries
+	newOrderFetchLimit            int
+	newMarketplaceFetchLimit      int
+	verifiedMarketplaceFetchLimit int
 }
 
 // NewPg creates a new Pg
-func NewPg(db *pgxpool.Pool, newOrderFetchLimit int, newMarketplaceFetchLimit int) *Pg {
+func NewPg(db *pgxpool.Pool, newOrderFetchLimit int, newMarketplaceFetchLimit int, verifiedMarketplaceFetchLimit int) *Pg {
 	return &Pg{
-		gen:                      generated.New(db),
-		newOrderFetchLimit:       newOrderFetchLimit,
-		newMarketplaceFetchLimit: newMarketplaceFetchLimit,
+		gen:                           generated.New(db),
+		newOrderFetchLimit:            newOrderFetchLimit,
+		newMarketplaceFetchLimit:      newMarketplaceFetchLimit,
+		verifiedMarketplaceFetchLimit: verifiedMarketplaceFetchLimit,
 	}
 }
 
@@ -185,4 +187,34 @@ func (p *Pg) GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, 
 	}
 
 	return newMarketplaceNotifications, nil
+}
+
+// GetNotificationsForVerifiedMarketplacesAfterCursor gets notifcations for marketplaces
+// which were verified after date specified in cursor
+func (p *Pg) GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]VerifiedMarketplaceNotification, error) {
+	var verifiedMarketplaceNotifications []VerifiedMarketplaceNotification
+
+	rows, err := p.gen.GetNotificationsForVerifiedMarketplacesAfterCursor(
+		ctx,
+		generated.GetNotificationsForVerifiedMarketplacesAfterCursorParams{
+			VerifiedAt: pgtype.Timestamp{
+				Time:  cur.CursorDate,
+				Valid: true,
+			},
+			Limit: int32(p.verifiedMarketplaceFetchLimit),
+		})
+	if err != nil {
+		return nil, errors.Wrap(err, "p.gen.GetNotificationsForNewMarketplacesAfterCursor")
+	}
+
+	for _, r := range rows {
+		verifiedMarketplaceNotifications = append(verifiedMarketplaceNotifications, VerifiedMarketplaceNotification{
+			ID:         r.ID,
+			Name:       r.Name,
+			ShortName:  r.ShortName,
+			VerifiedAt: r.VerifiedAt.Time,
+		})
+	}
+
+	return verifiedMarketplaceNotifications, nil
 }

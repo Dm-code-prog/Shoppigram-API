@@ -62,3 +62,24 @@ from marketplaces_batch
          join telegram_users u
               on marketplaces_batch.owner_external_id = u.external_id
 order by marketplaces_batch.created_at, marketplaces_batch.id;
+
+-- name: GetNotificationsForVerifiedMarketplacesAfterCursor :many
+with marketplaces_batch as (select wa.id,
+                                   wa.name,
+                                   wa.short_name,
+                                   wa.verified_at,
+                                   wa.owner_external_id
+         from web_apps wa
+         where wa.is_verified = true
+         and wa.verified_at > $1
+         order by wa.verified_at
+         limit $2)
+select marketplaces_batch.id,
+       marketplaces_batch.name,
+       marketplaces_batch.short_name,
+       marketplaces_batch.verified_at,
+       u.username
+from marketplaces_batch
+         join telegram_users u
+              on marketplaces_batch.owner_external_id = u.external_id
+order by marketplaces_batch.verified_at, marketplaces_batch.id;

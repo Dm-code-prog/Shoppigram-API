@@ -137,12 +137,14 @@ func main() {
 		db,
 		config.NewOrderNotifications.BatchSize,
 		config.NewMarketplaceNotifications.BatchSize,
+		config.VerifiedMarketplaceNotifications.BatchSize,
 	)
 	notificationsService := notifications.New(
 		notificationsRepo,
 		log.With(zap.String("service", "notifications")),
 		time.Duration(config.NewOrderNotifications.Timeout)*time.Second,
 		time.Duration(config.NewMarketplaceNotifications.Timeout)*time.Second,
+		time.Duration(config.VerifiedMarketplaceNotifications.Timeout)*time.Second,
 		config.Bot.Token,
 	)
 
@@ -160,6 +162,14 @@ func main() {
 		})
 	} else {
 		log.Warn("new marketplace notifications job is disabled")
+	}
+
+	if config.VerifiedMarketplaceNotifications.IsEnabled {
+		g.Add(notificationsService.RunVerifiedMarketplaceNotifier, func(err error) {
+			_ = notificationsService.Shutdown()
+		})
+	} else {
+		log.Warn("verified marketplace notifications job is disabled")
 	}
 
 	r.Mount("/api/v1/public/products", productsHandler)

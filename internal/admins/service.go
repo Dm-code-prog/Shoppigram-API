@@ -2,6 +2,10 @@ package admins
 
 import (
 	"context"
+	"regexp"
+	"strconv"
+	"time"
+
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
@@ -9,9 +13,6 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-	"regexp"
-	"strconv"
-	"time"
 )
 
 type (

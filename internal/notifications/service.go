@@ -55,6 +55,14 @@ type (
 		OwnerUsername string
 	}
 
+	// VerifiedMarketplaceNotification defines the structure of verified marketplace notification
+	VerifiedMarketplaceNotification struct {
+		ID         uuid.UUID
+		Name       string
+		ShortName  string
+		VerifiedAt time.Time
+	}
+
 	// Repository provides access to the user storage
 	Repository interface {
 		GetAdminsNotificationList(ctx context.Context, webAppID uuid.UUID) ([]int64, error)
@@ -63,25 +71,29 @@ type (
 		UpdateNotifierCursor(ctx context.Context, cur Cursor) error
 		GetNotificationsForNewOrdersAfterCursor(ctx context.Context, cur Cursor) ([]NewOrderNotification, error)
 		GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]NewMarketplaceNotification, error)
+		GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]VerifiedMarketplaceNotification, error)
 	}
 
 	// Service provides user operations
 	Service struct {
-		repo                          Repository
-		log                           *zap.Logger
-		cache                         *ristretto.Cache
-		ctx                           context.Context
-		cancel                        context.CancelFunc
-		newOrderProcessingTimer       time.Duration
-		newMarketplaceProcessingTimer time.Duration
-		botToken                      string
+		repo                               Repository
+		log                                *zap.Logger
+		cache                              *ristretto.Cache
+		ctx                                context.Context
+		cancel                             context.CancelFunc
+		newOrderProcessingTimer            time.Duration
+		newMarketplaceProcessingTimer      time.Duration
+		verifiedMarketplaceProcessingTimer time.Duration
+		botToken                           string
 	}
 )
 
 const (
-	newOrderNotifierName       = "new_order_notifications"
-	newMarketplaceNotifierName = "new_marketplace_notifications"
-	marketplaceURL             = "https://web-app.shoppigram.com/app/"
+	newOrderNotifierName            = "new_order_notifications"
+	newMarketplaceNotifierName      = "new_marketplace_notifications"
+	verifiedMarketplaceNotifierName = "verified_marketplace_notifications"
+	marketplaceURL                  = "https://web-app.shoppigram.com/app/"
+	webAppURL                       = "https://t.me/shoppigrambot/"
 )
 
 // BuildMessage creates a notification message for a new order
@@ -126,8 +138,21 @@ func (m *NewMarketplaceNotification) BuildMessage() (string, error) {
 	), nil
 }
 
+// BuildMessage creates a notification message for a verified marketplace
+func (m *VerifiedMarketplaceNotification) BuildMessage() (string, error) {
+	verifiedMarketplaceMessageTemplate, err := templates.ReadFile("templates/verified_marketplace_message.md")
+	if err != nil {
+		return "", errors.Wrap(err, "templates.ReadFile")
+	}
+
+	return fmt.Sprintf(string(verifiedMarketplaceMessageTemplate),
+		escapeSpecialSymbols(m.Name),
+		escapeSpecialSymbols(webAppURL+m.ShortName),
+	), nil
+}
+
 // New creates a new user service
-func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration, newMarketplaceProcessingTimer time.Duration, botToken string) *Service {
+func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration, newMarketplaceProcessingTimer time.Duration, verifiedMarketplaceProcessingTimer time.Duration, botToken string) *Service {
 	if log == nil {
 		log, _ = zap.NewProduction()
 		log.Warn("log *zap.Logger is nil, using zap.NewProduction")
@@ -153,14 +178,15 @@ func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration
 
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Service{
-		repo:                          repo,
-		log:                           log,
-		ctx:                           ctx,
-		cancel:                        cancel,
-		cache:                         cache,
-		newOrderProcessingTimer:       newOrderProcessingTimer,
-		newMarketplaceProcessingTimer: newMarketplaceProcessingTimer,
-		botToken:                      botToken,
+		repo:                               repo,
+		log:                                log,
+		ctx:                                ctx,
+		cancel:                             cancel,
+		cache:                              cache,
+		newOrderProcessingTimer:            newOrderProcessingTimer,
+		newMarketplaceProcessingTimer:      newMarketplaceProcessingTimer,
+		verifiedMarketplaceProcessingTimer: verifiedMarketplaceProcessingTimer,
+		botToken:                           botToken,
 	}
 }
 
@@ -280,6 +306,66 @@ func (s *Service) runNewMarketplaceNotifierOnce() error {
 	return nil
 }
 
+// RunVerifiedMarketplaceNotifier starts a job that batch loads verified marketplaces
+// and sends notifications to the owners of those marketplaces
+func (s *Service) RunVerifiedMarketplaceNotifier() error {
+	ticker := time.NewTicker(s.verifiedMarketplaceProcessingTimer)
+
+	for {
+		select {
+		case <-ticker.C:
+			err := s.runVerifiedMarketplaceNotifierOnce()
+			if err != nil {
+				s.log.Error("runVerifiedMarketplaceNotifierOnce failed", logging.SilentError(err))
+				continue
+			}
+		case <-s.ctx.Done():
+			ticker.Stop()
+			return nil
+		}
+	}
+}
+
+// runVerifiedMarketplaceNotifierOnce executes one iteration of loading a batch of
+// verified marketplaces and sending notifications to the owners of those marketplaces
+func (s *Service) runVerifiedMarketplaceNotifierOnce() error {
+	defer s.cache.Clear()
+	cursor, err := s.repo.GetNotifierCursor(s.ctx, verifiedMarketplaceNotifierName)
+	if err != nil {
+		return errors.Wrap(err, "s.repo.GetNotifierCursor")
+	}
+
+	marketplaceNotifications, err := s.repo.GetNotificationsForVerifiedMarketplacesAfterCursor(s.ctx, cursor)
+	if err != nil {
+		return errors.Wrap(err, "s.repo.GetNotificationsForVerifiedMarketplacesAfterCursor")
+	}
+
+	if len(marketplaceNotifications) == 0 {
+		return nil
+	}
+
+	fmt.Println(marketplaceNotifications)
+
+	s.log.With(zap.String("count", strconv.Itoa(len(marketplaceNotifications)))).Info("sending notifications for verified marketplaces")
+	err = s.sendVerifiedMarketplaceNotifications(marketplaceNotifications)
+	if err != nil {
+		return errors.Wrap(err, "s.sendVerifiedMarketplaceNotifications")
+	}
+
+	lastElem := marketplaceNotifications[len(marketplaceNotifications)-1]
+
+	err = s.repo.UpdateNotifierCursor(s.ctx, Cursor{
+		CursorDate:      lastElem.VerifiedAt,
+		LastProcessedID: lastElem.ID,
+		Name:            verifiedMarketplaceNotifierName,
+	})
+	if err != nil {
+		return errors.Wrap(err, "s.repo.UpdateNotifierCursor")
+	}
+
+	return nil
+}
+
 // Shutdown stops all of the notifications
 func (s *Service) Shutdown() error {
 	s.cancel()
@@ -375,6 +461,50 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 	return nil
 }
 
+// sendVerifiedMarketplaceNotifications sends batch of notifications for verified marketplaces
+func (s *Service) sendVerifiedMarketplaceNotifications(marketplaceNotifications []VerifiedMarketplaceNotification) error {
+	var (
+		bot *tgbotapi.BotAPI
+		err error
+	)
+
+	for _, notification := range marketplaceNotifications {
+		val, ok := s.cache.Get(notification.ID.String())
+		if ok {
+			bot = val.(*tgbotapi.BotAPI)
+		} else {
+			bot, err = tgbotapi.NewBotAPI(s.botToken)
+			if err != nil {
+				return errors.Wrap(err, "tgbotapi.NewBotAPI")
+			}
+
+			s.cache.SetWithTTL(notification.ID.String(), bot, 0, 10*time.Minute)
+		}
+
+		nl, err := s.repo.GetAdminsNotificationList(s.ctx, notification.ID)
+		if err != nil {
+			return errors.Wrap(err, "s.repo.GetAdminsNotificationList")
+		}
+
+		// need to get chat id's of users, who we are going to send messages
+		for _, v := range nl {
+			msgTxt, err := notification.BuildMessage()
+			if err != nil {
+				return errors.Wrap(err, "a.BuildMessage")
+			}
+			msg := tgbotapi.NewMessage(v, msgTxt)
+			msg.ParseMode = tgbotapi.ModeMarkdownV2
+			_, err = bot.Send(msg)
+			if err != nil {
+				return errors.Wrap(err, "bot.Send")
+			}
+		}
+
+	}
+
+	return nil
+}
+
 func formatFloat(num float64) string {
 	str := strconv.FormatFloat(num, 'f', -1, 64)
 	parts := strings.Split(str, ".")
@@ -422,7 +552,7 @@ func formatRussianTime(t time.Time) string {
 	return strings.ReplaceAll(t.Format("02.01.2006 15:04:05"), ".", "\\.")
 }
 
-var specialSymbols = []string{"*", "_", "#", "-", "."}
+var specialSymbols = []string{"*", "_", "#", "-", ".", "!"}
 
 func escapeSpecialSymbols(s string) string {
 	for _, sym := range specialSymbols {

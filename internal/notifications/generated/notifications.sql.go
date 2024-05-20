@@ -178,6 +178,67 @@ func (q *Queries) GetNotificationsForNewOrdersAfterCursor(ctx context.Context, a
 	return items, nil
 }
 
+const getNotificationsForVerifiedMarketplacesAfterCursor = `-- name: GetNotificationsForVerifiedMarketplacesAfterCursor :many
+with marketplaces_batch as (select wa.id,
+                                   wa.name,
+                                   wa.short_name,
+                                   wa.verified_at,
+                                   wa.owner_external_id
+         from web_apps wa
+         where wa.is_verified = true
+         and wa.verified_at > $1
+         order by wa.verified_at
+         limit $2)
+select marketplaces_batch.id,
+       marketplaces_batch.name,
+       marketplaces_batch.short_name,
+       marketplaces_batch.verified_at,
+       u.username
+from marketplaces_batch
+         join telegram_users u
+              on marketplaces_batch.owner_external_id = u.external_id
+order by marketplaces_batch.verified_at, marketplaces_batch.id
+`
+
+type GetNotificationsForVerifiedMarketplacesAfterCursorParams struct {
+	VerifiedAt pgtype.Timestamp
+	Limit      int32
+}
+
+type GetNotificationsForVerifiedMarketplacesAfterCursorRow struct {
+	ID         uuid.UUID
+	Name       string
+	ShortName  string
+	VerifiedAt pgtype.Timestamp
+	Username   pgtype.Text
+}
+
+func (q *Queries) GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Context, arg GetNotificationsForVerifiedMarketplacesAfterCursorParams) ([]GetNotificationsForVerifiedMarketplacesAfterCursorRow, error) {
+	rows, err := q.db.Query(ctx, getNotificationsForVerifiedMarketplacesAfterCursor, arg.VerifiedAt, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetNotificationsForVerifiedMarketplacesAfterCursorRow
+	for rows.Next() {
+		var i GetNotificationsForVerifiedMarketplacesAfterCursorRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.ShortName,
+			&i.VerifiedAt,
+			&i.Username,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getNotifierCursor = `-- name: GetNotifierCursor :one
 select cursor_date, last_processed_id
 from notifier_cursors
