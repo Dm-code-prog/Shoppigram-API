@@ -78,8 +78,6 @@ select marketplaces_batch.id,
        marketplaces_batch.name,
        marketplaces_batch.short_name,
        marketplaces_batch.verified_at,
-       u.username
+       marketplaces_batch.owner_external_id
 from marketplaces_batch
-         join telegram_users u
-              on marketplaces_batch.owner_external_id = u.external_id
 order by marketplaces_batch.verified_at, marketplaces_batch.id;

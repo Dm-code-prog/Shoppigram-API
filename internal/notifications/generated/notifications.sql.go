@@ -193,10 +193,8 @@ select marketplaces_batch.id,
        marketplaces_batch.name,
        marketplaces_batch.short_name,
        marketplaces_batch.verified_at,
-       u.username
+       marketplaces_batch.owner_external_id
 from marketplaces_batch
-         join telegram_users u
-              on marketplaces_batch.owner_external_id = u.external_id
 order by marketplaces_batch.verified_at, marketplaces_batch.id
 `
 
@@ -206,11 +204,11 @@ type GetNotificationsForVerifiedMarketplacesAfterCursorParams struct {
 }
 
 type GetNotificationsForVerifiedMarketplacesAfterCursorRow struct {
-	ID         uuid.UUID
-	Name       string
-	ShortName  string
-	VerifiedAt pgtype.Timestamp
-	Username   pgtype.Text
+	ID              uuid.UUID
+	Name            string
+	ShortName       string
+	VerifiedAt      pgtype.Timestamp
+	OwnerExternalID pgtype.Int4
 }
 
 func (q *Queries) GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Context, arg GetNotificationsForVerifiedMarketplacesAfterCursorParams) ([]GetNotificationsForVerifiedMarketplacesAfterCursorRow, error) {
@@ -227,7 +225,7 @@ func (q *Queries) GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context
 			&i.Name,
 			&i.ShortName,
 			&i.VerifiedAt,
-			&i.Username,
+			&i.OwnerExternalID,
 		); err != nil {
 			return nil, err
 		}

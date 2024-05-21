@@ -57,10 +57,11 @@ type (
 
 	// VerifiedMarketplaceNotification defines the structure of verified marketplace notification
 	VerifiedMarketplaceNotification struct {
-		ID         uuid.UUID
-		Name       string
-		ShortName  string
-		VerifiedAt time.Time
+		ID                  uuid.UUID
+		Name                string
+		ShortName           string
+		VerifiedAt          time.Time
+		OwnerExternalUserID int64
 	}
 
 	// Repository provides access to the user storage
@@ -113,7 +114,8 @@ func (o *NewOrderNotification) BuildMessage() (string, error) {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
 
-	return fmt.Sprintf(string(newOrderMessageTemplate),
+	return fmt.Sprintf(
+		escapeSpecialSymbols(string((newOrderMessageTemplate))),
 		escapeSpecialSymbols(o.WebAppName),
 		escapeSpecialSymbols(o.UserNickname),
 		o.ReadableOrderID,
@@ -130,7 +132,8 @@ func (m *NewMarketplaceNotification) BuildMessage() (string, error) {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
 
-	return fmt.Sprintf(string(newMarketplaceMessageTemplate),
+	return fmt.Sprintf(
+		escapeSpecialSymbols(string(newMarketplaceMessageTemplate)),
 		escapeSpecialSymbols(m.OwnerUsername),
 		escapeSpecialSymbols(m.Name),
 		escapeSpecialSymbols(m.ShortName),
@@ -145,7 +148,8 @@ func (m *VerifiedMarketplaceNotification) BuildMessage() (string, error) {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
 
-	return fmt.Sprintf(string(verifiedMarketplaceMessageTemplate),
+	return fmt.Sprintf(
+		escapeSpecialSymbols(string(verifiedMarketplaceMessageTemplate)),
 		escapeSpecialSymbols(m.Name),
 		escapeSpecialSymbols(webAppURL+m.ShortName),
 	), nil
@@ -228,7 +232,9 @@ func (s *Service) runNewOrderNotifierOnce() error {
 		return nil
 	}
 
-	s.log.With(zap.String("count", strconv.Itoa(len(orderNotifications)))).Info("sending notifications for new orders")
+	s.log.With(
+		zap.String("count", strconv.Itoa(len(orderNotifications))),
+	).Info("sending notifications for new orders")
 	err = s.sendNewOrderNotifications(orderNotifications)
 	if err != nil {
 		return errors.Wrap(err, "s.sendNewOrderNotifications")
@@ -286,7 +292,9 @@ func (s *Service) runNewMarketplaceNotifierOnce() error {
 		return nil
 	}
 
-	s.log.With(zap.String("count", strconv.Itoa(len(marketplaceNotifications)))).Info("sending notifications for new marketplaces")
+	s.log.With(
+		zap.String("count", strconv.Itoa(len(marketplaceNotifications))),
+	).Info("sending notifications for new marketplaces")
 	err = s.sendNewMarketplaceNotifications(marketplaceNotifications)
 	if err != nil {
 		return errors.Wrap(err, "s.sendNewMarketplaceNotifications")
@@ -344,9 +352,9 @@ func (s *Service) runVerifiedMarketplaceNotifierOnce() error {
 		return nil
 	}
 
-	fmt.Println(marketplaceNotifications)
-
-	s.log.With(zap.String("count", strconv.Itoa(len(marketplaceNotifications)))).Info("sending notifications for verified marketplaces")
+	s.log.With(
+		zap.String("count", strconv.Itoa(len(marketplaceNotifications))),
+	).Info("sending notifications for verified marketplaces")
 	err = s.sendVerifiedMarketplaceNotifications(marketplaceNotifications)
 	if err != nil {
 		return errors.Wrap(err, "s.sendVerifiedMarketplaceNotifications")
@@ -481,23 +489,23 @@ func (s *Service) sendVerifiedMarketplaceNotifications(marketplaceNotifications 
 			s.cache.SetWithTTL(notification.ID.String(), bot, 0, 10*time.Minute)
 		}
 
-		nl, err := s.repo.GetAdminsNotificationList(s.ctx, notification.ID)
+		msgTxt, err := notification.BuildMessage()
 		if err != nil {
-			return errors.Wrap(err, "s.repo.GetAdminsNotificationList")
+			return errors.Wrap(err, "a.BuildMessage")
 		}
 
-		// need to get chat id's of users, who we are going to send messages
-		for _, v := range nl {
-			msgTxt, err := notification.BuildMessage()
-			if err != nil {
-				return errors.Wrap(err, "a.BuildMessage")
+		msg := tgbotapi.NewMessage(notification.OwnerExternalUserID, msgTxt)
+		msg.ParseMode = tgbotapi.ModeMarkdownV2
+		_, err = bot.Send(msg)
+		if err != nil {
+			if strings.Contains(err.Error(), "Bad Request: chat not found") {
+				s.log.With(
+					zap.String("method", "bot.Send"),
+					zap.String("user_id", strconv.FormatInt(notification.OwnerExternalUserID, 10)),
+				).Warn(err.Error())
+				continue
 			}
-			msg := tgbotapi.NewMessage(v, msgTxt)
-			msg.ParseMode = tgbotapi.ModeMarkdownV2
-			_, err = bot.Send(msg)
-			if err != nil {
-				return errors.Wrap(err, "bot.Send")
-			}
+			return errors.Wrap(err, "bot.Send")
 		}
 
 	}
@@ -552,7 +560,7 @@ func formatRussianTime(t time.Time) string {
 	return strings.ReplaceAll(t.Format("02.01.2006 15:04:05"), ".", "\\.")
 }
 
-var specialSymbols = []string{"*", "_", "#", "-", ".", "!"}
+var specialSymbols = []string{"_", "#", "-", ".", "!"}
 
 func escapeSpecialSymbols(s string) string {
 	for _, sym := range specialSymbols {

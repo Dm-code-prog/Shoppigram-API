@@ -236,7 +236,8 @@ func (s *Service) CreateMarketplace(ctx context.Context, req CreateMarketplaceRe
 	if err != nil {
 		s.log.With(
 			zap.String("method", "s.repo.CreateProducts"),
-			zap.String("user_id", strconv.FormatInt(req.ExternalUserID, 10))).Error(err.Error())
+			zap.String("user_id", strconv.FormatInt(req.ExternalUserID, 10)),
+		).Error(err.Error())
 		return CreateMarketplaceResponse{}, errors.Wrap(err, "s.repo.CreateMarketplace")
 	}
 
@@ -347,7 +348,8 @@ func (s *Service) CreateProductImageUploadURL(ctx context.Context, request Creat
 		s.log.With(
 			zap.String("method", "s.repo.IsUserTheOwnerOfProduct"),
 			zap.String("user_id", strconv.FormatInt(request.ExternalUserID, 10)),
-			zap.String("product_id", request.ProductID.String())).Error(err.Error())
+			zap.String("product_id", request.ProductID.String()),
+		).Error(err.Error())
 		return CreateProductImageUploadURLResponse{}, errors.Wrap(err, "s.repo.IsUserTheOwnerOfProduct")
 	} else if !ok {
 		return CreateProductImageUploadURLResponse{}, ErrorOpNotAllowed
@@ -392,7 +394,8 @@ func (s *Service) CreateMarketplaceLogoUploadURL(ctx context.Context, request Cr
 		s.log.With(
 			zap.String("method", "s.repo.IsUserTheOwnerOfMarketplace"),
 			zap.String("user_id", strconv.FormatInt(request.ExternalUserID, 10)),
-			zap.String("web_app_id", request.WebAppID.String())).Error(err.Error())
+			zap.String("web_app_id", request.WebAppID.String()),
+		).Error(err.Error())
 		return CreateMarketplaceLogoUploadURLResponse{}, errors.Wrap(err, "s.repo.IsUserTheOwnerOfMarketplace")
 	} else if !ok {
 		return CreateMarketplaceLogoUploadURLResponse{}, ErrorOpNotAllowed

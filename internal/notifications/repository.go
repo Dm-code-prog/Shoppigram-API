@@ -209,10 +209,11 @@ func (p *Pg) GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Cont
 
 	for _, r := range rows {
 		verifiedMarketplaceNotifications = append(verifiedMarketplaceNotifications, VerifiedMarketplaceNotification{
-			ID:         r.ID,
-			Name:       r.Name,
-			ShortName:  r.ShortName,
-			VerifiedAt: r.VerifiedAt.Time,
+			ID:                  r.ID,
+			Name:                r.Name,
+			ShortName:           r.ShortName,
+			VerifiedAt:          r.VerifiedAt.Time,
+			OwnerExternalUserID: int64(r.OwnerExternalID.Int32),
 		})
 	}
 
