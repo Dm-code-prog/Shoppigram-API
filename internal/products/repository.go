@@ -34,13 +34,15 @@ func (p *Pg) GetProducts(ctx context.Context, request GetProductsRequest) (GetPr
 	var products []Product
 	for _, p := range prod {
 		products = append(products, Product{
-			ID:            p.ID,
-			Name:          p.Name,
-			Description:   p.Description.String,
-			Category:      p.Category.String,
-			Price:         p.Price,
-			PriceCurrency: p.PriceCurrency,
-			ImageURL:      p.ImageUrl.String,
+			ID:               p.ID,
+			Name:             p.Name,
+			Description:      p.Description.String,
+			Category:         p.Category.String,
+			Price:            p.Price,
+			PriceCurrency:    p.PriceCurrency,
+			ImageURL:         p.ImageUrl.String,
+			WebAppID:         p.WebAppID,
+			WebAppIsVerified: p.WebAppIsVerified.Bool,
 		})
 		name = p.WebAppName
 		shortName = p.WebAppShortName
