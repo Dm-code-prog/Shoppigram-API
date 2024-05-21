@@ -93,7 +93,7 @@ func (o *NewOrderNotification) BuildMessage() (string, error) {
 		subtotal += p.Price * float64(p.Quantity)
 		currency = p.PriceCurrency
 		productList.WriteString(fmt.Sprintf(`\- %dx %s по цене %s %s
-`, p.Quantity, escapeSpecialSymbols(p.Name), formatFloat(p.Price), formatCurrency(p.PriceCurrency)))
+`, p.Quantity, escapeSpecialSymbols(p.Name), escapeSpecialSymbols(formatFloat(p.Price)), formatCurrency(p.PriceCurrency)))
 	}
 
 	newOrderMessageTemplate, err := templates.ReadFile("templates/new_order_message.md")
@@ -106,7 +106,7 @@ func (o *NewOrderNotification) BuildMessage() (string, error) {
 		escapeSpecialSymbols(o.UserNickname),
 		o.ReadableOrderID,
 		formatRussianTime(o.CreatedAt),
-		formatFloat(subtotal)+" "+formatCurrency(currency),
+		escapeSpecialSymbols(formatFloat(subtotal))+" "+formatCurrency(currency),
 		strings.TrimRight(productList.String(), "; "),
 	), nil
 }
