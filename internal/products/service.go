@@ -13,15 +13,13 @@ import (
 type (
 	// Product defines the structure for a Marketplace product
 	Product struct {
-		ID               uuid.UUID `json:"id"`
-		Name             string    `json:"name"`
-		Description      string    `json:"description,omitempty"`
-		Category         string    `json:"category,omitempty"`
-		Price            float64   `json:"price"`
-		PriceCurrency    string    `json:"price_currency"`
-		ImageURL         string    `json:"image_url,omitempty"`
-		WebAppID         uuid.UUID `json:"web_app_id,omitempty"`
-		WebAppIsVerified bool      `json:"web_app_is_verified,omitempty"`
+		ID            uuid.UUID `json:"id"`
+		Name          string    `json:"name"`
+		Description   string    `json:"description,omitempty"`
+		Category      string    `json:"category,omitempty"`
+		Price         float64   `json:"price"`
+		PriceCurrency string    `json:"price_currency"`
+		ImageURL      string    `json:"image_url,omitempty"`
 	}
 
 	// GetProductsRequest defines the request for the GetProducts endpoint
@@ -32,9 +30,11 @@ type (
 
 	// GetProductsResponse defines the response body for the GetProducts endpoint
 	GetProductsResponse struct {
-		WebAppName      string    `json:"web_app_name,omitempty"`
-		WebAppShortName string    `json:"web_app_short_name,omitempty"`
-		Products        []Product `json:"products,omitempty"`
+		WebAppID         uuid.UUID `json:"web_app_id,omitempty"`
+		WebAppName       string    `json:"web_app_name,omitempty"`
+		WebAppShortName  string    `json:"web_app_short_name,omitempty"`
+		WebAppIsVerified bool      `json:"web_app_is_verified,omitempty"`
+		Products         []Product `json:"products,omitempty"`
 	}
 
 	// InvalidateProductsCacheRequest defines the request for the InvalidateProductsCache endpoint
