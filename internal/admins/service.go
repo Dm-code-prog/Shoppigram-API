@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"github.com/shoppigram-com/marketplace-api/internal/notifications"
 	"go.uber.org/zap"
 )
 
@@ -240,6 +241,11 @@ func (s *Service) CreateMarketplace(ctx context.Context, req CreateMarketplaceRe
 		).Error(err.Error())
 		return CreateMarketplaceResponse{}, errors.Wrap(err, "s.repo.CreateMarketplace")
 	}
+
+	err = notifications.CreateNewOrderNotificationsListEntry(ctx, notifications.CreateNewOrderNotificationsListEntryRequest{
+		WebAppID:    res.ID,
+		AdminChatID: req.ExternalUserID,
+	})
 
 	return res, err
 }
