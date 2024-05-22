@@ -1,13 +1,14 @@
 -- name: GetProducts :many
-select w.name       as web_app_name,
-       w.short_name as web_app_short_name,
-       p.id,
+select p.id,
        p.name,
        p.description,
        p.category,
        p.price,
        p.price_currency,
-       p.image_url
-from web_apps w
-         join products p on w.id = p.web_app_id
-where w.id = $1;
+       wa.id          as web_app_id,
+       wa.name        as web_app_name,
+       wa.short_name  as web_app_short_name,
+       wa.is_verified as web_app_is_verified
+from web_apps wa
+         join products p on wa.id = p.web_app_id
+where wa.id = $1;

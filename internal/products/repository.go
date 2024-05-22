@@ -3,6 +3,7 @@ package products
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/pkg/errors"
 	"github.com/shoppigram-com/marketplace-api/internal/products/generated"
@@ -29,8 +30,10 @@ func (p *Pg) GetProducts(ctx context.Context, request GetProductsRequest) (GetPr
 		return GetProductsResponse{}, errors.Wrap(err, "p.gen.GetProducts")
 	}
 
+	var id uuid.UUID
 	var name string
 	var shortName string
+	var isVerified bool
 	var products []Product
 	for _, p := range prod {
 		products = append(products, Product{
@@ -40,15 +43,18 @@ func (p *Pg) GetProducts(ctx context.Context, request GetProductsRequest) (GetPr
 			Category:      p.Category.String,
 			Price:         p.Price,
 			PriceCurrency: p.PriceCurrency,
-			ImageURL:      p.ImageUrl.String,
 		})
+		id = p.WebAppID
 		name = p.WebAppName
 		shortName = p.WebAppShortName
+		isVerified = p.WebAppIsVerified.Bool
 	}
 
 	return GetProductsResponse{
-		WebAppName:      name,
-		WebAppShortName: shortName,
-		Products:        products,
+		WebAppID:         id,
+		WebAppName:       name,
+		WebAppShortName:  shortName,
+		WebAppIsVerified: isVerified,
+		Products:         products,
 	}, nil
 }
