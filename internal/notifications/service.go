@@ -560,7 +560,7 @@ func formatRussianTime(t time.Time) string {
 	return strings.ReplaceAll(t.Format("02.01.2006 15:04:05"), ".", "\\.")
 }
 
-var specialSymbols = []string{"_", "#", "-", ".", "!"}
+var specialSymbols = []string{"_", "#", "-", ".", "!", "<", ">"}
 
 func escapeSpecialSymbols(s string) string {
 	for _, sym := range specialSymbols {
