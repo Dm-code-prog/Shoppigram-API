@@ -3,8 +3,9 @@ package admins
 import (
 	"context"
 	"encoding/json"
-	"github.com/google/uuid"
 	"net/http"
+
+	"github.com/google/uuid"
 
 	"github.com/go-kit/kit/endpoint"
 
@@ -22,31 +23,22 @@ func MakeHandler(bs *Service, authMw endpoint.Middleware) http.Handler {
 	}
 	opts = append(opts, telegramusers.AuthServerBefore...)
 
-	getMarketplaces := makeGetMarketplacesEndpoint(bs)
-	getMarketplaces = authMw(getMarketplaces)
-
-	createMarketplace := makeCreateMarketplaceEndpoint(bs)
-	createMarketplace = authMw(createMarketplace)
-
-	updateMarketplace := makeUpdateMarketplaceEndpoint(bs)
-	updateMarketplace = authMw(updateMarketplace)
-
 	getMarketplacesHandler := kithttp.NewServer(
-		getMarketplaces,
+		authMw(makeGetMarketplacesEndpoint(bs)),
 		decodeGetMarketplacesRequest,
 		encodeResponse,
 		opts...,
 	)
 
 	createMarketplaceHandler := kithttp.NewServer(
-		createMarketplace,
+		authMw(makeCreateMarketplaceEndpoint(bs)),
 		decodeCreateMarketplaceRequest,
 		encodeResponse,
 		opts...,
 	)
 
 	updateMarketplaceHandler := kithttp.NewServer(
-		updateMarketplace,
+		authMw(makeUpdateMarketplaceEndpoint(bs)),
 		decodeUpdateMarketplaceRequest,
 		encodeResponse,
 		opts...,
