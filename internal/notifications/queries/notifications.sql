@@ -81,3 +81,9 @@ select mb.id,
        mb.owner_external_id
 from marketplaces_batch mb
 order by mb.verified_at, mb.id;
+
+-- name: CreateNewOrderNotificationsListEntry :exec
+insert into new_order_notifications_list (web_app_id, admin_username, admin_chat_id)
+values ($1,
+        $2,
+        $3);

@@ -47,24 +47,6 @@ func (q *Queries) CreateMarketplace(ctx context.Context, arg CreateMarketplacePa
 	return id, err
 }
 
-const createNewOrderNotificationsListEntry = `-- name: CreateNewOrderNotificationsListEntry :exec
-insert into new_order_notifications_list (web_app_id, admin_username, admin_chat_id)
-values ($1,
-        $2,
-        $3)
-`
-
-type CreateNewOrderNotificationsListEntryParams struct {
-	WebAppID      pgtype.UUID
-	AdminUsername pgtype.Text
-	AdminChatID   int64
-}
-
-func (q *Queries) CreateNewOrderNotificationsListEntry(ctx context.Context, arg CreateNewOrderNotificationsListEntryParams) error {
-	_, err := q.db.Exec(ctx, createNewOrderNotificationsListEntry, arg.WebAppID, arg.AdminUsername, arg.AdminChatID)
-	return err
-}
-
 const getMarketplaceShortName = `-- name: GetMarketplaceShortName :one
 select short_name
 from web_apps

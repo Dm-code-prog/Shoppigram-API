@@ -75,23 +75,6 @@ type EndUserBot struct {
 	WebAppID          pgtype.UUID
 }
 
-type NewOrderNotificationsList struct {
-	WebAppID      pgtype.UUID
-	AdminUsername pgtype.Text
-	AdminChatID   int64
-}
-
-type NewWebAppsNotificationsList struct {
-	WebAppID uuid.UUID
-	ChatID   int64
-}
-
-type NotifierCursor struct {
-	CursorDate      pgtype.Timestamp
-	LastProcessedID pgtype.UUID
-	Name            pgtype.Text
-}
-
 type Product struct {
 	ID            uuid.UUID
 	WebAppID      pgtype.UUID
@@ -110,6 +93,4 @@ type WebApp struct {
 	LogoUrl         pgtype.Text
 	IsVerified      pgtype.Bool
 	ShortName       string
-	CreatedAt       pgtype.Timestamp
-	VerifiedAt      pgtype.Timestamp
 }
