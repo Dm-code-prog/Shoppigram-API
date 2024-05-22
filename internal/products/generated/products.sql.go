@@ -19,7 +19,6 @@ select p.id,
        p.category,
        p.price,
        p.price_currency,
-       p.image_url,
        wa.id          as web_app_id,
        wa.name        as web_app_name,
        wa.short_name  as web_app_short_name,
@@ -36,7 +35,6 @@ type GetProductsRow struct {
 	Category         pgtype.Text
 	Price            float64
 	PriceCurrency    string
-	ImageUrl         pgtype.Text
 	WebAppID         uuid.UUID
 	WebAppName       string
 	WebAppShortName  string
@@ -59,7 +57,6 @@ func (q *Queries) GetProducts(ctx context.Context, id uuid.UUID) ([]GetProductsR
 			&i.Category,
 			&i.Price,
 			&i.PriceCurrency,
-			&i.ImageUrl,
 			&i.WebAppID,
 			&i.WebAppName,
 			&i.WebAppShortName,

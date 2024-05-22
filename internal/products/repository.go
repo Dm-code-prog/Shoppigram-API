@@ -43,7 +43,6 @@ func (p *Pg) GetProducts(ctx context.Context, request GetProductsRequest) (GetPr
 			Category:      p.Category.String,
 			Price:         p.Price,
 			PriceCurrency: p.PriceCurrency,
-			ImageURL:      p.ImageUrl.String,
 		})
 		id = p.WebAppID
 		name = p.WebAppName

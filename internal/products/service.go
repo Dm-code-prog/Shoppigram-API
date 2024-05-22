@@ -19,7 +19,6 @@ type (
 		Category      string    `json:"category,omitempty"`
 		Price         float64   `json:"price"`
 		PriceCurrency string    `json:"price_currency"`
-		ImageURL      string    `json:"image_url,omitempty"`
 	}
 
 	// GetProductsRequest defines the request for the GetProducts endpoint
