@@ -32,3 +32,9 @@ where id = $2;
 select short_name
 from web_apps
 where id = @id::uuid;
+
+-- name: CreateNewOrderNotificationsListEntry :exec
+insert into new_order_notifications_list (web_app_id, admin_username, admin_chat_id)
+values ($1,
+        $2,
+        $3);
