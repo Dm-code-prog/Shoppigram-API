@@ -30,6 +30,12 @@ type Environment struct {
 		Timeout   int  `env:"NEW_MARKETPLACE_NOTIFICATIONS_TIMEOUT,required"`
 	}
 
+	VerifiedMarketplaceNotifications struct {
+		IsEnabled bool `env:"VERIFIED_MARKETPLACE_NOTIFICATIONS_IS_ENABLED"`
+		BatchSize int  `env:"VERIFIED_MARKETPLACE_NOTIFICATIONS_BATCH_SIZE,required"`
+		Timeout   int  `env:"VERIFIED_MARKETPLACE_NOTIFICATIONS_TIMEOUT,required"`
+	}
+
 	Bot struct {
 		Token string `env:"BOT_TOKEN,required"`
 	}

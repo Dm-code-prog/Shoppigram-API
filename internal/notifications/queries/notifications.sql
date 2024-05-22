@@ -24,9 +24,9 @@ with orders_batch as (select id as order_id, created_at, readable_id, web_app_id
                       where o.created_at > $1
                       order by o.created_at
                       limit $2)
-select orders_batch.order_id,
-       orders_batch.readable_id,
-       orders_batch.created_at,
+select ob.order_id,
+       ob.readable_id,
+       ob.created_at,
        p.web_app_id,
        wa.name as web_app_name,
        p.name,
@@ -34,13 +34,13 @@ select orders_batch.order_id,
        p.price_currency,
        op.quantity,
        u.username
-from orders_batch
+from orders_batch ob
          join order_products op
-              on orders_batch.order_id = op.order_id
+              on ob.order_id = op.order_id
          join products p on p.id = op.product_id
          join telegram_users u on external_user_id = u.external_id
-         join web_apps wa on orders_batch.web_app_id = wa.id
-order by orders_batch.created_at, orders_batch.order_id;
+         join web_apps wa on ob.web_app_id = wa.id
+order by ob.created_at, ob.order_id;
 
 -- name: GetNotificationsForNewMarketplacesAfterCursor :many
 with marketplaces_batch as (select wa.id,
@@ -53,12 +53,31 @@ with marketplaces_batch as (select wa.id,
          and wa.created_at > $1
          order by wa.created_at
          limit $2)
-select marketplaces_batch.id,
-       marketplaces_batch.name,
-       marketplaces_batch.short_name,
-       marketplaces_batch.created_at,
+select mb.id,
+       mb.name,
+       mb.short_name,
+       mb.created_at,
        u.username
-from marketplaces_batch
+from marketplaces_batch mb
          join telegram_users u
-              on marketplaces_batch.owner_external_id = u.external_id
-order by marketplaces_batch.created_at, marketplaces_batch.id;
+              on mb.owner_external_id = u.external_id
+order by mb.created_at, mb.id;
+
+-- name: GetNotificationsForVerifiedMarketplacesAfterCursor :many
+with marketplaces_batch as (select wa.id,
+                                   wa.name,
+                                   wa.short_name,
+                                   wa.verified_at,
+                                   wa.owner_external_id
+         from web_apps wa
+         where wa.is_verified = true
+         and wa.verified_at > $1
+         order by wa.verified_at
+         limit $2)
+select mb.id,
+       mb.name,
+       mb.short_name,
+       mb.verified_at,
+       mb.owner_external_id
+from marketplaces_batch mb
+order by mb.verified_at, mb.id;
