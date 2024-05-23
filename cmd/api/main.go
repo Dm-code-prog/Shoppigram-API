@@ -28,6 +28,14 @@ import (
 	"go.uber.org/zap"
 )
 
+type AddUserToNewOrderNotificationsAdapter struct {
+	notifier *notifications.Service
+}
+
+func (a *AddUserToNewOrderNotificationsAdapter) AddUserToNewOrderNotifications(ctx context.Context, req admins.AddUserToNewOrderNotificationsRequest) error {
+	return a.notifier.AddUserToNewOrderNotifications(ctx, notifications.AddUserToNewOrderNotificationsRequest(req))
+}
+
 func main() {
 	var (
 		logLevel  zapcore.Level
@@ -173,7 +181,9 @@ func main() {
 			ID:       config.DigitalOcean.Spaces.Key,
 			Secret:   config.DigitalOcean.Spaces.Secret,
 		},
-		notificationsService,
+		&AddUserToNewOrderNotificationsAdapter{
+			notifier: notificationsService,
+		},
 	)
 	adminsHandler := admins.MakeHandler(adminsService, authMw)
 

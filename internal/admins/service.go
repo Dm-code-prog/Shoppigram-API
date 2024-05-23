@@ -12,7 +12,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	"github.com/shoppigram-com/marketplace-api/internal/notifications"
 	"go.uber.org/zap"
 )
 
@@ -120,6 +119,13 @@ type (
 		UploadURL string `json:"upload_url"`
 		Key       string `json:"key"`
 	}
+
+	// AddUserToNewOrderNotificationsRequest mirrors a corresponding struct
+	// in notifications module to reduce coupling
+	AddUserToNewOrderNotificationsRequest struct {
+		WebAppID    uuid.UUID
+		AdminChatID int64
+	}
 )
 
 type (
@@ -147,7 +153,7 @@ type (
 	}
 
 	Notifier interface {
-		AddUserToNewOrderNotifications(ctx context.Context, req notifications.AddUserToNewOrderNotificationsRequest) error
+		AddUserToNewOrderNotifications(ctx context.Context, req AddUserToNewOrderNotificationsRequest) error
 	}
 
 	// Service provides admin operations
@@ -248,7 +254,7 @@ func (s *Service) CreateMarketplace(ctx context.Context, req CreateMarketplaceRe
 		return CreateMarketplaceResponse{}, errors.Wrap(err, "s.repo.CreateMarketplace")
 	}
 
-	err = s.notifier.AddUserToNewOrderNotifications(ctx, notifications.AddUserToNewOrderNotificationsRequest{
+	err = s.notifier.AddUserToNewOrderNotifications(ctx, AddUserToNewOrderNotificationsRequest{
 		WebAppID:    res.ID,
 		AdminChatID: req.ExternalUserID,
 	})
