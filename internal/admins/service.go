@@ -146,13 +146,17 @@ type (
 		Bucket   string
 	}
 
+	Notifier interface {
+		AddUserToNewOrderNotifications(ctx context.Context, req notifications.AddUserToNewOrderNotificationsRequest) error
+	}
+
 	// Service provides admin operations
 	Service struct {
 		repo     Repository
 		spaces   *s3.S3
 		log      *zap.Logger
 		bucket   string
-		notifier notifications.Service
+		notifier Notifier
 	}
 )
 
@@ -185,7 +189,7 @@ const (
 )
 
 // New creates a new admin service
-func New(repo Repository, log *zap.Logger, conf DOSpacesConfig, notifier notifications.Service) *Service {
+func New(repo Repository, log *zap.Logger, conf DOSpacesConfig, notifier Notifier) *Service {
 	if log == nil {
 		log, _ = zap.NewProduction()
 		log.Warn("log *zap.Logger is nil, using zap.NewProduction")

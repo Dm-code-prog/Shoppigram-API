@@ -173,7 +173,7 @@ func main() {
 			ID:       config.DigitalOcean.Spaces.Key,
 			Secret:   config.DigitalOcean.Spaces.Secret,
 		},
-		*notificationsService,
+		notificationsService,
 	)
 	adminsHandler := admins.MakeHandler(adminsService, authMw)
 
