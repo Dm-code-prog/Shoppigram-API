@@ -17,9 +17,8 @@ type Channel struct {
 }
 
 type NewOrderNotificationsList struct {
-	WebAppID      pgtype.UUID
-	AdminUsername pgtype.Text
-	AdminChatID   int64
+	WebAppID    pgtype.UUID
+	AdminChatID int64
 }
 
 type NewWebAppsNotificationsList struct {

@@ -13,47 +13,40 @@ import (
 )
 
 const createNewOrderNotificationsListEntry = `-- name: CreateNewOrderNotificationsListEntry :exec
-insert into new_order_notifications_list (web_app_id, admin_username, admin_chat_id)
+insert into new_order_notifications_list (web_app_id, admin_chat_id)
 values ($1,
-        $2,
-        $3)
+        $2)
 `
 
 type CreateNewOrderNotificationsListEntryParams struct {
-	WebAppID      pgtype.UUID
-	AdminUsername pgtype.Text
-	AdminChatID   int64
+	WebAppID    pgtype.UUID
+	AdminChatID int64
 }
 
 func (q *Queries) CreateNewOrderNotificationsListEntry(ctx context.Context, arg CreateNewOrderNotificationsListEntryParams) error {
-	_, err := q.db.Exec(ctx, createNewOrderNotificationsListEntry, arg.WebAppID, arg.AdminUsername, arg.AdminChatID)
+	_, err := q.db.Exec(ctx, createNewOrderNotificationsListEntry, arg.WebAppID, arg.AdminChatID)
 	return err
 }
 
 const getAdminsNotificationList = `-- name: GetAdminsNotificationList :many
-select admin_username, admin_chat_id
+select admin_chat_id
 from new_order_notifications_list
 where web_app_id = $1
 `
 
-type GetAdminsNotificationListRow struct {
-	AdminUsername pgtype.Text
-	AdminChatID   int64
-}
-
-func (q *Queries) GetAdminsNotificationList(ctx context.Context, webAppID pgtype.UUID) ([]GetAdminsNotificationListRow, error) {
+func (q *Queries) GetAdminsNotificationList(ctx context.Context, webAppID pgtype.UUID) ([]int64, error) {
 	rows, err := q.db.Query(ctx, getAdminsNotificationList, webAppID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetAdminsNotificationListRow
+	var items []int64
 	for rows.Next() {
-		var i GetAdminsNotificationListRow
-		if err := rows.Scan(&i.AdminUsername, &i.AdminChatID); err != nil {
+		var admin_chat_id int64
+		if err := rows.Scan(&admin_chat_id); err != nil {
 			return nil, err
 		}
-		items = append(items, i)
+		items = append(items, admin_chat_id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

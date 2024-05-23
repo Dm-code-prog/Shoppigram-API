@@ -10,7 +10,7 @@ set cursor_date = $2,
 where name = $1;
 
 -- name: GetAdminsNotificationList :many
-select admin_username, admin_chat_id
+select admin_chat_id
 from new_order_notifications_list
 where web_app_id = $1;
 
@@ -83,7 +83,6 @@ from marketplaces_batch mb
 order by mb.verified_at, mb.id;
 
 -- name: CreateNewOrderNotificationsListEntry :exec
-insert into new_order_notifications_list (web_app_id, admin_username, admin_chat_id)
+insert into new_order_notifications_list (web_app_id, admin_chat_id)
 values ($1,
-        $2,
-        $3);
+        $2);

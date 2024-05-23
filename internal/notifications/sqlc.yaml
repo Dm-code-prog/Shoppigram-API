@@ -14,6 +14,7 @@ sql:
       - ../products/schemas/20240515.sql
       - ./schemas/20240514.sql
       - ./schemas/20240516.sql
+      - ./schemas/20240522.sql
     gen:
       go:
         package: generated
