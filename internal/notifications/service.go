@@ -64,11 +64,11 @@ type (
 		OwnerExternalUserID int64
 	}
 
-	// CreateNewOrderNotificationsListEntryRequest creates a new order notification
+	// AddUserToNewOrderNotificationsRequest creates a new order notification
 	// list entry for some marketplace
-	CreateNewOrderNotificationsListEntryRequest struct {
-		WebAppID    uuid.UUID `json:"web_app_id"`
-		AdminChatID int64     `json:"admin_chat_id"`
+	AddUserToNewOrderNotificationsRequest struct {
+		WebAppID    uuid.UUID
+		AdminChatID int64
 	}
 
 	// Repository provides access to the user storage
@@ -80,7 +80,7 @@ type (
 		GetNotificationsForNewOrdersAfterCursor(ctx context.Context, cur Cursor) ([]NewOrderNotification, error)
 		GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]NewMarketplaceNotification, error)
 		GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]VerifiedMarketplaceNotification, error)
-		CreateNewOrderNotificationsListEntry(ctx context.Context, request CreateNewOrderNotificationsListEntryRequest) error
+		AddUserToNewOrderNotifications(ctx context.Context, req AddUserToNewOrderNotificationsRequest) error
 	}
 
 	// Service provides user operations
@@ -521,12 +521,12 @@ func (s *Service) sendVerifiedMarketplaceNotifications(marketplaceNotifications 
 	return nil
 }
 
-// CreateNewOrderNotificationsListEntry creates a new order notification
+// AddUserToNewOrderNotifications creates a new order notification
 // list entry for some marketplace
-func (s *Service) CreateNewOrderNotificationsListEntry(ctx context.Context, req CreateNewOrderNotificationsListEntryRequest) error {
-	err := s.repo.CreateNewOrderNotificationsListEntry(ctx, req)
+func (s *Service) AddUserToNewOrderNotifications(ctx context.Context, req AddUserToNewOrderNotificationsRequest) error {
+	err := s.repo.AddUserToNewOrderNotifications(ctx, req)
 	if err != nil {
-		return errors.Wrap(err, "s.repo.CreateNewOrderNotificationsListEntry")
+		return errors.Wrap(err, "s.repo.AddUserToNewOrderNotifications")
 	}
 
 	return nil

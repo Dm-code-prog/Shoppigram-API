@@ -244,7 +244,7 @@ func (s *Service) CreateMarketplace(ctx context.Context, req CreateMarketplaceRe
 		return CreateMarketplaceResponse{}, errors.Wrap(err, "s.repo.CreateMarketplace")
 	}
 
-	err = s.notifier.CreateNewOrderNotificationsListEntry(ctx, notifications.CreateNewOrderNotificationsListEntryRequest{
+	err = s.notifier.AddUserToNewOrderNotifications(ctx, notifications.AddUserToNewOrderNotificationsRequest{
 		WebAppID:    res.ID,
 		AdminChatID: req.ExternalUserID,
 	})
