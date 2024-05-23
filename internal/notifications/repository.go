@@ -32,18 +32,12 @@ func NewPg(db *pgxpool.Pool, newOrderFetchLimit int, newMarketplaceFetchLimit in
 
 // GetAdminsNotificationList gets a list of admins to notify about an order
 func (p *Pg) GetAdminsNotificationList(ctx context.Context, webAppID uuid.UUID) ([]int64, error) {
-	var adminsNotificationList []int64
-
-	rows, err := p.gen.GetAdminsNotificationList(ctx, pgtype.UUID{
+	adminsNotificationList, err := p.gen.GetAdminsNotificationList(ctx, pgtype.UUID{
 		Bytes: webAppID,
 		Valid: true,
 	})
 	if err != nil {
 		return nil, errors.Wrap(err, "p.gen.GetAdminsNotificationList")
-	}
-
-	for _, v := range rows {
-		adminsNotificationList = append(adminsNotificationList, v.AdminChatID)
 	}
 
 	return adminsNotificationList, nil

@@ -10,7 +10,7 @@ set cursor_date = $2,
 where name = $1;
 
 -- name: GetAdminsNotificationList :many
-select admin_username, admin_chat_id
+select admin_chat_id
 from new_order_notifications_list
 where web_app_id = $1;
 
