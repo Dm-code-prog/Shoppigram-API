@@ -148,10 +148,11 @@ type (
 
 	// Service provides admin operations
 	Service struct {
-		repo   Repository
-		spaces *s3.S3
-		log    *zap.Logger
-		bucket string
+		repo     Repository
+		spaces   *s3.S3
+		log      *zap.Logger
+		bucket   string
+		notifier notifications.Service
 	}
 )
 
@@ -184,7 +185,7 @@ const (
 )
 
 // New creates a new admin service
-func New(repo Repository, log *zap.Logger, conf DOSpacesConfig) *Service {
+func New(repo Repository, log *zap.Logger, conf DOSpacesConfig, notifier notifications.Service) *Service {
 	if log == nil {
 		log, _ = zap.NewProduction()
 		log.Warn("log *zap.Logger is nil, using zap.NewProduction")
@@ -202,10 +203,11 @@ func New(repo Repository, log *zap.Logger, conf DOSpacesConfig) *Service {
 	}))
 
 	return &Service{
-		repo:   repo,
-		log:    log,
-		spaces: s3.New(sess),
-		bucket: conf.Bucket,
+		repo:     repo,
+		log:      log,
+		spaces:   s3.New(sess),
+		bucket:   conf.Bucket,
+		notifier: notifier,
 	}
 }
 
@@ -242,7 +244,7 @@ func (s *Service) CreateMarketplace(ctx context.Context, req CreateMarketplaceRe
 		return CreateMarketplaceResponse{}, errors.Wrap(err, "s.repo.CreateMarketplace")
 	}
 
-	err = notifications.CreateNewOrderNotificationsListEntry(ctx, notifications.CreateNewOrderNotificationsListEntryRequest{
+	err = s.notifier.CreateNewOrderNotificationsListEntry(ctx, notifications.CreateNewOrderNotificationsListEntryRequest{
 		WebAppID:    res.ID,
 		AdminChatID: req.ExternalUserID,
 	})

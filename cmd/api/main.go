@@ -124,15 +124,6 @@ func main() {
 	ordersService := orders.New(ordersRepo, log.With(zap.String("service", "orders")))
 	ordersHandler := orders.MakeHandler(ordersService, authMw)
 
-	adminsRepo := admins.NewPg(db)
-	adminsService := admins.New(adminsRepo, log.With(zap.String("service", "admins")), admins.DOSpacesConfig{
-		Endpoint: config.DigitalOcean.Spaces.Endpoint,
-		Bucket:   config.DigitalOcean.Spaces.Bucket,
-		ID:       config.DigitalOcean.Spaces.Key,
-		Secret:   config.DigitalOcean.Spaces.Secret,
-	})
-	adminsHandler := admins.MakeHandler(adminsService, authMw)
-
 	notificationsRepo := notifications.NewPg(
 		db,
 		config.NewOrderNotifications.BatchSize,
@@ -171,6 +162,20 @@ func main() {
 	} else {
 		log.Warn("verified marketplace notifications job is disabled")
 	}
+
+	adminsRepo := admins.NewPg(db)
+	adminsService := admins.New(
+		adminsRepo,
+		log.With(zap.String("service", "admins")),
+		admins.DOSpacesConfig{
+			Endpoint: config.DigitalOcean.Spaces.Endpoint,
+			Bucket:   config.DigitalOcean.Spaces.Bucket,
+			ID:       config.DigitalOcean.Spaces.Key,
+			Secret:   config.DigitalOcean.Spaces.Secret,
+		},
+		*notificationsService,
+	)
+	adminsHandler := admins.MakeHandler(adminsService, authMw)
 
 	r.Mount("/api/v1/public/products", productsHandler)
 	r.Mount("/api/v1/public/auth", tgUsersHandler)
