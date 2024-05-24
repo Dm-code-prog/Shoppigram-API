@@ -213,3 +213,20 @@ func (p *Pg) GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Cont
 
 	return verifiedMarketplaceNotifications, nil
 }
+
+// AddUserToNewOrderNotifications creates a new order notification
+// list entry for some marketplace
+func (p *Pg) AddUserToNewOrderNotifications(ctx context.Context, req AddUserToNewOrderNotificationsRequest) error {
+	err := p.gen.AddUserToNewOrderNotifications(ctx, generated.AddUserToNewOrderNotificationsParams{
+		WebAppID: pgtype.UUID{
+			Bytes: req.WebAppID,
+			Valid: true,
+		},
+		AdminChatID: req.AdminChatID,
+	})
+	if err != nil {
+		return errors.Wrap(err, "p.gen.AddUserToNewOrderNotifications")
+	}
+
+	return nil
+}

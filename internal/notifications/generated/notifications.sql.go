@@ -12,6 +12,22 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const addUserToNewOrderNotifications = `-- name: AddUserToNewOrderNotifications :exec
+insert into new_order_notifications_list (web_app_id, admin_chat_id)
+values ($1,
+        $2)
+`
+
+type AddUserToNewOrderNotificationsParams struct {
+	WebAppID    pgtype.UUID
+	AdminChatID int64
+}
+
+func (q *Queries) AddUserToNewOrderNotifications(ctx context.Context, arg AddUserToNewOrderNotificationsParams) error {
+	_, err := q.db.Exec(ctx, addUserToNewOrderNotifications, arg.WebAppID, arg.AdminChatID)
+	return err
+}
+
 const getAdminsNotificationList = `-- name: GetAdminsNotificationList :many
 select admin_chat_id
 from new_order_notifications_list

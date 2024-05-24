@@ -119,6 +119,13 @@ type (
 		UploadURL string `json:"upload_url"`
 		Key       string `json:"key"`
 	}
+
+	// AddUserToNewOrderNotificationsRequest mirrors a corresponding struct
+	// in notifications module to reduce coupling
+	AddUserToNewOrderNotificationsRequest struct {
+		WebAppID    uuid.UUID
+		AdminChatID int64
+	}
 )
 
 type (
@@ -145,12 +152,17 @@ type (
 		Bucket   string
 	}
 
+	Notifier interface {
+		AddUserToNewOrderNotifications(ctx context.Context, req AddUserToNewOrderNotificationsRequest) error
+	}
+
 	// Service provides admin operations
 	Service struct {
-		repo   Repository
-		spaces *s3.S3
-		log    *zap.Logger
-		bucket string
+		repo     Repository
+		spaces   *s3.S3
+		log      *zap.Logger
+		bucket   string
+		notifier Notifier
 	}
 )
 
@@ -183,7 +195,7 @@ const (
 )
 
 // New creates a new admin service
-func New(repo Repository, log *zap.Logger, conf DOSpacesConfig) *Service {
+func New(repo Repository, log *zap.Logger, conf DOSpacesConfig, notifier Notifier) *Service {
 	if log == nil {
 		log, _ = zap.NewProduction()
 		log.Warn("log *zap.Logger is nil, using zap.NewProduction")
@@ -201,10 +213,11 @@ func New(repo Repository, log *zap.Logger, conf DOSpacesConfig) *Service {
 	}))
 
 	return &Service{
-		repo:   repo,
-		log:    log,
-		spaces: s3.New(sess),
-		bucket: conf.Bucket,
+		repo:     repo,
+		log:      log,
+		spaces:   s3.New(sess),
+		bucket:   conf.Bucket,
+		notifier: notifier,
 	}
 }
 
@@ -240,6 +253,11 @@ func (s *Service) CreateMarketplace(ctx context.Context, req CreateMarketplaceRe
 		).Error(err.Error())
 		return CreateMarketplaceResponse{}, errors.Wrap(err, "s.repo.CreateMarketplace")
 	}
+
+	err = s.notifier.AddUserToNewOrderNotifications(ctx, AddUserToNewOrderNotificationsRequest{
+		WebAppID:    res.ID,
+		AdminChatID: req.ExternalUserID,
+	})
 
 	return res, err
 }

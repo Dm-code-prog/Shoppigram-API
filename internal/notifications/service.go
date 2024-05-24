@@ -64,6 +64,13 @@ type (
 		OwnerExternalUserID int64
 	}
 
+	// AddUserToNewOrderNotificationsRequest creates a new order notification
+	// list entry for some marketplace
+	AddUserToNewOrderNotificationsRequest struct {
+		WebAppID    uuid.UUID
+		AdminChatID int64
+	}
+
 	// Repository provides access to the user storage
 	Repository interface {
 		GetAdminsNotificationList(ctx context.Context, webAppID uuid.UUID) ([]int64, error)
@@ -73,6 +80,7 @@ type (
 		GetNotificationsForNewOrdersAfterCursor(ctx context.Context, cur Cursor) ([]NewOrderNotification, error)
 		GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]NewMarketplaceNotification, error)
 		GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]VerifiedMarketplaceNotification, error)
+		AddUserToNewOrderNotifications(ctx context.Context, req AddUserToNewOrderNotificationsRequest) error
 	}
 
 	// Service provides user operations
@@ -508,6 +516,17 @@ func (s *Service) sendVerifiedMarketplaceNotifications(marketplaceNotifications 
 			return errors.Wrap(err, "bot.Send")
 		}
 
+	}
+
+	return nil
+}
+
+// AddUserToNewOrderNotifications creates a new order notification
+// list entry for some marketplace
+func (s *Service) AddUserToNewOrderNotifications(ctx context.Context, req AddUserToNewOrderNotificationsRequest) error {
+	err := s.repo.AddUserToNewOrderNotifications(ctx, req)
+	if err != nil {
+		return errors.Wrap(err, "s.repo.AddUserToNewOrderNotifications")
 	}
 
 	return nil
