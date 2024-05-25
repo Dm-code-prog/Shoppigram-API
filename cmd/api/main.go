@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/shoppigram-com/marketplace-api/internal/webhooks"
 	"net/http"
 	"os"
 	"syscall"
@@ -187,10 +188,13 @@ func main() {
 	)
 	adminsHandler := admins.MakeHandler(adminsService, authMw)
 
+	webhooksHandler := webhooks.MakeHandler(log, config.TelegramWebhooks.SecretToken)
+
 	r.Mount("/api/v1/public/products", productsHandler)
 	r.Mount("/api/v1/public/auth", tgUsersHandler)
 	r.Mount("/api/v1/public/orders", ordersHandler)
 	r.Mount("/api/v1/private/marketplaces", adminsHandler)
+	r.Mount("/api/v1/telegram/webhooks", webhooksHandler)
 
 	g.Add(func() error {
 		log.Info("starting HTTP server", zap.String("port", config.HTTP.Port))

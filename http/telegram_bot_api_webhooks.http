@@ -1,0 +1,7 @@
+POST localhost:8080/api/v1/telegram/webhooks
+X-Telegram-Bot-Api-Secret-Token: ca61bd260963c6b2454d9acb830cf5ba492a3b22ad18ebf8c87dbe5b2f4fd010
+Content-Type: application/json
+
+{
+  "update_id": 17373773737
+}
