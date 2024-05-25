@@ -48,4 +48,8 @@ type Environment struct {
 			Secret   string `env:"DIGITALOCEAN_SPACES_SECRET,required"`
 		}
 	}
+
+	TelegramWebhooks struct {
+		SecretToken string `env:"TELEGRAM_WEBHOOK_SECRET,required"`
+	}
 }
