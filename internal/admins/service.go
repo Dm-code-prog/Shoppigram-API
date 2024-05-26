@@ -2,6 +2,7 @@ package admins
 
 import (
 	"context"
+	"github.com/shoppigram-com/marketplace-api/internal/logging"
 	"regexp"
 	"strconv"
 	"time"
@@ -470,7 +471,7 @@ func (s *Service) CreateOrUpdateTelegramChannel(ctx context.Context, req CreateO
 		s.log.With(
 			zap.String("method", "s.repo.CreateOrUpdateTelegramChannel"),
 			zap.String("external_id", strconv.FormatInt(req.ExternalID, 10)),
-		).Error(err.Error())
+		).Error("error", logging.SilentError(err))
 		return errors.Wrap(err, "s.repo.CreateOrUpdateTelegramChannel")
 	}
 
