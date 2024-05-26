@@ -126,6 +126,15 @@ type (
 		WebAppID    uuid.UUID
 		AdminChatID int64
 	}
+
+	// CreateOrUpdateTelegramChannelRequest contains the data about a Telegram channel, Shoppigram bot is added to
+	CreateOrUpdateTelegramChannelRequest struct {
+		ExternalID      int64
+		Title           string
+		Name            string
+		OwnerExternalID int64
+		IsPublic        bool
+	}
 )
 
 type (
@@ -142,6 +151,8 @@ type (
 
 		IsUserTheOwnerOfMarketplace(ctx context.Context, externalUserID int64, webAppID uuid.UUID) (bool, error)
 		IsUserTheOwnerOfProduct(ctx context.Context, externalUserID int64, productID uuid.UUID) (bool, error)
+
+		CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error
 	}
 
 	// DOSpacesConfig holds the credentials for the S3 bucket
@@ -450,6 +461,20 @@ func (s *Service) CreateMarketplaceLogoUploadURL(ctx context.Context, request Cr
 		UploadURL: url,
 		Key:       key,
 	}, nil
+}
+
+// CreateOrUpdateTelegramChannel creates or updates a Telegram channel
+func (s *Service) CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error {
+	err := s.repo.CreateOrUpdateTelegramChannel(ctx, req)
+	if err != nil {
+		s.log.With(
+			zap.String("method", "s.repo.CreateOrUpdateTelegramChannel"),
+			zap.String("external_id", strconv.FormatInt(req.ExternalID, 10)),
+		).Error(err.Error())
+		return errors.Wrap(err, "s.repo.CreateOrUpdateTelegramChannel")
+	}
+
+	return nil
 }
 
 func isMarketplaceShortNameValid(shortName string) bool {

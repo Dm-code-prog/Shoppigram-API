@@ -22,7 +22,7 @@ func (s serverErrorLogger) Handle(ctx context.Context, err error) {
 }
 
 // MakeHandler returns a handler for the Telegram webhooks service.
-func MakeHandler(log *zap.Logger, secretToken string) http.Handler {
+func MakeHandler(s *Service, secretToken string) http.Handler {
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(encodeError),
 		kithttp.ServerBefore(func(ctx context.Context, request *http.Request) context.Context {
@@ -34,7 +34,7 @@ func MakeHandler(log *zap.Logger, secretToken string) http.Handler {
 
 	authMw := makeWebhookAuthMiddleware(secretToken)
 
-	ep := authMw(makeTelegramWebhookEndpoint(log))
+	ep := authMw(makeTelegramWebhookEndpoint(s))
 	handler := kithttp.NewServer(ep, decodeTelegramWebhookRequest, encodeResponse, opts...)
 
 	r := chi.NewRouter()

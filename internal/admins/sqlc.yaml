@@ -4,6 +4,7 @@ sql:
     queries:
       - ./queries/marketplaces.sql
       - ./queries/products.sql
+      - ./queries/telegram_channels.sql
     schema:
       - ../products/schemas/20240411.sql
       - ../products/schemas/20240501.sql
@@ -11,6 +12,7 @@ sql:
       - ../products/schemas/20240510.sql
       - ../products/schemas/20240515.sql
       - ./schemas/20240514.sql
+      - ./schemas/20240526.sql
     gen:
       go:
         package: generated

@@ -205,3 +205,20 @@ func (p *Pg) IsUserTheOwnerOfProduct(ctx context.Context, userID int64, productI
 func (p *Pg) GetMarketplaceShortName(ctx context.Context, id uuid.UUID) (string, error) {
 	return p.gen.GetMarketplaceShortName(ctx, id)
 }
+
+// CreateOrUpdateTelegramChannel creates or updates a Telegram channel
+// that was integrated with Shoppigram
+func (p *Pg) CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error {
+	err := p.gen.CreateOrUpdateTelegramChannel(ctx, generated.CreateOrUpdateTelegramChannelParams{
+		ExternalID:      req.ExternalID,
+		Name:            pgtype.Text{String: req.Name, Valid: req.Name != ""},
+		Title:           req.Title,
+		IsPublic:        req.IsPublic,
+		OwnerExternalID: req.OwnerExternalID,
+	})
+	if err != nil {
+		return errors.Wrap(err, "p.gen.CreateOrUpdateTelegramChannel")
+	}
+
+	return nil
+}

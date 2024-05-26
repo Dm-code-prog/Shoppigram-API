@@ -29,14 +29,6 @@ import (
 	"go.uber.org/zap"
 )
 
-type AddUserToNewOrderNotificationsAdapter struct {
-	notifier *notifications.Service
-}
-
-func (a *AddUserToNewOrderNotificationsAdapter) AddUserToNewOrderNotifications(ctx context.Context, req admins.AddUserToNewOrderNotificationsRequest) error {
-	return a.notifier.AddUserToNewOrderNotifications(ctx, notifications.AddUserToNewOrderNotificationsRequest(req))
-}
-
 func main() {
 	var (
 		logLevel  zapcore.Level
@@ -182,13 +174,18 @@ func main() {
 			ID:       config.DigitalOcean.Spaces.Key,
 			Secret:   config.DigitalOcean.Spaces.Secret,
 		},
-		&AddUserToNewOrderNotificationsAdapter{
+		&notificationsAdminAdapter{
 			notifier: notificationsService,
 		},
 	)
 	adminsHandler := admins.MakeHandler(adminsService, authMw)
 
-	webhooksHandler := webhooks.MakeHandler(log, config.TelegramWebhooks.SecretToken)
+	webhookService := webhooks.New(
+		&adminWebhooksAdapter{admin: adminsService},
+		log.With(zap.String("service", "webhooks")),
+		config.Bot.ID,
+	)
+	webhooksHandler := webhooks.MakeHandler(webhookService, config.TelegramWebhooks.SecretToken)
 
 	r.Mount("/api/v1/public/products", productsHandler)
 	r.Mount("/api/v1/public/auth", tgUsersHandler)

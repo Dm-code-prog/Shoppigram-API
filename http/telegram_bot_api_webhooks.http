@@ -3,5 +3,23 @@ X-Telegram-Bot-Api-Secret-Token: ca61bd260963c6b2454d9acb830cf5ba492a3b22ad18ebf
 Content-Type: application/json
 
 {
-  "update_id": 17373773737
+  "update_id": 17373773737,
+  "my_chat_member": {
+    "chat": {
+      "id": -1002183228927,
+      "type": "channel",
+      "title": "Test Channel",
+      "username": "test_channel"
+    },
+    "from": {
+      "id": 1079068782
+    },
+    "new_chat_member": {
+      "can_post_messages": true,
+      "status": "administrator",
+      "user": {
+        "id": 7141486456
+      }
+    }
+  }
 }
