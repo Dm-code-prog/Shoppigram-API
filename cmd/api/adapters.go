@@ -26,3 +26,11 @@ type adminWebhooksAdapter struct {
 func (a *adminWebhooksAdapter) CreateOrUpdateTelegramChannel(ctx context.Context, req webhooks.CreateOrUpdateTelegramChannelRequest) error {
 	return a.admin.CreateOrUpdateTelegramChannel(ctx, admins.CreateOrUpdateTelegramChannelRequest(req))
 }
+
+type notificationsWebhooksAdapter struct {
+	notifier *notifications.Service
+}
+
+func (a *notificationsWebhooksAdapter) NotifyChannelIntegrationSuccess(ctx context.Context, req webhooks.NotifyChannelIntegrationSuccessRequest) error {
+	return a.notifier.NotifyChannelIntegrationSuccess(ctx, notifications.NotifyChannelIntegrationSuccessRequest(req))
+}

@@ -24,17 +24,36 @@ type (
 		CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error
 	}
 
+	// NotifyChannelIntegrationSuccessRequest contains the data required to notify a user about a successful
+	// channel integration with Shoppigram
+	NotifyChannelIntegrationSuccessRequest struct {
+		UserExternalID    int64
+		ChannelExternalID int64
+		ChannelTitle      string
+		ChannelName       string
+	}
+
+	// Notifier is the service for notifications
+	// The interface requires a method for notifying a user about a successful
+	// channel integration with Shoppigram
+	Notifier interface {
+		NotifyChannelIntegrationSuccess(ctx context.Context, request NotifyChannelIntegrationSuccessRequest) error
+	}
+
+	// Service is the service for handling Telegram webhooks
 	Service struct {
 		channelStorage  ChannelStorage
+		notifier        Notifier
 		log             *zap.Logger
 		shoppigramBotID int64
 	}
 )
 
 // New returns a new instance of the Service
-func New(channelStorage ChannelStorage, log *zap.Logger, shoppigramBotID int64) *Service {
+func New(channelStorage ChannelStorage, notifier Notifier, log *zap.Logger, shoppigramBotID int64) *Service {
 	return &Service{
 		channelStorage:  channelStorage,
+		notifier:        notifier,
 		log:             log,
 		shoppigramBotID: shoppigramBotID,
 	}
@@ -79,7 +98,17 @@ func (s *Service) handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx context
 		IsPublic: event.Chat.UserName != "",
 	})
 	if err != nil {
-		return errors.Wrap(err, "failed to create or update a Telegram channel")
+		return errors.Wrap(err, "s.channelStorage.CreateOrUpdateTelegramChannel")
+	}
+
+	err = s.notifier.NotifyChannelIntegrationSuccess(ctx, NotifyChannelIntegrationSuccessRequest{
+		UserExternalID:    event.From.ID,
+		ChannelExternalID: event.Chat.ID,
+		ChannelTitle:      event.Chat.Title,
+		ChannelName:       event.Chat.UserName,
+	})
+	if err != nil {
+		return errors.Wrap(err, "s.notifier.NotifyChannelIntegrationSuccess")
 	}
 
 	return nil
