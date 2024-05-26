@@ -3,7 +3,6 @@ package notifications
 import (
 	"context"
 	"embed"
-	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -35,40 +34,20 @@ type (
 		PriceCurrency string
 	}
 
-	// NewOrderNotification defines the structure of order notification
-	NewOrderNotification struct {
-		ID              uuid.UUID
-		ReadableOrderID int64
-		CreatedAt       time.Time
-		UserNickname    string
-		WebAppID        uuid.UUID
-		WebAppName      string
-		Products        []Product
-	}
-
-	// NewMarketplaceNotification defines the structure of new marketplace notification
-	NewMarketplaceNotification struct {
-		ID            uuid.UUID
-		Name          string
-		ShortName     string
-		CreatedAt     time.Time
-		OwnerUsername string
-	}
-
-	// VerifiedMarketplaceNotification defines the structure of verified marketplace notification
-	VerifiedMarketplaceNotification struct {
-		ID                  uuid.UUID
-		Name                string
-		ShortName           string
-		VerifiedAt          time.Time
-		OwnerExternalUserID int64
-	}
-
 	// AddUserToNewOrderNotificationsRequest creates a new order notification
 	// list entry for some marketplace
 	AddUserToNewOrderNotificationsRequest struct {
 		WebAppID    uuid.UUID
 		AdminChatID int64
+	}
+
+	// NotifyChannelIntegrationSuccessRequest contains the data required to notify a user about a successful
+	// channel integration with Shoppigram
+	NotifyChannelIntegrationSuccessRequest struct {
+		UserExternalID    int64
+		ChannelExternalID int64
+		ChannelTitle      string
+		ChannelName       string
 	}
 
 	// Repository provides access to the user storage
@@ -104,64 +83,6 @@ const (
 	marketplaceURL                  = "https://web-app.shoppigram.com/app/"
 	webAppURL                       = "https://t.me/shoppigrambot/"
 )
-
-// BuildMessage creates a notification message for a new order
-func (o *NewOrderNotification) BuildMessage() (string, error) {
-	var subtotal float64
-	var productList strings.Builder
-	var currency string
-	for _, p := range o.Products {
-		subtotal += p.Price * float64(p.Quantity)
-		currency = p.PriceCurrency
-		productList.WriteString(fmt.Sprintf(`\- %dx %s по цене %s %s
-`, p.Quantity, escapeSpecialSymbols(p.Name), escapeSpecialSymbols(formatFloat(p.Price)), formatCurrency(p.PriceCurrency)))
-	}
-
-	newOrderMessageTemplate, err := templates.ReadFile("templates/new_order_message.md")
-	if err != nil {
-		return "", errors.Wrap(err, "templates.ReadFile")
-	}
-
-	return fmt.Sprintf(
-		escapeSpecialSymbols(string((newOrderMessageTemplate))),
-		escapeSpecialSymbols(o.WebAppName),
-		escapeSpecialSymbols(o.UserNickname),
-		o.ReadableOrderID,
-		formatRussianTime(o.CreatedAt),
-		escapeSpecialSymbols(formatFloat(subtotal))+" "+formatCurrency(currency),
-		strings.TrimRight(productList.String(), "; "),
-	), nil
-}
-
-// BuildMessage creates a notification message for a new marketplace
-func (m *NewMarketplaceNotification) BuildMessage() (string, error) {
-	newMarketplaceMessageTemplate, err := templates.ReadFile("templates/new_marketplace_message.md")
-	if err != nil {
-		return "", errors.Wrap(err, "templates.ReadFile")
-	}
-
-	return fmt.Sprintf(
-		escapeSpecialSymbols(string(newMarketplaceMessageTemplate)),
-		escapeSpecialSymbols(m.OwnerUsername),
-		escapeSpecialSymbols(m.Name),
-		escapeSpecialSymbols(m.ShortName),
-		escapeSpecialSymbols(marketplaceURL+m.ID.String()),
-	), nil
-}
-
-// BuildMessage creates a notification message for a verified marketplace
-func (m *VerifiedMarketplaceNotification) BuildMessage() (string, error) {
-	verifiedMarketplaceMessageTemplate, err := templates.ReadFile("templates/verified_marketplace_message.md")
-	if err != nil {
-		return "", errors.Wrap(err, "templates.ReadFile")
-	}
-
-	return fmt.Sprintf(
-		escapeSpecialSymbols(string(verifiedMarketplaceMessageTemplate)),
-		escapeSpecialSymbols(m.Name),
-		escapeSpecialSymbols(webAppURL+m.ShortName),
-	), nil
-}
 
 // New creates a new user service
 func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration, newMarketplaceProcessingTimer time.Duration, verifiedMarketplaceProcessingTimer time.Duration, botToken string) *Service {
@@ -527,6 +448,30 @@ func (s *Service) AddUserToNewOrderNotifications(ctx context.Context, req AddUse
 	err := s.repo.AddUserToNewOrderNotifications(ctx, req)
 	if err != nil {
 		return errors.Wrap(err, "s.repo.AddUserToNewOrderNotifications")
+	}
+
+	return nil
+}
+
+// NotifyChannelIntegrationSuccess notifies a user about a successful
+// channel integration with Shoppigram
+func (s *Service) NotifyChannelIntegrationSuccess(ctx context.Context, request NotifyChannelIntegrationSuccessRequest) error {
+	bot, err := tgbotapi.NewBotAPI(s.botToken)
+	if err != nil {
+		return errors.Wrap(err, "tgbotapi.NewBotAPI")
+	}
+
+	message := ChannelIntegrationSuccessNotification(request)
+	msgTxt, err := message.BuildMessage()
+	if err != nil {
+		return errors.Wrap(err, "message.BuildMessage")
+	}
+
+	msg := tgbotapi.NewMessage(request.UserExternalID, msgTxt)
+	msg.ParseMode = tgbotapi.ModeMarkdownV2
+	_, err = bot.Send(msg)
+	if err != nil {
+		return errors.Wrap(err, "bot.Send")
 	}
 
 	return nil

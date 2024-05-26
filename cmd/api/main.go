@@ -182,10 +182,14 @@ func main() {
 
 	webhookService := webhooks.New(
 		&adminWebhooksAdapter{admin: adminsService},
+		&notificationsWebhooksAdapter{notifier: notificationsService},
 		log.With(zap.String("service", "webhooks")),
 		config.Bot.ID,
 	)
-	webhooksHandler := webhooks.MakeHandler(webhookService, config.TelegramWebhooks.SecretToken)
+	webhooksHandler := webhooks.MakeHandler(
+		webhookService,
+		log.With(zap.String("service", "webhooks_server")),
+		config.TelegramWebhooks.SecretToken)
 
 	r.Mount("/api/v1/public/products", productsHandler)
 	r.Mount("/api/v1/public/auth", tgUsersHandler)
