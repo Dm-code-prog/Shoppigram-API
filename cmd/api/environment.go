@@ -38,6 +38,7 @@ type Environment struct {
 
 	Bot struct {
 		Token string `env:"BOT_TOKEN,required"`
+		ID    int64  `env:"BOT_ID,required"`
 	}
 
 	DigitalOcean struct {
