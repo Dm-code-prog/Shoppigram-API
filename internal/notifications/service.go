@@ -70,7 +70,7 @@ type (
 		newOrderProcessingTimer            time.Duration
 		newMarketplaceProcessingTimer      time.Duration
 		verifiedMarketplaceProcessingTimer time.Duration
-		botToken                           string
+		bot                                *tgbotapi.BotAPI
 	}
 )
 
@@ -96,6 +96,18 @@ func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration
 		log.Fatal("new marketplace processing timer is not specified")
 		return nil
 	}
+	if botToken == "" {
+		log.Fatal("bot token is not specified")
+		return nil
+	}
+
+	bot, err := tgbotapi.NewBotAPI(botToken)
+	if err != nil {
+		log.With(
+			zap.String("method", "tgbotapi.NewBotAPI"),
+		).Fatal(err.Error())
+		return nil
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Service{
@@ -106,7 +118,7 @@ func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration
 		newOrderProcessingTimer:            newOrderProcessingTimer,
 		newMarketplaceProcessingTimer:      newMarketplaceProcessingTimer,
 		verifiedMarketplaceProcessingTimer: verifiedMarketplaceProcessingTimer,
-		botToken:                           botToken,
+		bot:                                bot,
 	}
 }
 
@@ -296,11 +308,6 @@ func (s *Service) Shutdown() error {
 
 // sendNewOrderNotifications sends batch of notifications for new orders
 func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotification) error {
-	bot, err := tgbotapi.NewBotAPI(s.botToken)
-	if err != nil {
-		return errors.Wrap(err, "tgbotapi.NewBotAPI")
-	}
-
 	for _, notification := range orderNotifications {
 		nl, err := s.repo.GetAdminsNotificationList(s.ctx, notification.WebAppID)
 		if err != nil {
@@ -315,7 +322,7 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 			}
 			msg := tgbotapi.NewMessage(v, msgTxt)
 			msg.ParseMode = tgbotapi.ModeMarkdownV2
-			_, err = bot.Send(msg)
+			_, err = s.bot.Send(msg)
 			if err != nil {
 				return errors.Wrap(err, "bot.Send")
 			}
@@ -328,11 +335,6 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 
 // sendNewMarketplaceNotifications sends batch of notifications for new marketplaces
 func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []NewMarketplaceNotification) error {
-	bot, err := tgbotapi.NewBotAPI(s.botToken)
-	if err != nil {
-		return errors.Wrap(err, "tgbotapi.NewBotAPI")
-	}
-
 	for _, notification := range marketplaceNotifications {
 		nl, err := s.repo.GetReviewersNotificationList(s.ctx, notification.ID)
 		if err != nil {
@@ -347,7 +349,7 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 			}
 			msg := tgbotapi.NewMessage(v, msgTxt)
 			msg.ParseMode = tgbotapi.ModeMarkdownV2
-			_, err = bot.Send(msg)
+			_, err = s.bot.Send(msg)
 			if err != nil {
 				return errors.Wrap(err, "bot.Send")
 			}
@@ -360,11 +362,6 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 
 // sendVerifiedMarketplaceNotifications sends batch of notifications for verified marketplaces
 func (s *Service) sendVerifiedMarketplaceNotifications(marketplaceNotifications []VerifiedMarketplaceNotification) error {
-	bot, err := tgbotapi.NewBotAPI(s.botToken)
-	if err != nil {
-		return errors.Wrap(err, "tgbotapi.NewBotAPI")
-	}
-
 	for _, notification := range marketplaceNotifications {
 		msgTxt, err := notification.BuildMessage()
 		if err != nil {
@@ -373,7 +370,7 @@ func (s *Service) sendVerifiedMarketplaceNotifications(marketplaceNotifications 
 
 		msg := tgbotapi.NewMessage(notification.OwnerExternalUserID, msgTxt)
 		msg.ParseMode = tgbotapi.ModeMarkdownV2
-		_, err = bot.Send(msg)
+		_, err = s.bot.Send(msg)
 		if err != nil {
 			if strings.Contains(err.Error(), "Bad Request: chat not found") {
 				s.log.With(
@@ -404,11 +401,6 @@ func (s *Service) AddUserToNewOrderNotifications(ctx context.Context, req AddUse
 // NotifyChannelIntegrationSuccess notifies a user about a successful
 // channel integration with Shoppigram
 func (s *Service) NotifyChannelIntegrationSuccess(ctx context.Context, request NotifyChannelIntegrationSuccessRequest) error {
-	bot, err := tgbotapi.NewBotAPI(s.botToken)
-	if err != nil {
-		return errors.Wrap(err, "tgbotapi.NewBotAPI")
-	}
-
 	message := ChannelIntegrationSuccessNotification(request)
 	msgTxt, err := message.BuildMessage()
 	if err != nil {
@@ -417,7 +409,7 @@ func (s *Service) NotifyChannelIntegrationSuccess(ctx context.Context, request N
 
 	msg := tgbotapi.NewMessage(request.UserExternalID, msgTxt)
 	msg.ParseMode = tgbotapi.ModeMarkdownV2
-	_, err = bot.Send(msg)
+	_, err = s.bot.Send(msg)
 	if err != nil {
 		return errors.Wrap(err, "bot.Send")
 	}
