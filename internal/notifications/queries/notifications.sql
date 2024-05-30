@@ -21,9 +21,9 @@ from new_web_apps_notifications_list;
 -- name: GetNotificationsForNewOrdersAfterCursor :many
 with orders_batch as (select id as order_id, created_at, readable_id, web_app_id, external_user_id
                       from orders o
-                      where o.created_at > $1
-                      order by o.created_at
-                      limit $2)
+                      where (o.created_at, o.id) > ($1::timestamp, $2::uuid)
+                      order by o.created_at, o.id
+                      limit $3)
 select ob.order_id,
        ob.readable_id,
        ob.created_at,
@@ -50,9 +50,9 @@ with marketplaces_batch as (select wa.id,
                                    wa.owner_external_id
          from web_apps wa
          where wa.is_verified = false
-         and wa.created_at > $1
-         order by wa.created_at
-         limit $2)
+         and (wa.created_at, wa.id) > ($1::timestamp, $2::uuid)
+         order by wa.created_at, wa.id
+         limit $3)
 select mb.id,
        mb.name,
        mb.short_name,
@@ -71,9 +71,9 @@ with marketplaces_batch as (select wa.id,
                                    wa.owner_external_id
          from web_apps wa
          where wa.is_verified = true
-         and wa.verified_at > $1
-         order by wa.verified_at
-         limit $2)
+         and (wa.verified_at, wa.id) > ($1::timestamp, $2::uuid)
+         order by wa.verified_at, wa.id
+         limit $3)
 select mb.id,
        mb.name,
        mb.short_name,

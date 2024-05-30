@@ -98,11 +98,12 @@ func (p *Pg) GetNotificationsForNewOrdersAfterCursor(ctx context.Context, cur Cu
 	rows, err := p.gen.GetNotificationsForNewOrdersAfterCursor(
 		ctx,
 		generated.GetNotificationsForNewOrdersAfterCursorParams{
-			CreatedAt: pgtype.Timestamp{
+			Column1: pgtype.Timestamp{
 				Time:  cur.CursorDate,
 				Valid: true,
 			},
-			Limit: int32(p.newOrderFetchLimit),
+			Column2: cur.LastProcessedID,
+			Limit:   int32(p.newOrderFetchLimit),
 		})
 	if err != nil {
 		return nil, errors.Wrap(err, "p.gen.GetNotificationsForNewOrdersAfterCursor")
@@ -160,11 +161,12 @@ func (p *Pg) GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, 
 	rows, err := p.gen.GetNotificationsForNewMarketplacesAfterCursor(
 		ctx,
 		generated.GetNotificationsForNewMarketplacesAfterCursorParams{
-			CreatedAt: pgtype.Timestamp{
+			Column1: pgtype.Timestamp{
 				Time:  cur.CursorDate,
 				Valid: true,
 			},
-			Limit: int32(p.newMarketplaceFetchLimit),
+			Column2: cur.LastProcessedID,
+			Limit:   int32(p.newMarketplaceFetchLimit),
 		})
 	if err != nil {
 		return nil, errors.Wrap(err, "p.gen.GetNotificationsForNewMarketplacesAfterCursor")
@@ -191,11 +193,12 @@ func (p *Pg) GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Cont
 	rows, err := p.gen.GetNotificationsForVerifiedMarketplacesAfterCursor(
 		ctx,
 		generated.GetNotificationsForVerifiedMarketplacesAfterCursorParams{
-			VerifiedAt: pgtype.Timestamp{
+			Column1: pgtype.Timestamp{
 				Time:  cur.CursorDate,
 				Valid: true,
 			},
-			Limit: int32(p.verifiedMarketplaceFetchLimit),
+			Column2: cur.LastProcessedID,
+			Limit:   int32(p.verifiedMarketplaceFetchLimit),
 		})
 	if err != nil {
 		return nil, errors.Wrap(err, "p.gen.GetNotificationsForNewMarketplacesAfterCursor")
