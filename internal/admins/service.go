@@ -2,6 +2,7 @@ package admins
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"strconv"
 	"time"
@@ -508,7 +509,7 @@ func (s *Service) GetTelegramChannels(ctx context.Context, ownerExternalID int64
 		return GetTelegramChannelsResponse{}, errors.Wrap(err, "s.repo.GetTelegramChannels")
 	}
 
-	for _, channel := range res.Channels {
+	for i, channel := range res.Channels {
 		val, ok := s.cache.Get(channel.ID.String())
 		if ok {
 			bot = val.(*tgbotapi.BotAPI)
@@ -530,7 +531,21 @@ func (s *Service) GetTelegramChannels(ctx context.Context, ownerExternalID int64
 			return GetTelegramChannelsResponse{}, errors.Wrap(err, "bot.GetChat")
 		}
 
-		channel.PhotoURL = chat.Photo.BigFileID
+		if chat.Photo != nil {
+			photoFile, err := bot.GetFile(tgbotapi.FileConfig{
+				FileID: chat.Photo.BigFileID,
+			})
+			if err != nil {
+				// FIXME: Log that behaviour
+				continue
+			}
+
+			res.Channels[i].PhotoURL = fmt.Sprintf(
+				"https://api.telegram.org/file/bot%v/%v",
+				s.botToken,
+				photoFile.FilePath,
+			)
+		}
 	}
 
 	return res, nil
