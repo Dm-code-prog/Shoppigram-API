@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dgraph-io/ristretto"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -66,7 +65,6 @@ type (
 	Service struct {
 		repo                               Repository
 		log                                *zap.Logger
-		cache                              *ristretto.Cache
 		ctx                                context.Context
 		cancel                             context.CancelFunc
 		newOrderProcessingTimer            time.Duration
@@ -99,23 +97,12 @@ func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration
 		return nil
 	}
 
-	cache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 1e2,     // number of keys to track frequency of (100).
-		MaxCost:     100_000, // maximum cost of cache (100KB).
-		BufferItems: 10,      // number of keys per Get buffer.
-	})
-	if err != nil {
-		log.Fatal("cache *ristretto.Cache is nil, fatal")
-		return nil
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Service{
 		repo:                               repo,
 		log:                                log,
 		ctx:                                ctx,
 		cancel:                             cancel,
-		cache:                              cache,
 		newOrderProcessingTimer:            newOrderProcessingTimer,
 		newMarketplaceProcessingTimer:      newMarketplaceProcessingTimer,
 		verifiedMarketplaceProcessingTimer: verifiedMarketplaceProcessingTimer,
@@ -146,7 +133,6 @@ func (s *Service) RunNewOrderNotifier() error {
 // runNewOrderNotifierOnce executes one iteration of loading a batch of new
 // orders and sending notifications to the owners of marketplaces
 func (s *Service) runNewOrderNotifierOnce() error {
-	defer s.cache.Clear()
 	cursor, err := s.repo.GetNotifierCursor(s.ctx, newOrderNotifierName)
 	if err != nil {
 		return errors.Wrap(err, "s.repo.GetNotifierCursor")
@@ -206,7 +192,6 @@ func (s *Service) RunNewMarketplaceNotifier() error {
 // runNewMarketplaceNotifierOnce executes one iteration of loading a batch of new
 // marketplaces and sending notifications to the reviewers of marketplaces
 func (s *Service) runNewMarketplaceNotifierOnce() error {
-	defer s.cache.Clear()
 	cursor, err := s.repo.GetNotifierCursor(s.ctx, newMarketplaceNotifierName)
 	if err != nil {
 		return errors.Wrap(err, "s.repo.GetNotifierCursor")
@@ -266,7 +251,6 @@ func (s *Service) RunVerifiedMarketplaceNotifier() error {
 // runVerifiedMarketplaceNotifierOnce executes one iteration of loading a batch of
 // verified marketplaces and sending notifications to the owners of those marketplaces
 func (s *Service) runVerifiedMarketplaceNotifierOnce() error {
-	defer s.cache.Clear()
 	cursor, err := s.repo.GetNotifierCursor(s.ctx, verifiedMarketplaceNotifierName)
 	if err != nil {
 		return errors.Wrap(err, "s.repo.GetNotifierCursor")
