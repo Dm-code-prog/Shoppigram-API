@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/shoppigram-com/marketplace-api/internal/webhooks"
 	"net/http"
 	"os"
 	"syscall"
 	"time"
+
+	"github.com/shoppigram-com/marketplace-api/internal/webhooks"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/shoppigram-com/marketplace-api/internal/admins"
@@ -177,6 +178,7 @@ func main() {
 		&notificationsAdminAdapter{
 			notifier: notificationsService,
 		},
+		config.Bot.Token,
 	)
 	adminsHandler := admins.MakeHandler(adminsService, authMw)
 
