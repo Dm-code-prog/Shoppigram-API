@@ -2,10 +2,11 @@ package admins
 
 import (
 	"context"
-	"github.com/shoppigram-com/marketplace-api/internal/logging"
 	"regexp"
 	"strconv"
 	"time"
+
+	"github.com/shoppigram-com/marketplace-api/internal/logging"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -135,6 +136,20 @@ type (
 		Name            string
 		OwnerExternalID int64
 		IsPublic        bool
+	}
+
+	// TelegramChannel contains the data about a Telegram channel
+	TelegramChannel struct {
+		ID         uuid.UUID `json:"id"`
+		ExternalID int64     `json:"external_id"`
+		Name       string    `json:"name"`
+		Title      string    `json:"title"`
+		PhotoURL   string    `json:"photo_url"`
+	}
+
+	// GetTelegramChannelsResponse contains the data about Telegram channels owned by a specific user
+	GetTelegramChannelsResponse struct {
+		Channels []TelegramChannel `json:"channels"`
 	}
 )
 

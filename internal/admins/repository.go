@@ -222,3 +222,24 @@ func (p *Pg) CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpda
 
 	return nil
 }
+
+// GetTelegramChannels gets a list of Telegram channels owned by a specific user
+func (p *Pg) GetTelegramChannels(ctx context.Context, ownerExternalID int64) (GetTelegramChannelsResponse, error) {
+	channels := make([]TelegramChannel, 0)
+
+	rows, err := p.gen.GetTelegramChannels(ctx, ownerExternalID)
+	if err != nil {
+		return GetTelegramChannelsResponse{}, errors.Wrap(err, "p.gen.GetTelegramChannels")
+	}
+
+	for _, v := range rows {
+		channels = append(channels, TelegramChannel{
+			ID:         v.ID,
+			ExternalID: v.ExternalID,
+			Name:       v.Name.String,
+			Title:      v.Title,
+		})
+	}
+
+	return GetTelegramChannelsResponse{Channels: channels}, nil
+}
