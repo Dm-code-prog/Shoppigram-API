@@ -2,7 +2,6 @@ package admins
 
 import (
 	"context"
-	"fmt"
 	"regexp"
 	"strconv"
 	"time"
@@ -540,11 +539,7 @@ func (s *Service) GetTelegramChannels(ctx context.Context, ownerExternalID int64
 				continue
 			}
 
-			res.Channels[i].PhotoURL = fmt.Sprintf(
-				"https://api.telegram.org/file/bot%v/%v",
-				s.botToken,
-				photoFile.FilePath,
-			)
+			res.Channels[i].PhotoURL = photoFile.FilePath
 		}
 	}
 
