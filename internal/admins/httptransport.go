@@ -79,6 +79,13 @@ func MakeHandler(bs *Service, authMw endpoint.Middleware) http.Handler {
 		opts...,
 	)
 
+	getTelegramChannels := kithttp.NewServer(
+		authMw(makeGetTelegramChannelsEndpoint(bs)),
+		decodeGetTelegramChannelsRequest,
+		encodeResponse,
+		opts...,
+	)
+
 	r := chi.NewRouter()
 	r.Get("/", getMarketplacesHandler.ServeHTTP)
 	r.Post("/", createMarketplaceHandler.ServeHTTP)
@@ -90,6 +97,8 @@ func MakeHandler(bs *Service, authMw endpoint.Middleware) http.Handler {
 	r.Delete("/products/{web_app_id}", deleteProductHandler.ServeHTTP)
 
 	r.Post("/products/upload-image-url/{web_app_id}", createProductImageUploadURL.ServeHTTP)
+
+	r.Get("/channels", getTelegramChannels.ServeHTTP)
 
 	return r
 }
@@ -226,6 +235,10 @@ func decodeCreateMarketplaceUploadLogoURLRequest(c context.Context, r *http.Requ
 	request.WebAppID = asUUID
 
 	return request, nil
+}
+
+func decodeGetTelegramChannelsRequest(c context.Context, _ *http.Request) (interface{}, error) {
+	return nil, nil
 }
 
 func encodeResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
