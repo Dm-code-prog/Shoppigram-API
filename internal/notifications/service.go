@@ -312,24 +312,12 @@ func (s *Service) Shutdown() error {
 
 // sendNewOrderNotifications sends batch of notifications for new orders
 func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotification) error {
-	var (
-		bot *tgbotapi.BotAPI
-		err error
-	)
+	bot, err := tgbotapi.NewBotAPI(s.botToken)
+	if err != nil {
+		return errors.Wrap(err, "tgbotapi.NewBotAPI")
+	}
 
 	for _, notification := range orderNotifications {
-		val, ok := s.cache.Get(notification.WebAppID.String())
-		if ok {
-			bot = val.(*tgbotapi.BotAPI)
-		} else {
-			bot, err = tgbotapi.NewBotAPI(s.botToken)
-			if err != nil {
-				return errors.Wrap(err, "tgbotapi.NewBotAPI")
-			}
-
-			s.cache.SetWithTTL(notification.WebAppID.String(), bot, 0, 10*time.Minute)
-		}
-
 		nl, err := s.repo.GetAdminsNotificationList(s.ctx, notification.WebAppID)
 		if err != nil {
 			return errors.Wrap(err, "s.repo.GetAdminsNotificationList")
@@ -356,24 +344,12 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 
 // sendNewMarketplaceNotifications sends batch of notifications for new marketplaces
 func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []NewMarketplaceNotification) error {
-	var (
-		bot *tgbotapi.BotAPI
-		err error
-	)
+	bot, err := tgbotapi.NewBotAPI(s.botToken)
+	if err != nil {
+		return errors.Wrap(err, "tgbotapi.NewBotAPI")
+	}
 
 	for _, notification := range marketplaceNotifications {
-		val, ok := s.cache.Get(notification.ID.String())
-		if ok {
-			bot = val.(*tgbotapi.BotAPI)
-		} else {
-			bot, err = tgbotapi.NewBotAPI(s.botToken)
-			if err != nil {
-				return errors.Wrap(err, "tgbotapi.NewBotAPI")
-			}
-
-			s.cache.SetWithTTL(notification.ID.String(), bot, 0, 10*time.Minute)
-		}
-
 		nl, err := s.repo.GetReviewersNotificationList(s.ctx, notification.ID)
 		if err != nil {
 			return errors.Wrap(err, "s.repo.GetReviewersNotificationList")
@@ -400,24 +376,12 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 
 // sendVerifiedMarketplaceNotifications sends batch of notifications for verified marketplaces
 func (s *Service) sendVerifiedMarketplaceNotifications(marketplaceNotifications []VerifiedMarketplaceNotification) error {
-	var (
-		bot *tgbotapi.BotAPI
-		err error
-	)
+	bot, err := tgbotapi.NewBotAPI(s.botToken)
+	if err != nil {
+		return errors.Wrap(err, "tgbotapi.NewBotAPI")
+	}
 
 	for _, notification := range marketplaceNotifications {
-		val, ok := s.cache.Get(notification.ID.String())
-		if ok {
-			bot = val.(*tgbotapi.BotAPI)
-		} else {
-			bot, err = tgbotapi.NewBotAPI(s.botToken)
-			if err != nil {
-				return errors.Wrap(err, "tgbotapi.NewBotAPI")
-			}
-
-			s.cache.SetWithTTL(notification.ID.String(), bot, 0, 10*time.Minute)
-		}
-
 		msgTxt, err := notification.BuildMessage()
 		if err != nil {
 			return errors.Wrap(err, "a.BuildMessage")
