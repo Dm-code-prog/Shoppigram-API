@@ -6,7 +6,6 @@ set title = $2, name = $3, is_public = $4, owner_external_id = $5;
 
 -- name: GetTelegramChannels :many
 select id,
-       external_id,
        name,
        title
 from telegram_channels

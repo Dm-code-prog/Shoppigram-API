@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/dgraph-io/ristretto"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/shoppigram-com/marketplace-api/internal/logging"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -142,11 +141,9 @@ type (
 
 	// TelegramChannel contains the data about a Telegram channel
 	TelegramChannel struct {
-		ID         uuid.UUID `json:"id"`
-		ExternalID int64     `json:"external_id"`
-		Name       string    `json:"name"`
-		Title      string    `json:"title"`
-		PhotoURL   string    `json:"photo_url"`
+		ID    uuid.UUID `json:"id"`
+		Name  string    `json:"name"`
+		Title string    `json:"title"`
 	}
 
 	// GetTelegramChannelsResponse contains the data about Telegram channels owned by a specific user
@@ -498,49 +495,9 @@ func (s *Service) CreateMarketplaceLogoUploadURL(ctx context.Context, request Cr
 
 // GetTelegramChannels gets a list of Telegram channels owned by a specific user
 func (s *Service) GetTelegramChannels(ctx context.Context, ownerExternalID int64) (GetTelegramChannelsResponse, error) {
-	var (
-		bot *tgbotapi.BotAPI
-		err error
-	)
-
 	res, err := s.repo.GetTelegramChannels(ctx, ownerExternalID)
 	if err != nil {
 		return GetTelegramChannelsResponse{}, errors.Wrap(err, "s.repo.GetTelegramChannels")
-	}
-
-	for i, channel := range res.Channels {
-		val, ok := s.cache.Get(channel.ID.String())
-		if ok {
-			bot = val.(*tgbotapi.BotAPI)
-		} else {
-			bot, err = tgbotapi.NewBotAPI(s.botToken)
-			if err != nil {
-				return GetTelegramChannelsResponse{}, errors.Wrap(err, "tgbotapi.NewBotAPI")
-			}
-
-			s.cache.SetWithTTL(channel.ID.String(), bot, 0, 10*time.Minute)
-		}
-
-		chat, err := bot.GetChat(tgbotapi.ChatInfoConfig{
-			ChatConfig: tgbotapi.ChatConfig{
-				ChatID: channel.ExternalID,
-			},
-		})
-		if err != nil {
-			return GetTelegramChannelsResponse{}, errors.Wrap(err, "bot.GetChat")
-		}
-
-		if chat.Photo != nil {
-			photoFile, err := bot.GetFile(tgbotapi.FileConfig{
-				FileID: chat.Photo.BigFileID,
-			})
-			if err != nil {
-				// FIXME: Log that behaviour
-				continue
-			}
-
-			res.Channels[i].PhotoURL = photoFile.FilePath
-		}
 	}
 
 	return res, nil

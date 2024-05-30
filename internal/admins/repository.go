@@ -234,10 +234,9 @@ func (p *Pg) GetTelegramChannels(ctx context.Context, ownerExternalID int64) (Ge
 
 	for _, v := range rows {
 		channels = append(channels, TelegramChannel{
-			ID:         v.ID,
-			ExternalID: v.ExternalID,
-			Name:       v.Name.String,
-			Title:      v.Title,
+			ID:    v.ID,
+			Name:  v.Name.String,
+			Title: v.Title,
 		})
 	}
 
