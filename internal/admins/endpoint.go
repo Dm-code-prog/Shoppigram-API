@@ -257,6 +257,8 @@ func makePublishMarketplaceBannerToChannelEndpoint(s *Service) endpoint.Endpoint
 		request.ExternalUserID = usr.ExternalId
 		err = s.PublishMarketplaceBannerToChannel(ctx, request)
 		if err != nil {
+			// TODO:
+			// Move to observability middleware
 			s.log.With(
 				zap.String("method", "s.PublishMarketplaceBannerToChannel"),
 			).Error(err.Error())
