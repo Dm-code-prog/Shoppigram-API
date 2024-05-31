@@ -12,10 +12,10 @@ import (
 )
 
 const createOrUpdateTelegramChannel = `-- name: CreateOrUpdateTelegramChannel :exec
-insert into telegram_channels ( external_id, title, name, is_public, owner_external_id)
-values ($1, $2, $3, $4, $5)
-on conflict (external_id) do update
-set title = $2, name = $3, is_public = $4, owner_external_id = $5
+insert into telegram_channels (external_id, title, name, is_public, owner_external_id)
+values ($1, $2, $3, $4, $5) on conflict (external_id) do
+update
+    set title = $2, name = $3, is_public = $4, owner_external_id = $5
 `
 
 type CreateOrUpdateTelegramChannelParams struct {
@@ -35,4 +35,22 @@ func (q *Queries) CreateOrUpdateTelegramChannel(ctx context.Context, arg CreateO
 		arg.OwnerExternalID,
 	)
 	return err
+}
+
+const isUserTheOwnerOfTelegramChannel = `-- name: IsUserTheOwnerOfTelegramChannel :one
+select owner_external_id = $1
+from telegram_channels
+where external_id = $2
+`
+
+type IsUserTheOwnerOfTelegramChannelParams struct {
+	OwnerExternalID int64
+	ExternalID      int64
+}
+
+func (q *Queries) IsUserTheOwnerOfTelegramChannel(ctx context.Context, arg IsUserTheOwnerOfTelegramChannelParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isUserTheOwnerOfTelegramChannel, arg.OwnerExternalID, arg.ExternalID)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
 }
