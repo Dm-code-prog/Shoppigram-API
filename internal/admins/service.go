@@ -6,7 +6,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/dgraph-io/ristretto"
 	"github.com/shoppigram-com/marketplace-api/internal/logging"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -188,7 +187,6 @@ type (
 		repo     Repository
 		spaces   *s3.S3
 		log      *zap.Logger
-		cache    *ristretto.Cache
 		bucket   string
 		notifier Notifier
 		botToken string
@@ -241,20 +239,9 @@ func New(repo Repository, log *zap.Logger, conf DOSpacesConfig, notifier Notifie
 		S3ForcePathStyle: aws.Bool(false),
 	}))
 
-	cache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 1e2,     // number of keys to track frequency of (100).
-		MaxCost:     100_000, // maximum cost of cache (100KB).
-		BufferItems: 10,      // number of keys per Get buffer.
-	})
-	if err != nil {
-		log.Fatal("cache *ristretto.Cache is nil, fatal")
-		return nil
-	}
-
 	return &Service{
 		repo:     repo,
 		log:      log,
-		cache:    cache,
 		spaces:   s3.New(sess),
 		bucket:   conf.Bucket,
 		notifier: notifier,
