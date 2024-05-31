@@ -4,5 +4,6 @@ Content-Type: application/json
 
 {
   "channel_id": -1002183228927,
+  "message": "Hello, world!",
   "pin_message": true
 }
