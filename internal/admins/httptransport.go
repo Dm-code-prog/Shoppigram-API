@@ -25,7 +25,7 @@ func MakeHandler(bs *Service, authMw endpoint.Middleware) http.Handler {
 
 	getMarketplacesHandler := kithttp.NewServer(
 		authMw(makeGetMarketplacesEndpoint(bs)),
-		decodeGetMarketplacesRequest,
+		decodeEmptyRequest,
 		encodeResponse,
 		opts...,
 	)
@@ -81,7 +81,7 @@ func MakeHandler(bs *Service, authMw endpoint.Middleware) http.Handler {
 
 	getTelegramChannels := kithttp.NewServer(
 		authMw(makeGetTelegramChannelsEndpoint(bs)),
-		decodeGetTelegramChannelsRequest,
+		decodeEmptyRequest,
 		encodeResponse,
 		opts...,
 	)
@@ -103,7 +103,7 @@ func MakeHandler(bs *Service, authMw endpoint.Middleware) http.Handler {
 	return r
 }
 
-func decodeGetMarketplacesRequest(c context.Context, _ *http.Request) (interface{}, error) {
+func decodeEmptyRequest(c context.Context, _ *http.Request) (interface{}, error) {
 	return nil, nil
 }
 
@@ -235,10 +235,6 @@ func decodeCreateMarketplaceUploadLogoURLRequest(c context.Context, r *http.Requ
 	request.WebAppID = asUUID
 
 	return request, nil
-}
-
-func decodeGetTelegramChannelsRequest(c context.Context, _ *http.Request) (interface{}, error) {
-	return nil, nil
 }
 
 func encodeResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
