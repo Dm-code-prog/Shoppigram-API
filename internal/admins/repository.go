@@ -28,8 +28,6 @@ func NewPg(db *pgxpool.Pool) *Pg {
 
 // GetMarketplaces gets all marketplaces created by user
 func (p *Pg) GetMarketplaces(ctx context.Context, req GetMarketplacesRequest) (GetMarketplacesResponse, error) {
-	marketplaces := make([]Marketplace, 0)
-
 	rows, err := p.gen.GetMarketplaces(ctx, pgtype.Int4{
 		Int32: int32(req.ExternalUserID),
 		Valid: true,
@@ -41,13 +39,15 @@ func (p *Pg) GetMarketplaces(ctx context.Context, req GetMarketplacesRequest) (G
 		return GetMarketplacesResponse{}, errors.Wrap(err, "p.gen.GetMarketplaces")
 	}
 
-	for _, v := range rows {
-		marketplaces = append(marketplaces, Marketplace{
+	marketplaces := make([]Marketplace, len(rows))
+
+	for i, v := range rows {
+		marketplaces[i] = Marketplace{
 			ID:         v.ID,
 			Name:       v.Name,
 			LogoURL:    v.LogoUrl.String,
 			IsVerified: v.IsVerified.Bool,
-		})
+		}
 	}
 
 	return GetMarketplacesResponse{
@@ -225,19 +225,19 @@ func (p *Pg) CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpda
 
 // GetTelegramChannels gets a list of Telegram channels owned by a specific user
 func (p *Pg) GetTelegramChannels(ctx context.Context, ownerExternalID int64) (GetTelegramChannelsResponse, error) {
-	channels := make([]TelegramChannel, 0)
-
 	rows, err := p.gen.GetTelegramChannels(ctx, ownerExternalID)
 	if err != nil {
 		return GetTelegramChannelsResponse{}, errors.Wrap(err, "p.gen.GetTelegramChannels")
 	}
 
-	for _, v := range rows {
-		channels = append(channels, TelegramChannel{
+	channels := make([]TelegramChannel, len(rows))
+
+	for i, v := range rows {
+		channels[i] = TelegramChannel{
 			ID:    v.ID,
 			Name:  v.Name.String,
 			Title: v.Title,
-		})
+		}
 	}
 
 	return GetTelegramChannelsResponse{Channels: channels}, nil
