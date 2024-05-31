@@ -268,3 +268,25 @@ func makePublishMarketplaceBannerToChannelEndpoint(s *Service) endpoint.Endpoint
 		return nil, nil
 	}
 }
+
+// makeGetTelegramChannelsEndpoint creates a new endpoint for access to
+// GetTelegramChannels service method
+//
+// Path: GET /api/v1/private/telegram-channels
+func makeGetTelegramChannelsEndpoint(s *Service) endpoint.Endpoint {
+	return func(ctx context.Context, _ any) (any, error) {
+		usr, err := telegramusers.GetUserFromContext(ctx)
+		if err != nil {
+			s.log.With(
+				zap.String("method", "GetUserFromContext"),
+			).Error(err.Error())
+			return nil, err
+		}
+
+		v0, err := s.GetTelegramChannels(ctx, usr.ExternalId)
+		if err != nil {
+			return nil, errors.Wrap(err, "s.GetTelegramChannels")
+		}
+		return v0, nil
+	}
+}

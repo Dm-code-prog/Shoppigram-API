@@ -2,10 +2,11 @@ package admins
 
 import (
 	"context"
-	"github.com/shoppigram-com/marketplace-api/internal/logging"
 	"regexp"
 	"strconv"
 	"time"
+
+	"github.com/shoppigram-com/marketplace-api/internal/logging"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -159,6 +160,18 @@ type (
 		Message           string `json:"message"`
 		PinMessage        bool   `json:"pin_message"`
 	}
+
+	// TelegramChannel contains the data about a Telegram channel
+	TelegramChannel struct {
+		ID    uuid.UUID `json:"id"`
+		Name  string    `json:"name"`
+		Title string    `json:"title"`
+	}
+
+	// GetTelegramChannelsResponse contains the data about Telegram channels owned by a specific user
+	GetTelegramChannelsResponse struct {
+		Channels []TelegramChannel `json:"channels"`
+	}
 )
 
 type (
@@ -180,6 +193,7 @@ type (
 		IsUserTheOwnerOfTelegramChannel(ctx context.Context, externalUserID, channelID int64) (bool, error)
 
 		CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error
+		GetTelegramChannels(ctx context.Context, ownerExternalID int64) (GetTelegramChannelsResponse, error)
 	}
 
 	// DOSpacesConfig holds the credentials for the S3 bucket
@@ -490,6 +504,16 @@ func (s *Service) CreateMarketplaceLogoUploadURL(ctx context.Context, request Cr
 		UploadURL: url,
 		Key:       key,
 	}, nil
+}
+
+// GetTelegramChannels gets a list of Telegram channels owned by a specific user
+func (s *Service) GetTelegramChannels(ctx context.Context, ownerExternalID int64) (GetTelegramChannelsResponse, error) {
+	res, err := s.repo.GetTelegramChannels(ctx, ownerExternalID)
+	if err != nil {
+		return GetTelegramChannelsResponse{}, errors.Wrap(err, "s.repo.GetTelegramChannels")
+	}
+
+	return res, nil
 }
 
 // CreateOrUpdateTelegramChannel creates or updates a Telegram channel

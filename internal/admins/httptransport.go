@@ -13,6 +13,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	kithttp "github.com/go-kit/kit/transport/http"
+	"github.com/shoppigram-com/marketplace-api/internal/httputils"
 	telegramusers "github.com/shoppigram-com/marketplace-api/internal/users"
 )
 
@@ -25,7 +26,7 @@ func MakeHandler(bs *Service, authMw endpoint.Middleware) http.Handler {
 
 	getMarketplacesHandler := kithttp.NewServer(
 		authMw(makeGetMarketplacesEndpoint(bs)),
-		decodeGetMarketplacesRequest,
+		httputils.DecodeEmptyRequest,
 		encodeResponse,
 		opts...,
 	)
@@ -86,6 +87,13 @@ func MakeHandler(bs *Service, authMw endpoint.Middleware) http.Handler {
 		opts...,
 	)
 
+	getTelegramChannels := kithttp.NewServer(
+		authMw(makeGetTelegramChannelsEndpoint(bs)),
+		httputils.DecodeEmptyRequest,
+		encodeResponse,
+		opts...,
+	)
+
 	r := chi.NewRouter()
 	r.Get("/", getMarketplacesHandler.ServeHTTP)
 	r.Post("/", createMarketplaceHandler.ServeHTTP)
@@ -99,11 +107,8 @@ func MakeHandler(bs *Service, authMw endpoint.Middleware) http.Handler {
 	r.Post("/upload-logo-url/{web_app_id}", createMarketplaceUploadLogoURLHandler.ServeHTTP)
 
 	r.Post("/publish-to-channel/{web_app_id}", publishMarketplaceBannerToChannelHandler.ServeHTTP)
+	r.Get("/telegram-channels", getTelegramChannels.ServeHTTP)
 	return r
-}
-
-func decodeGetMarketplacesRequest(c context.Context, _ *http.Request) (interface{}, error) {
-	return nil, nil
 }
 
 func decodeCreateMarketplaceRequest(c context.Context, r *http.Request) (interface{}, error) {
