@@ -40,7 +40,6 @@ func (q *Queries) CreateOrUpdateTelegramChannel(ctx context.Context, arg CreateO
 
 const getTelegramChannels = `-- name: GetTelegramChannels :many
 select id,
-       external_id,
        name,
        title
 from telegram_channels
@@ -48,10 +47,9 @@ where owner_external_id = $1
 `
 
 type GetTelegramChannelsRow struct {
-	ID         uuid.UUID
-	ExternalID int64
-	Name       pgtype.Text
-	Title      string
+	ID    uuid.UUID
+	Name  pgtype.Text
+	Title string
 }
 
 func (q *Queries) GetTelegramChannels(ctx context.Context, ownerExternalID int64) ([]GetTelegramChannelsRow, error) {
@@ -63,12 +61,7 @@ func (q *Queries) GetTelegramChannels(ctx context.Context, ownerExternalID int64
 	var items []GetTelegramChannelsRow
 	for rows.Next() {
 		var i GetTelegramChannelsRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.ExternalID,
-			&i.Name,
-			&i.Title,
-		); err != nil {
+		if err := rows.Scan(&i.ID, &i.Name, &i.Title); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
@@ -77,4 +70,22 @@ func (q *Queries) GetTelegramChannels(ctx context.Context, ownerExternalID int64
 		return nil, err
 	}
 	return items, nil
+}
+
+const isUserTheOwnerOfTelegramChannel = `-- name: IsUserTheOwnerOfTelegramChannel :one
+select owner_external_id = $1
+from telegram_channels
+where external_id = $2
+`
+
+type IsUserTheOwnerOfTelegramChannelParams struct {
+	OwnerExternalID int64
+	ExternalID      int64
+}
+
+func (q *Queries) IsUserTheOwnerOfTelegramChannel(ctx context.Context, arg IsUserTheOwnerOfTelegramChannelParams) (bool, error) {
+	row := q.db.QueryRow(ctx, isUserTheOwnerOfTelegramChannel, arg.OwnerExternalID, arg.ExternalID)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
 }
