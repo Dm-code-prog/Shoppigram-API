@@ -98,7 +98,7 @@ func MakeHandler(bs *Service, authMw endpoint.Middleware) http.Handler {
 
 	r.Post("/products/upload-image-url/{web_app_id}", createProductImageUploadURL.ServeHTTP)
 
-	r.Get("/channels", getTelegramChannels.ServeHTTP)
+	r.Get("/telegram_channels", getTelegramChannels.ServeHTTP)
 
 	return r
 }

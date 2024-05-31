@@ -238,7 +238,7 @@ func makeCreateMarketplaceLogoUploadURLEndpoint(s *Service) endpoint.Endpoint {
 // makeGetTelegramChannelsEndpoint creates a new endpoint for access to
 // GetTelegramChannels service method
 //
-// Path: GET /api/v1/private/channels
+// Path: GET /api/v1/private/telegram_channels
 func makeGetTelegramChannelsEndpoint(s *Service) endpoint.Endpoint {
 	return func(ctx context.Context, _ any) (any, error) {
 		usr, err := telegramusers.GetUserFromContext(ctx)
