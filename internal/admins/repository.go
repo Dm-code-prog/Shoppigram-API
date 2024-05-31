@@ -208,7 +208,7 @@ func (p *Pg) IsUserTheOwnerOfTelegramChannel(ctx context.Context, externalUserID
 		ExternalID:      channelID,
 	})
 	if err != nil {
-		return false, errors.Wrap(err, "p.gen.IsUserTheOwnerOfTelegramChannel")
+		return false, ErrorOpNotAllowed
 	}
 
 	return ok, nil

@@ -508,6 +508,10 @@ func (s *Service) CreateOrUpdateTelegramChannel(ctx context.Context, req CreateO
 
 // PublishMarketplaceBannerToChannel publishes a banner to a Telegram channel
 func (s *Service) PublishMarketplaceBannerToChannel(ctx context.Context, req PublishMarketplaceBannerToChannelRequest) error {
+	if req.Message == "" {
+		return ErrorBadRequest
+	}
+
 	ok, err := s.repo.IsUserTheOwnerOfTelegramChannel(ctx, req.ExternalUserID, req.ExternalChannelID)
 	if err != nil {
 		return errors.Wrap(err, "s.repo.IsUserTheOwnerOfTelegramChannel")
