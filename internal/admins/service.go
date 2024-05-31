@@ -189,7 +189,6 @@ type (
 		log      *zap.Logger
 		bucket   string
 		notifier Notifier
-		botToken string
 	}
 )
 
@@ -222,7 +221,7 @@ const (
 )
 
 // New creates a new admin service
-func New(repo Repository, log *zap.Logger, conf DOSpacesConfig, notifier Notifier, botToken string) *Service {
+func New(repo Repository, log *zap.Logger, conf DOSpacesConfig, notifier Notifier) *Service {
 	if log == nil {
 		log, _ = zap.NewProduction()
 		log.Warn("log *zap.Logger is nil, using zap.NewProduction")
@@ -245,7 +244,6 @@ func New(repo Repository, log *zap.Logger, conf DOSpacesConfig, notifier Notifie
 		spaces:   s3.New(sess),
 		bucket:   conf.Bucket,
 		notifier: notifier,
-		botToken: botToken,
 	}
 }
 

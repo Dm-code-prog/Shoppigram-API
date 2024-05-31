@@ -178,7 +178,6 @@ func main() {
 		&notificationsAdminAdapter{
 			notifier: notificationsService,
 		},
-		config.Bot.Token,
 	)
 	adminsHandler := admins.MakeHandler(adminsService, authMw)
 
