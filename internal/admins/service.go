@@ -121,11 +121,25 @@ type (
 		Key       string `json:"key"`
 	}
 
-	// AddUserToNewOrderNotificationsRequest mirrors a corresponding struct
+	// AddUserToNewOrderNotificationsParams mirrors a corresponding struct
 	// in notifications module to reduce coupling
-	AddUserToNewOrderNotificationsRequest struct {
+	AddUserToNewOrderNotificationsParams struct {
 		WebAppID    uuid.UUID
 		AdminChatID int64
+	}
+
+	// SendMarketplaceBannerParams is a struct for request params to send a marketplace banner to a Telegram channel
+	// with a TWA link button markup
+	SendMarketplaceBannerParams struct {
+		WebAppLink    string
+		Message       string
+		ChannelChatID int64
+	}
+
+	// PinNotificationParams is a struct for request params to pin a message in a Telegram channel
+	PinNotificationParams struct {
+		ChatID    int64
+		MessageID int64
 	}
 
 	// CreateOrUpdateTelegramChannelRequest contains the data about a Telegram channel, Shoppigram bot is added to
@@ -135,6 +149,15 @@ type (
 		Name            string
 		OwnerExternalID int64
 		IsPublic        bool
+	}
+
+	// PublishMarketplaceBannerToChannelRequest contains the data about a banner to be published to a Telegram channel
+	PublishMarketplaceBannerToChannelRequest struct {
+		WebAppID          uuid.UUID
+		ExternalUserID    int64
+		ExternalChannelID int64  `json:"channel_id"`
+		Message           string `json:"message"`
+		PinMessage        bool   `json:"pin_message"`
 	}
 )
 
@@ -153,6 +176,9 @@ type (
 		IsUserTheOwnerOfMarketplace(ctx context.Context, externalUserID int64, webAppID uuid.UUID) (bool, error)
 		IsUserTheOwnerOfProduct(ctx context.Context, externalUserID int64, productID uuid.UUID) (bool, error)
 
+		// IsUserTheOwnerOfTelegramChannel checks if the user is the owner of the Telegram channel
+		IsUserTheOwnerOfTelegramChannel(ctx context.Context, externalUserID, channelID int64) (bool, error)
+
 		CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error
 	}
 
@@ -165,7 +191,9 @@ type (
 	}
 
 	Notifier interface {
-		AddUserToNewOrderNotifications(ctx context.Context, req AddUserToNewOrderNotificationsRequest) error
+		AddUserToNewOrderNotifications(ctx context.Context, req AddUserToNewOrderNotificationsParams) error
+		SendMarketplaceBanner(ctx context.Context, req SendMarketplaceBannerParams) (messageID int64, err error)
+		PinNotification(ctx context.Context, req PinNotificationParams) error
 	}
 
 	// Service provides admin operations
@@ -266,7 +294,7 @@ func (s *Service) CreateMarketplace(ctx context.Context, req CreateMarketplaceRe
 		return CreateMarketplaceResponse{}, errors.Wrap(err, "s.repo.CreateMarketplace")
 	}
 
-	err = s.notifier.AddUserToNewOrderNotifications(ctx, AddUserToNewOrderNotificationsRequest{
+	err = s.notifier.AddUserToNewOrderNotifications(ctx, AddUserToNewOrderNotificationsParams{
 		WebAppID:    res.ID,
 		AdminChatID: req.ExternalUserID,
 	})
@@ -473,6 +501,55 @@ func (s *Service) CreateOrUpdateTelegramChannel(ctx context.Context, req CreateO
 			zap.String("external_id", strconv.FormatInt(req.ExternalID, 10)),
 		).Error("error", logging.SilentError(err))
 		return errors.Wrap(err, "s.repo.CreateOrUpdateTelegramChannel")
+	}
+
+	return nil
+}
+
+// PublishMarketplaceBannerToChannel publishes a banner to a Telegram channel
+func (s *Service) PublishMarketplaceBannerToChannel(ctx context.Context, req PublishMarketplaceBannerToChannelRequest) error {
+	if req.Message == "" {
+		return ErrorBadRequest
+	}
+
+	ok, err := s.repo.IsUserTheOwnerOfTelegramChannel(ctx, req.ExternalUserID, req.ExternalChannelID)
+	if err != nil {
+		return errors.Wrap(err, "s.repo.IsUserTheOwnerOfTelegramChannel")
+	}
+	if !ok {
+		return ErrorOpNotAllowed
+	}
+
+	ok, err = s.repo.IsUserTheOwnerOfMarketplace(ctx, req.ExternalUserID, req.WebAppID)
+	if err != nil {
+		return errors.Wrap(err, "s.repo.IsUserTheOwnerOfMarketplace")
+	}
+	if !ok {
+		return ErrorOpNotAllowed
+	}
+
+	shortName, err := s.repo.GetMarketplaceShortName(ctx, req.WebAppID)
+	if err != nil {
+		return errors.Wrap(err, "s.repo.GetMarketplaceShortName")
+	}
+
+	messageID, err := s.notifier.SendMarketplaceBanner(ctx, SendMarketplaceBannerParams{
+		WebAppLink:    "https://t.me/shoppigramBot/" + shortName,
+		Message:       req.Message,
+		ChannelChatID: req.ExternalChannelID,
+	})
+	if err != nil {
+		return errors.Wrap(err, "s.notifier.SendMarketplaceBanner")
+	}
+
+	if req.PinMessage {
+		err = s.notifier.PinNotification(ctx, PinNotificationParams{
+			ChatID:    req.ExternalChannelID,
+			MessageID: messageID,
+		})
+		if err != nil {
+			return errors.Wrap(err, "s.notifier.PinNotification")
+		}
 	}
 
 	return nil

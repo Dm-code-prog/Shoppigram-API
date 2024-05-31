@@ -202,6 +202,18 @@ func (p *Pg) IsUserTheOwnerOfProduct(ctx context.Context, userID int64, productI
 	return ok, nil
 }
 
+func (p *Pg) IsUserTheOwnerOfTelegramChannel(ctx context.Context, externalUserID, channelID int64) (bool, error) {
+	ok, err := p.gen.IsUserTheOwnerOfTelegramChannel(ctx, generated.IsUserTheOwnerOfTelegramChannelParams{
+		OwnerExternalID: externalUserID,
+		ExternalID:      channelID,
+	})
+	if err != nil {
+		return false, ErrorOpNotAllowed
+	}
+
+	return ok, nil
+}
+
 func (p *Pg) GetMarketplaceShortName(ctx context.Context, id uuid.UUID) (string, error) {
 	return p.gen.GetMarketplaceShortName(ctx, id)
 }

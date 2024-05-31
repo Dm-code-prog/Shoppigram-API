@@ -234,3 +234,37 @@ func makeCreateMarketplaceLogoUploadURLEndpoint(s *Service) endpoint.Endpoint {
 		return response, nil
 	}
 }
+
+// makePublishMarketplaceBannerToChannelEndpoint creates a new endpoint for access to
+// PublishMarketplaceBannerToChannel service method
+//
+// Path: POST /api/v1/private/marketplaces/publish-to-channel/<web_app_id>
+func makePublishMarketplaceBannerToChannelEndpoint(s *Service) endpoint.Endpoint {
+	return func(ctx context.Context, req any) (any, error) {
+		usr, err := telegramusers.GetUserFromContext(ctx)
+		if err != nil {
+			s.log.With(
+				zap.String("method", "GetUserFromContext"),
+			).Error(err.Error())
+			return nil, err
+		}
+
+		request, ok := req.(PublishMarketplaceBannerToChannelRequest)
+		if !ok {
+			return nil, ErrorBadRequest
+		}
+
+		request.ExternalUserID = usr.ExternalId
+		err = s.PublishMarketplaceBannerToChannel(ctx, request)
+		if err != nil {
+			// TODO:
+			// Move to observability middleware
+			s.log.With(
+				zap.String("method", "s.PublishMarketplaceBannerToChannel"),
+			).Error(err.Error())
+			return nil, errors.Wrap(err, "s.PublishMarketplaceBannerToChannel")
+		}
+
+		return nil, nil
+	}
+}

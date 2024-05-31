@@ -50,6 +50,20 @@ type (
 		ChannelName       string
 	}
 
+	// SendMarketplaceBannerParams is a struct for request params to send a marketplace banner to a Telegram channel
+	// with a TWA link button markup
+	SendMarketplaceBannerParams struct {
+		WebAppLink    string
+		Message       string
+		ChannelChatID int64
+	}
+
+	// PinNotificationParams is a struct for request params to pin a message in a Telegram channel
+	PinNotificationParams struct {
+		ChatID    int64
+		MessageID int64
+	}
+
 	// Repository provides access to the user storage
 	Repository interface {
 		GetAdminsNotificationList(ctx context.Context, webAppID uuid.UUID) ([]int64, error)
@@ -475,6 +489,46 @@ func (s *Service) NotifyChannelIntegrationSuccess(ctx context.Context, request N
 	}
 
 	return nil
+}
+
+// SendMarketplaceBanner sends a marketplace banner to a Telegram channel
+func (s *Service) SendMarketplaceBanner(_ context.Context, params SendMarketplaceBannerParams) (message int64, err error) {
+	bot, err := tgbotapi.NewBotAPI(s.botToken)
+	if err != nil {
+		return 0, errors.Wrap(err, "tgbotapi.NewBotAPI")
+	}
+
+	msg := tgbotapi.NewMessage(params.ChannelChatID, params.Message)
+	button := tgbotapi.NewInlineKeyboardButtonURL("Перейти в магазин", params.WebAppLink)
+	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			button,
+		))
+
+	Message, err := bot.Send(msg)
+	if err != nil {
+		return 0, errors.Wrap(err, "bot.Send")
+	}
+
+	return int64(Message.MessageID), nil
+}
+
+// PinNotification pins a message in a Telegram channel
+func (s *Service) PinNotification(_ context.Context, req PinNotificationParams) error {
+	bot, err := tgbotapi.NewBotAPI(s.botToken)
+	if err != nil {
+		return errors.Wrap(err, "tgbotapi.NewBotAPI")
+	}
+	_, err = bot.Request(tgbotapi.PinChatMessageConfig{
+		ChatID:    req.ChatID,
+		MessageID: int(req.MessageID),
+	})
+	if err != nil {
+		return errors.Wrap(err, "bot.PinChatMessage")
+	}
+
+	return nil
+
 }
 
 func formatFloat(num float64) string {

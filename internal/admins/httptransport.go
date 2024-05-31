@@ -79,18 +79,26 @@ func MakeHandler(bs *Service, authMw endpoint.Middleware) http.Handler {
 		opts...,
 	)
 
+	publishMarketplaceBannerToChannelHandler := kithttp.NewServer(
+		authMw(makePublishMarketplaceBannerToChannelEndpoint(bs)),
+		decodePublishMarketplaceBannerToChannelRequest,
+		encodeResponse,
+		opts...,
+	)
+
 	r := chi.NewRouter()
 	r.Get("/", getMarketplacesHandler.ServeHTTP)
 	r.Post("/", createMarketplaceHandler.ServeHTTP)
 	r.Put("/{web_app_id}", updateMarketplaceHandler.ServeHTTP)
-	r.Post("/upload-logo-url/{web_app_id}", createMarketplaceUploadLogoURLHandler.ServeHTTP)
 
 	r.Post("/products/{web_app_id}", createProductHandler.ServeHTTP)
 	r.Put("/products/{web_app_id}", updateProductHandler.ServeHTTP)
 	r.Delete("/products/{web_app_id}", deleteProductHandler.ServeHTTP)
 
 	r.Post("/products/upload-image-url/{web_app_id}", createProductImageUploadURL.ServeHTTP)
+	r.Post("/upload-logo-url/{web_app_id}", createMarketplaceUploadLogoURLHandler.ServeHTTP)
 
+	r.Post("/publish-to-channel/{web_app_id}", publishMarketplaceBannerToChannelHandler.ServeHTTP)
 	return r
 }
 
@@ -210,6 +218,26 @@ func decodeCreateProductImageUploadURLRequest(c context.Context, r *http.Request
 
 func decodeCreateMarketplaceUploadLogoURLRequest(c context.Context, r *http.Request) (interface{}, error) {
 	var request CreateMarketplaceLogoUploadURLRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		return nil, ErrorBadRequest
+	}
+
+	webAppID := chi.URLParam(r, "web_app_id")
+	if webAppID == "" {
+		return nil, ErrorBadRequest
+	}
+
+	asUUID, err := uuid.Parse(webAppID)
+	if err != nil {
+		return nil, ErrorBadRequest
+	}
+	request.WebAppID = asUUID
+
+	return request, nil
+}
+
+func decodePublishMarketplaceBannerToChannelRequest(c context.Context, r *http.Request) (interface{}, error) {
+	var request PublishMarketplaceBannerToChannelRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, ErrorBadRequest
 	}
