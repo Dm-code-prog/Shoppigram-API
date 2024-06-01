@@ -163,9 +163,10 @@ type (
 
 	// TelegramChannel contains the data about a Telegram channel
 	TelegramChannel struct {
-		ID    uuid.UUID `json:"id"`
-		Name  string    `json:"name"`
-		Title string    `json:"title"`
+		ID         uuid.UUID `json:"id"`
+		ExternalID int64     `json:"external_id"`
+		Name       string    `json:"name"`
+		Title      string    `json:"title"`
 	}
 
 	// GetTelegramChannelsResponse contains the data about Telegram channels owned by a specific user
