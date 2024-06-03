@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dgraph-io/ristretto"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -80,13 +79,12 @@ type (
 	Service struct {
 		repo                               Repository
 		log                                *zap.Logger
-		cache                              *ristretto.Cache
 		ctx                                context.Context
 		cancel                             context.CancelFunc
 		newOrderProcessingTimer            time.Duration
 		newMarketplaceProcessingTimer      time.Duration
 		verifiedMarketplaceProcessingTimer time.Duration
-		botToken                           string
+		bot                                *tgbotapi.BotAPI
 	}
 )
 
@@ -112,14 +110,16 @@ func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration
 		log.Fatal("new marketplace processing timer is not specified")
 		return nil
 	}
+	if botToken == "" {
+		log.Fatal("bot token is not specified")
+		return nil
+	}
 
-	cache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 1e2,     // number of keys to track frequency of (100).
-		MaxCost:     100_000, // maximum cost of cache (100KB).
-		BufferItems: 10,      // number of keys per Get buffer.
-	})
+	bot, err := tgbotapi.NewBotAPI(botToken)
 	if err != nil {
-		log.Fatal("cache *ristretto.Cache is nil, fatal")
+		log.With(
+			zap.String("method", "tgbotapi.NewBotAPI"),
+		).Fatal(err.Error())
 		return nil
 	}
 
@@ -129,11 +129,10 @@ func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration
 		log:                                log,
 		ctx:                                ctx,
 		cancel:                             cancel,
-		cache:                              cache,
 		newOrderProcessingTimer:            newOrderProcessingTimer,
 		newMarketplaceProcessingTimer:      newMarketplaceProcessingTimer,
 		verifiedMarketplaceProcessingTimer: verifiedMarketplaceProcessingTimer,
-		botToken:                           botToken,
+		bot:                                bot,
 	}
 }
 
@@ -160,7 +159,6 @@ func (s *Service) RunNewOrderNotifier() error {
 // runNewOrderNotifierOnce executes one iteration of loading a batch of new
 // orders and sending notifications to the owners of marketplaces
 func (s *Service) runNewOrderNotifierOnce() error {
-	defer s.cache.Clear()
 	cursor, err := s.repo.GetNotifierCursor(s.ctx, newOrderNotifierName)
 	if err != nil {
 		return errors.Wrap(err, "s.repo.GetNotifierCursor")
@@ -220,7 +218,6 @@ func (s *Service) RunNewMarketplaceNotifier() error {
 // runNewMarketplaceNotifierOnce executes one iteration of loading a batch of new
 // marketplaces and sending notifications to the reviewers of marketplaces
 func (s *Service) runNewMarketplaceNotifierOnce() error {
-	defer s.cache.Clear()
 	cursor, err := s.repo.GetNotifierCursor(s.ctx, newMarketplaceNotifierName)
 	if err != nil {
 		return errors.Wrap(err, "s.repo.GetNotifierCursor")
@@ -280,7 +277,6 @@ func (s *Service) RunVerifiedMarketplaceNotifier() error {
 // runVerifiedMarketplaceNotifierOnce executes one iteration of loading a batch of
 // verified marketplaces and sending notifications to the owners of those marketplaces
 func (s *Service) runVerifiedMarketplaceNotifierOnce() error {
-	defer s.cache.Clear()
 	cursor, err := s.repo.GetNotifierCursor(s.ctx, verifiedMarketplaceNotifierName)
 	if err != nil {
 		return errors.Wrap(err, "s.repo.GetNotifierCursor")
@@ -326,24 +322,7 @@ func (s *Service) Shutdown() error {
 
 // sendNewOrderNotifications sends batch of notifications for new orders
 func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotification) error {
-	var (
-		bot *tgbotapi.BotAPI
-		err error
-	)
-
 	for _, notification := range orderNotifications {
-		val, ok := s.cache.Get(notification.WebAppID.String())
-		if ok {
-			bot = val.(*tgbotapi.BotAPI)
-		} else {
-			bot, err = tgbotapi.NewBotAPI(s.botToken)
-			if err != nil {
-				return errors.Wrap(err, "tgbotapi.NewBotAPI")
-			}
-
-			s.cache.SetWithTTL(notification.WebAppID.String(), bot, 0, 10*time.Minute)
-		}
-
 		nl, err := s.repo.GetAdminsNotificationList(s.ctx, notification.WebAppID)
 		if err != nil {
 			return errors.Wrap(err, "s.repo.GetAdminsNotificationList")
@@ -357,7 +336,7 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 			}
 			msg := tgbotapi.NewMessage(v, msgTxt)
 			msg.ParseMode = tgbotapi.ModeMarkdownV2
-			_, err = bot.Send(msg)
+			_, err = s.bot.Send(msg)
 			if err != nil {
 				return errors.Wrap(err, "bot.Send")
 			}
@@ -370,24 +349,7 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 
 // sendNewMarketplaceNotifications sends batch of notifications for new marketplaces
 func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []NewMarketplaceNotification) error {
-	var (
-		bot *tgbotapi.BotAPI
-		err error
-	)
-
 	for _, notification := range marketplaceNotifications {
-		val, ok := s.cache.Get(notification.ID.String())
-		if ok {
-			bot = val.(*tgbotapi.BotAPI)
-		} else {
-			bot, err = tgbotapi.NewBotAPI(s.botToken)
-			if err != nil {
-				return errors.Wrap(err, "tgbotapi.NewBotAPI")
-			}
-
-			s.cache.SetWithTTL(notification.ID.String(), bot, 0, 10*time.Minute)
-		}
-
 		nl, err := s.repo.GetReviewersNotificationList(s.ctx, notification.ID)
 		if err != nil {
 			return errors.Wrap(err, "s.repo.GetReviewersNotificationList")
@@ -401,7 +363,7 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 			}
 			msg := tgbotapi.NewMessage(v, msgTxt)
 			msg.ParseMode = tgbotapi.ModeMarkdownV2
-			_, err = bot.Send(msg)
+			_, err = s.bot.Send(msg)
 			if err != nil {
 				return errors.Wrap(err, "bot.Send")
 			}
@@ -414,24 +376,7 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 
 // sendVerifiedMarketplaceNotifications sends batch of notifications for verified marketplaces
 func (s *Service) sendVerifiedMarketplaceNotifications(marketplaceNotifications []VerifiedMarketplaceNotification) error {
-	var (
-		bot *tgbotapi.BotAPI
-		err error
-	)
-
 	for _, notification := range marketplaceNotifications {
-		val, ok := s.cache.Get(notification.ID.String())
-		if ok {
-			bot = val.(*tgbotapi.BotAPI)
-		} else {
-			bot, err = tgbotapi.NewBotAPI(s.botToken)
-			if err != nil {
-				return errors.Wrap(err, "tgbotapi.NewBotAPI")
-			}
-
-			s.cache.SetWithTTL(notification.ID.String(), bot, 0, 10*time.Minute)
-		}
-
 		msgTxt, err := notification.BuildMessage()
 		if err != nil {
 			return errors.Wrap(err, "a.BuildMessage")
@@ -439,7 +384,7 @@ func (s *Service) sendVerifiedMarketplaceNotifications(marketplaceNotifications 
 
 		msg := tgbotapi.NewMessage(notification.OwnerExternalUserID, msgTxt)
 		msg.ParseMode = tgbotapi.ModeMarkdownV2
-		_, err = bot.Send(msg)
+		_, err = s.bot.Send(msg)
 		if err != nil {
 			if strings.Contains(err.Error(), "Bad Request: chat not found") {
 				s.log.With(
@@ -470,11 +415,6 @@ func (s *Service) AddUserToNewOrderNotifications(ctx context.Context, req AddUse
 // NotifyChannelIntegrationSuccess notifies a user about a successful
 // channel integration with Shoppigram
 func (s *Service) NotifyChannelIntegrationSuccess(ctx context.Context, request NotifyChannelIntegrationSuccessRequest) error {
-	bot, err := tgbotapi.NewBotAPI(s.botToken)
-	if err != nil {
-		return errors.Wrap(err, "tgbotapi.NewBotAPI")
-	}
-
 	message := ChannelIntegrationSuccessNotification(request)
 	msgTxt, err := message.BuildMessage()
 	if err != nil {
@@ -483,7 +423,7 @@ func (s *Service) NotifyChannelIntegrationSuccess(ctx context.Context, request N
 
 	msg := tgbotapi.NewMessage(request.UserExternalID, msgTxt)
 	msg.ParseMode = tgbotapi.ModeMarkdownV2
-	_, err = bot.Send(msg)
+	_, err = s.bot.Send(msg)
 	if err != nil {
 		return errors.Wrap(err, "bot.Send")
 	}
