@@ -6,34 +6,45 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/go-kit/kit/endpoint"
 	kithttp "github.com/go-kit/kit/transport/http"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	telegramusers "github.com/shoppigram-com/marketplace-api/internal/users"
 )
 
 // MakeHandler returns a handler for the booking service.
-func MakeHandler(bs *Service) http.Handler {
+func MakeHandler(s *Service, authMw endpoint.Middleware) http.Handler {
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(encodeError),
 	}
+	opts = append(opts, telegramusers.AuthServerBefore...)
 
 	getProductsHandler := kithttp.NewServer(
-		makeGetProductsEndpoint(bs),
+		makeGetProductsEndpoint(s),
 		decodeGetProductsRequest,
 		encodeResponse,
 		opts...,
 	)
 
 	invalidateProductsCacheHandler := kithttp.NewServer(
-		makeInvalidateProductsCacheEndpoint(bs),
+		makeInvalidateProductsCacheEndpoint(s),
 		decodeInvalidateProductsCacheRequest,
 		encodeResponse,
 		opts...,
 	)
 
+	createOrderHandler := kithttp.NewServer(
+		authMw(makeCreateOrderEndpoint(s)),
+		decodeCreateOrderRequest,
+		encodeResponse,
+		opts...,
+	)
+
 	r := chi.NewRouter()
-	r.Get("/{web_app_id}", getProductsHandler.ServeHTTP)
-	r.Put("/{web_app_id}/invalidate", invalidateProductsCacheHandler.ServeHTTP)
+	r.Get("/products/{web_app_id}", getProductsHandler.ServeHTTP)
+	r.Put("/products/{web_app_id}/invalidate", invalidateProductsCacheHandler.ServeHTTP)
+	r.Post("/orders/{web_app_id}", createOrderHandler.ServeHTTP)
 
 	return r
 }
@@ -68,7 +79,21 @@ func decodeInvalidateProductsCacheRequest(_ context.Context, r *http.Request) (i
 	return InvalidateProductsCacheRequest{
 		WebAppID: webAppUUID,
 	}, nil
+}
 
+func decodeCreateOrderRequest(ctx context.Context, r *http.Request) (interface{}, error) {
+	webAppId, err := telegramusers.GetWebAppIDFromContext(ctx)
+	if err != nil {
+		return nil, ErrorBadRequest
+	}
+
+	var req CreateOrderRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return nil, ErrorBadRequest
+	}
+
+	req.WebAppID = webAppId
+	return req, nil
 }
 
 func encodeResponse(ctx context.Context, w http.ResponseWriter, response interface{}) error {
@@ -81,14 +106,27 @@ func encodeResponse(ctx context.Context, w http.ResponseWriter, response interfa
 
 func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 	switch {
+	case errors.Is(err, ErrorBadRequest):
+		w.WriteHeader(http.StatusBadRequest)
+		err = ErrorBadRequest
+	case errors.Is(err, telegramusers.ErrorInitDataIsMissing):
+		w.WriteHeader(http.StatusBadRequest)
+		err = telegramusers.ErrorInitDataIsMissing
+	case errors.Is(err, ErrorInvalidWebAppID):
+		w.WriteHeader(http.StatusBadRequest)
+		err = ErrorInvalidWebAppID
+	case errors.Is(err, ErrorInvalidProductQuantity):
+		w.WriteHeader(http.StatusBadRequest)
+		err = ErrorInvalidProductQuantity
+	case errors.Is(err, telegramusers.ErrorInitDataIsInvalid):
+		w.WriteHeader(http.StatusUnauthorized)
+		err = telegramusers.ErrorInitDataIsInvalid
 	case errors.Is(err, ErrorProductsNotFound):
 		w.WriteHeader(http.StatusNotFound)
 		err = ErrorProductsNotFound
-	case errors.Is(err, ErrorInvalidWebAppID):
-		w.WriteHeader(http.StatusBadRequest)
 	default:
-		err = ErrorInternal
 		w.WriteHeader(http.StatusInternalServerError)
+		err = ErrorInternal
 	}
 
 	w.Header().Set("Content-Type", "application/json")

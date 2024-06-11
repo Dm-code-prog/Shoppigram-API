@@ -4,17 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/shoppigram-com/marketplace-api/internal/webhooks"
 	"net/http"
 	"os"
 	"syscall"
 	"time"
 
+	"github.com/shoppigram-com/marketplace-api/internal/webhooks"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/shoppigram-com/marketplace-api/internal/admins"
 	"github.com/shoppigram-com/marketplace-api/internal/logging"
 	"github.com/shoppigram-com/marketplace-api/internal/notifications"
-	"github.com/shoppigram-com/marketplace-api/internal/orders"
 	"go.uber.org/zap/zapcore"
 
 	"github.com/Netflix/go-env"
@@ -24,7 +24,6 @@ import (
 	"github.com/oklog/run"
 	"github.com/shoppigram-com/marketplace-api/internal/httputils"
 	"github.com/shoppigram-com/marketplace-api/internal/products"
-	productsgenerated "github.com/shoppigram-com/marketplace-api/internal/products/generated"
 	telegramusers "github.com/shoppigram-com/marketplace-api/internal/users"
 	"go.uber.org/zap"
 )
@@ -113,17 +112,13 @@ func main() {
 
 	authMw := telegramusers.MakeAuthMiddleware(log.With(zap.String("service", "users")), config.Bot.Token)
 
-	productsRepo := products.NewPg(productsgenerated.New(db))
+	productsRepo := products.NewPg(db)
 	productsService := products.New(productsRepo, log.With(zap.String("service", "products")), productsCache)
-	productsHandler := products.MakeHandler(productsService)
+	productsHandler := products.MakeHandler(productsService, authMw)
 
 	tgUsersRepo := telegramusers.NewPg(db, config.Encryption.Key)
 	tgUsersService := telegramusers.New(tgUsersRepo, log.With(zap.String("service", "users")))
 	tgUsersHandler := telegramusers.MakeHandler(tgUsersService, authMw)
-
-	ordersRepo := orders.NewPg(db)
-	ordersService := orders.New(ordersRepo, log.With(zap.String("service", "orders")))
-	ordersHandler := orders.MakeHandler(ordersService, authMw)
 
 	notificationsRepo := notifications.NewPg(
 		db,
@@ -191,9 +186,8 @@ func main() {
 		log.With(zap.String("service", "webhooks_server")),
 		config.TelegramWebhooks.SecretToken)
 
-	r.Mount("/api/v1/public/products", productsHandler)
+	r.Mount("/api/v1/public/", productsHandler)
 	r.Mount("/api/v1/public/auth", tgUsersHandler)
-	r.Mount("/api/v1/public/orders", ordersHandler)
 	r.Mount("/api/v1/private/marketplaces", adminsHandler)
 	r.Mount("/api/v1/telegram/webhooks", webhooksHandler)
 

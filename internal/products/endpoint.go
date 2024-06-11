@@ -37,3 +37,22 @@ func makeInvalidateProductsCacheEndpoint(s *Service) endpoint.Endpoint {
 		return nil, nil
 	}
 }
+
+// makeGetProductsEndpoint constructs a CreateOrder endpoint wrapping the service.
+//
+// Path: PUT /api/v1/public/orders/{web_app_id}
+func makeCreateOrderEndpoint(s *Service) endpoint.Endpoint {
+	return func(ctx context.Context, request interface{}) (interface{}, error) {
+		req, ok := request.(CreateOrderRequest)
+		if !ok {
+			return CreateOrderResponse{}, ErrorBadRequest
+		}
+
+		res, err := s.CreateOrder(ctx, req)
+		if err != nil {
+			return CreateOrderResponse{}, errors.Wrap(err, "svc.CreateOrder")
+		}
+
+		return res, nil
+	}
+}

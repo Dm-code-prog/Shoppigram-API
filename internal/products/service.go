@@ -7,6 +7,8 @@ import (
 	"github.com/dgraph-io/ristretto"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"github.com/shoppigram-com/marketplace-api/internal/logging"
+	telegramusers "github.com/shoppigram-com/marketplace-api/internal/users"
 	"go.uber.org/zap"
 )
 
@@ -19,6 +21,13 @@ type (
 		Category      string    `json:"category,omitempty"`
 		Price         float64   `json:"price"`
 		PriceCurrency string    `json:"price_currency"`
+	}
+
+	// Product is a marketplace product
+	// that is identified by the ID and quantity
+	ProductOrder struct {
+		ID       uuid.UUID `json:"id"`
+		Quantity int32     `json:"quantity"`
 	}
 
 	// GetProductsRequest defines the request for the GetProducts endpoint
@@ -41,9 +50,38 @@ type (
 		WebAppID uuid.UUID
 	}
 
+	// CreateOrderRequest specifies the products
+	// of a web app marketplace that make up
+	// the order and user information
+	CreateOrderRequest struct {
+		WebAppID uuid.UUID
+		Products []ProductOrder `json:"products"`
+	}
+
+	// CreateOrderResponse returns the ID of the newly created order
+	CreateOrderResponse struct {
+		ReadableID int `json:"readable_id"`
+	}
+
+	// SaveOrderRequest is a request to save order info
+	// to the storage
+	SaveOrderRequest struct {
+		WebAppID       uuid.UUID
+		Products       []ProductOrder
+		ExternalUserID int
+	}
+
+	// SaveOrderResponse is the response to SaveOrderRequest
+	//
+	// It contains the readable order ID
+	SaveOrderResponse struct {
+		ReadableID int
+	}
+
 	// Repository provides access to the product storage
 	Repository interface {
 		GetProducts(ctx context.Context, request GetProductsRequest) (GetProductsResponse, error)
+		CreateOrder(context.Context, SaveOrderRequest) (SaveOrderResponse, error)
 	}
 
 	// Service provides product operations
@@ -59,9 +97,11 @@ const (
 )
 
 var (
-	ErrorProductsNotFound = errors.New("products not found")
-	ErrorInternal         = errors.New("internal server error")
-	ErrorInvalidWebAppID  = errors.New("invalid web app id")
+	ErrorBadRequest             = errors.New("the request to create an order is malformed")
+	ErrorInvalidWebAppID        = errors.New("invalid web app id")
+	ErrorInvalidProductQuantity = errors.New("the product quantity must be greater than zero")
+	ErrorProductsNotFound       = errors.New("products not found")
+	ErrorInternal               = errors.New("internal server error")
 )
 
 // New creates a new product service
@@ -116,4 +156,27 @@ func (s *Service) InvalidateProductsCache(ctx context.Context, req InvalidatePro
 
 func makeProductsCacheKey(webAppID uuid.UUID) string {
 	return getProductsCacheKeyBase + webAppID.String()
+}
+
+// CreateOrder saves an order to the database
+// and notifies the clients, that own the marketplace web app
+// about a new order
+func (s *Service) CreateOrder(ctx context.Context, req CreateOrderRequest) (CreateOrderResponse, error) {
+	u, err := telegramusers.GetUserFromContext(ctx)
+	if err != nil {
+		return CreateOrderResponse{}, errors.Wrap(err, "telegramusers.GetUserFromContext")
+	}
+
+	res, err := s.repo.CreateOrder(ctx, SaveOrderRequest{
+		WebAppID:       req.WebAppID,
+		Products:       req.Products,
+		ExternalUserID: int(u.ExternalId),
+	})
+	if err != nil {
+		s.log.
+			With(zap.String("web_app_id", req.WebAppID.String())).
+			Error("repository.CreateOrder", logging.SilentError(err))
+		return CreateOrderResponse{}, errors.Wrap(err, "s.repo.CreateOrder")
+	}
+	return CreateOrderResponse(res), nil
 }
