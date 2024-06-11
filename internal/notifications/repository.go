@@ -102,6 +102,7 @@ func (p *Pg) GetNotificationsForNewOrdersAfterCursor(ctx context.Context, cur Cu
 				Time:  cur.CursorDate,
 				Valid: true,
 			},
+			ID:    cur.LastProcessedID,
 			Limit: int32(p.newOrderFetchLimit),
 		})
 	if err != nil {
@@ -164,6 +165,7 @@ func (p *Pg) GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, 
 				Time:  cur.CursorDate,
 				Valid: true,
 			},
+			ID:    cur.LastProcessedID,
 			Limit: int32(p.newMarketplaceFetchLimit),
 		})
 	if err != nil {
@@ -195,6 +197,7 @@ func (p *Pg) GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Cont
 				Time:  cur.CursorDate,
 				Valid: true,
 			},
+			ID:    cur.LastProcessedID,
 			Limit: int32(p.verifiedMarketplaceFetchLimit),
 		})
 	if err != nil {

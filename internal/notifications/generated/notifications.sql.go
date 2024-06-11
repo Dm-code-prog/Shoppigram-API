@@ -62,9 +62,9 @@ with marketplaces_batch as (select wa.id,
                                    wa.owner_external_id
          from web_apps wa
          where wa.is_verified = false
-         and wa.created_at > $1
-         order by wa.created_at
-         limit $2)
+         and (wa.created_at, wa.id) > ($2::timestamp, $3::uuid)
+         order by wa.created_at, wa.id
+         limit $1)
 select mb.id,
        mb.name,
        mb.short_name,
@@ -77,8 +77,9 @@ order by mb.created_at, mb.id
 `
 
 type GetNotificationsForNewMarketplacesAfterCursorParams struct {
-	CreatedAt pgtype.Timestamp
 	Limit     int32
+	CreatedAt pgtype.Timestamp
+	ID        uuid.UUID
 }
 
 type GetNotificationsForNewMarketplacesAfterCursorRow struct {
@@ -90,7 +91,7 @@ type GetNotificationsForNewMarketplacesAfterCursorRow struct {
 }
 
 func (q *Queries) GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, arg GetNotificationsForNewMarketplacesAfterCursorParams) ([]GetNotificationsForNewMarketplacesAfterCursorRow, error) {
-	rows, err := q.db.Query(ctx, getNotificationsForNewMarketplacesAfterCursor, arg.CreatedAt, arg.Limit)
+	rows, err := q.db.Query(ctx, getNotificationsForNewMarketplacesAfterCursor, arg.Limit, arg.CreatedAt, arg.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -118,9 +119,9 @@ func (q *Queries) GetNotificationsForNewMarketplacesAfterCursor(ctx context.Cont
 const getNotificationsForNewOrdersAfterCursor = `-- name: GetNotificationsForNewOrdersAfterCursor :many
 with orders_batch as (select id as order_id, created_at, readable_id, web_app_id, external_user_id
                       from orders o
-                      where o.created_at > $1
-                      order by o.created_at
-                      limit $2)
+                      where (o.created_at, o.id) > ($2::timestamp, $3::uuid)
+                      order by o.created_at, o.id
+                      limit $1)
 select ob.order_id,
        ob.readable_id,
        ob.created_at,
@@ -141,8 +142,9 @@ order by ob.created_at, ob.order_id
 `
 
 type GetNotificationsForNewOrdersAfterCursorParams struct {
-	CreatedAt pgtype.Timestamp
 	Limit     int32
+	CreatedAt pgtype.Timestamp
+	ID        uuid.UUID
 }
 
 type GetNotificationsForNewOrdersAfterCursorRow struct {
@@ -159,7 +161,7 @@ type GetNotificationsForNewOrdersAfterCursorRow struct {
 }
 
 func (q *Queries) GetNotificationsForNewOrdersAfterCursor(ctx context.Context, arg GetNotificationsForNewOrdersAfterCursorParams) ([]GetNotificationsForNewOrdersAfterCursorRow, error) {
-	rows, err := q.db.Query(ctx, getNotificationsForNewOrdersAfterCursor, arg.CreatedAt, arg.Limit)
+	rows, err := q.db.Query(ctx, getNotificationsForNewOrdersAfterCursor, arg.Limit, arg.CreatedAt, arg.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -197,9 +199,9 @@ with marketplaces_batch as (select wa.id,
                                    wa.owner_external_id
          from web_apps wa
          where wa.is_verified = true
-         and wa.verified_at > $1
-         order by wa.verified_at
-         limit $2)
+         and (wa.verified_at, wa.id) > ($2::timestamp, $3::uuid)
+         order by wa.verified_at, wa.id
+         limit $1)
 select mb.id,
        mb.name,
        mb.short_name,
@@ -210,8 +212,9 @@ order by mb.verified_at, mb.id
 `
 
 type GetNotificationsForVerifiedMarketplacesAfterCursorParams struct {
-	VerifiedAt pgtype.Timestamp
 	Limit      int32
+	VerifiedAt pgtype.Timestamp
+	ID         uuid.UUID
 }
 
 type GetNotificationsForVerifiedMarketplacesAfterCursorRow struct {
@@ -223,7 +226,7 @@ type GetNotificationsForVerifiedMarketplacesAfterCursorRow struct {
 }
 
 func (q *Queries) GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Context, arg GetNotificationsForVerifiedMarketplacesAfterCursorParams) ([]GetNotificationsForVerifiedMarketplacesAfterCursorRow, error) {
-	rows, err := q.db.Query(ctx, getNotificationsForVerifiedMarketplacesAfterCursor, arg.VerifiedAt, arg.Limit)
+	rows, err := q.db.Query(ctx, getNotificationsForVerifiedMarketplacesAfterCursor, arg.Limit, arg.VerifiedAt, arg.ID)
 	if err != nil {
 		return nil, err
 	}
