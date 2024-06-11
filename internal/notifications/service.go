@@ -433,11 +433,6 @@ func (s *Service) NotifyChannelIntegrationSuccess(ctx context.Context, request N
 
 // SendMarketplaceBanner sends a marketplace banner to a Telegram channel
 func (s *Service) SendMarketplaceBanner(_ context.Context, params SendMarketplaceBannerParams) (message int64, err error) {
-	bot, err := tgbotapi.NewBotAPI(s.botToken)
-	if err != nil {
-		return 0, errors.Wrap(err, "tgbotapi.NewBotAPI")
-	}
-
 	msg := tgbotapi.NewMessage(params.ChannelChatID, params.Message)
 	button := tgbotapi.NewInlineKeyboardButtonURL("Перейти в магазин", params.WebAppLink)
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
@@ -445,7 +440,7 @@ func (s *Service) SendMarketplaceBanner(_ context.Context, params SendMarketplac
 			button,
 		))
 
-	Message, err := bot.Send(msg)
+	Message, err := s.bot.Send(msg)
 	if err != nil {
 		return 0, errors.Wrap(err, "bot.Send")
 	}
@@ -455,11 +450,7 @@ func (s *Service) SendMarketplaceBanner(_ context.Context, params SendMarketplac
 
 // PinNotification pins a message in a Telegram channel
 func (s *Service) PinNotification(_ context.Context, req PinNotificationParams) error {
-	bot, err := tgbotapi.NewBotAPI(s.botToken)
-	if err != nil {
-		return errors.Wrap(err, "tgbotapi.NewBotAPI")
-	}
-	_, err = bot.Request(tgbotapi.PinChatMessageConfig{
+	_, err := s.bot.Request(tgbotapi.PinChatMessageConfig{
 		ChatID:    req.ChatID,
 		MessageID: int(req.MessageID),
 	})
