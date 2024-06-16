@@ -8,6 +8,7 @@ import (
 // List of allowed origins
 var allowedOrigins = map[string]struct{}{
 	"https://web-app.shoppigram.com": {},
+	"https://admin.shoppigram.com":   {},
 	"https://web-app.shoppigram.ru":  {},
 	"https://web-app.shoppigram.dev": {},
 	"http://localhost:3000":          {},
