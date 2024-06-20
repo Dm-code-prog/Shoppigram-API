@@ -72,32 +72,35 @@ type (
 		GetNotificationsForNewOrdersAfterCursor(ctx context.Context, cur Cursor) ([]NewOrderNotification, error)
 		GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]NewMarketplaceNotification, error)
 		GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]VerifiedMarketplaceNotification, error)
+		GetNotificationsForMarketplacesOnVerificationAfterCursor(ctx context.Context, cur Cursor) ([]MarketplaceOnVerificationNotification, error)
 		AddUserToNewOrderNotifications(ctx context.Context, req AddUserToNewOrderNotificationsRequest) error
 	}
 
 	// Service provides user operations
 	Service struct {
-		repo                               Repository
-		log                                *zap.Logger
-		ctx                                context.Context
-		cancel                             context.CancelFunc
-		newOrderProcessingTimer            time.Duration
-		newMarketplaceProcessingTimer      time.Duration
-		verifiedMarketplaceProcessingTimer time.Duration
-		bot                                *tgbotapi.BotAPI
+		repo                                     Repository
+		log                                     *zap.Logger
+		ctx                                      context.Context
+		cancel                                   context.CancelFunc
+		newOrderProcessingTimer                  time.Duration
+		newMarketplaceProcessingTimer            time.Duration
+		verifiedMarketplaceProcessingTimer       time.Duration
+		MarketplaceOnVerificationProcessingTimer time.Duration
+		bot                                     *tgbotapi.BotAPI
 	}
 )
 
 const (
-	newOrderNotifierName            = "new_order_notifications"
-	newMarketplaceNotifierName      = "new_marketplace_notifications"
-	verifiedMarketplaceNotifierName = "verified_marketplace_notifications"
-	marketplaceURL                  = "https://web-app.shoppigram.com/app/"
-	webAppURL                       = "https://t.me/shoppigrambot/"
+	newOrderNotifierName                  = "new_order_notifications"
+	newMarketplaceNotifierName            = "new_marketplace_notifications"
+	verifiedMarketplaceNotifierName       = "verified_marketplace_notifications"
+	marletplaceOnVerificationNotifierName = "marketplace_on_verification_notifications"
+	marketplaceURL                        = "https://web-app.shoppigram.com/app/"
+	webAppURL                             = "https://t.me/shoppigrambot/"
 )
 
 // New creates a new user service
-func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration, newMarketplaceProcessingTimer time.Duration, verifiedMarketplaceProcessingTimer time.Duration, botToken string) *Service {
+func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration, newMarketplaceProcessingTimer time.Duration, verifiedMarketplaceProcessingTimer time.Duration, MarketplaceOnVerificationProcessingTimer time.Duration, botToken string) *Service {
 	if log == nil {
 		log, _ = zap.NewProduction()
 		log.Warn("log *zap.Logger is nil, using zap.NewProduction")
@@ -125,14 +128,15 @@ func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration
 
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Service{
-		repo:                               repo,
-		log:                                log,
-		ctx:                                ctx,
-		cancel:                             cancel,
-		newOrderProcessingTimer:            newOrderProcessingTimer,
-		newMarketplaceProcessingTimer:      newMarketplaceProcessingTimer,
-		verifiedMarketplaceProcessingTimer: verifiedMarketplaceProcessingTimer,
-		bot:                                bot,
+		repo:                                     repo,
+		log:                                      log,
+		ctx:                                      ctx,
+		cancel:                                   cancel,
+		newOrderProcessingTimer:                  newOrderProcessingTimer,
+		newMarketplaceProcessingTimer:            newMarketplaceProcessingTimer,
+		verifiedMarketplaceProcessingTimer:       verifiedMarketplaceProcessingTimer,
+		MarketplaceOnVerificationProcessingTimer: MarketplaceOnVerificationProcessingTimer,
+		bot:                                      bot,
 	}
 }
 
@@ -313,6 +317,65 @@ func (s *Service) runVerifiedMarketplaceNotifierOnce() error {
 	return nil
 }
 
+// RunVerifiedMarketplaceNotifier starts a job that batch loads verified marketplaces
+// and sends notifications to the owners of those marketplaces
+func (s *Service) RunMarketplaceOnVerificationNotifier() error {
+	ticker := time.NewTicker(s.MarketplaceOnVerificationProcessingTimer)
+
+	for {
+		select {
+		case <-ticker.C:
+			err := s.runMarketplaceOnVerificationNotifierOnce()
+			if err != nil {
+				s.log.Error("runMarketplaceOnVerificationNotifierOnce failed", logging.SilentError(err))
+				continue
+			}
+		case <-s.ctx.Done():
+			ticker.Stop()
+			return nil
+		}
+	}
+}
+
+// runVerifiedMarketplaceNotifierOnce executes one iteration of loading a batch of
+// verified marketplaces and sending notifications to the owners of those marketplaces
+func (s *Service) runMarketplaceOnVerificationNotifierOnce() error {
+	cursor, err := s.repo.GetNotifierCursor(s.ctx, marletplaceOnVerificationNotifierName)
+	if err != nil {
+		return errors.Wrap(err, "s.repo.GetNotifierCursor")
+	}
+
+	marketplaceNotifications, err := s.repo.GetNotificationsForMarketplacesOnVerificationAfterCursor(s.ctx, cursor)
+	if err != nil {
+		return errors.Wrap(err, "s.repo.GetNotificationsForMarketplacesOnVerificationAfterCursor")
+	}
+
+	if len(marketplaceNotifications) == 0 {
+		return nil
+	}
+
+	s.log.With(
+		zap.String("count", strconv.Itoa(len(marketplaceNotifications))),
+	).Info("sending notifications for verified marketplaces")
+	err = s.sendMarketplaceOnVerificationNotifications(marketplaceNotifications)
+	if err != nil {
+		return errors.Wrap(err, "s.sendMarketplaceOnVerificationNotifications")
+	}
+
+	lastElem := marketplaceNotifications[len(marketplaceNotifications)-1]
+
+	err = s.repo.UpdateNotifierCursor(s.ctx, Cursor{
+		CursorDate:      lastElem.SentAt,
+		LastProcessedID: lastElem.ID,
+		Name:            marletplaceOnVerificationNotifierName,
+	})
+	if err != nil {
+		return errors.Wrap(err, "s.repo.UpdateNotifierCursor")
+	}
+
+	return nil
+}
+
 // Shutdown stops all of the notifications
 func (s *Service) Shutdown() error {
 	s.cancel()
@@ -400,6 +463,34 @@ func (s *Service) sendVerifiedMarketplaceNotifications(marketplaceNotifications 
 
 	return nil
 }
+
+// sendMarketplaceOnVerificationNotifications sends batch of notifications for marketplaces being sent on verification
+func (s *Service) sendMarketplaceOnVerificationNotifications(marketplaceNotifications []MarketplaceOnVerificationNotification) error {
+	for _, notification := range marketplaceNotifications {
+		msgTxt, err := notification.BuildMessage()
+		if err != nil {
+			return errors.Wrap(err, "a.BuildMessage")
+		}
+
+		msg := tgbotapi.NewMessage(notification.OwnerExternalUserID, msgTxt)
+		msg.ParseMode = tgbotapi.ModeMarkdownV2
+		_, err = s.bot.Send(msg)
+		if err != nil {
+			if strings.Contains(err.Error(), "Bad Request: chat not found") {
+				s.log.With(
+					zap.String("method", "bot.Send"),
+					zap.String("user_id", strconv.FormatInt(notification.OwnerExternalUserID, 10)),
+				).Warn(err.Error())
+				continue
+			}
+			return errors.Wrap(err, "bot.Send")
+		}
+
+	}
+
+	return nil
+}
+
 
 // AddUserToNewOrderNotifications creates a new order notification
 // list entry for some marketplace

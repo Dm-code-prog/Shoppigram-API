@@ -14,19 +14,21 @@ import (
 // Pg implements the Repository interface
 // using PostgreSQL as the backing store.
 type Pg struct {
-	gen                           *generated.Queries
-	newOrderFetchLimit            int
-	newMarketplaceFetchLimit      int
-	verifiedMarketplaceFetchLimit int
+	gen                                *generated.Queries
+	newOrderFetchLimit                  int
+	newMarketplaceFetchLimit            int
+	verifiedMarketplaceFetchLimit       int
+	marketplaceOnVerificationFetchLimit int
 }
 
 // NewPg creates a new Pg
-func NewPg(db *pgxpool.Pool, newOrderFetchLimit int, newMarketplaceFetchLimit int, verifiedMarketplaceFetchLimit int) *Pg {
+func NewPg(db *pgxpool.Pool, newOrderFetchLimit int, newMarketplaceFetchLimit int, verifiedMarketplaceFetchLimit int, marketplaceOnVerificationFetchLimit int) *Pg {
 	return &Pg{
-		gen:                           generated.New(db),
-		newOrderFetchLimit:            newOrderFetchLimit,
-		newMarketplaceFetchLimit:      newMarketplaceFetchLimit,
-		verifiedMarketplaceFetchLimit: verifiedMarketplaceFetchLimit,
+		gen:                                 generated.New(db),
+		newOrderFetchLimit:                  newOrderFetchLimit,
+		newMarketplaceFetchLimit:            newMarketplaceFetchLimit,
+		verifiedMarketplaceFetchLimit:       verifiedMarketplaceFetchLimit,
+		marketplaceOnVerificationFetchLimit: marketplaceOnVerificationFetchLimit,
 	}
 }
 
@@ -216,6 +218,41 @@ func (p *Pg) GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Cont
 
 	return verifiedMarketplaceNotifications, nil
 }
+
+// GetNotificationsForMarketplacesOnVerificationAfterCursor
+
+// GetNotificationsForMarketplacesOnVerificationAfterCursor gets notifcations for marketplaces
+// which are on verification after date specified in cursor
+func (p *Pg) GetNotificationsForMarketplacesOnVerificationAfterCursor(ctx context.Context, cur Cursor) ([]VerifiedMarketplaceNotification, error) {
+	var marketplaceOnVerificationNotifications []VerifiedMarketplaceNotification
+
+	rows, err := p.gen.GetNotificationsForMarketplacesOnVerificationAfterCursor(
+		ctx,
+		generated.GetNotificationsForVerifiedMarketplacesAfterCursorParams{
+			VerifiedAt: pgtype.Timestamp{
+				Time:  cur.CursorDate,
+				Valid: true,
+			},
+			ID:    cur.LastProcessedID,
+			Limit: int32(p.marketplaceOnVerificationFetchLimit),
+		})
+	if err != nil {
+		return nil, errors.Wrap(err, "p.gen.GetNotificationsForMarketplacesOnVerificationAfterCursor")
+	}
+
+	for _, r := range rows {
+		marketplaceOnVerificationNotifications = append(marketplaceOnVerificationNotifications, MarketplaceOnVerificationNotification{
+			ID:                  r.ID,
+			Name:                r.Name,
+			ShortName:           r.ShortName,
+			SentAt:              r.VerifiedAt.Time,
+			OwnerExternalUserID: int64(r.OwnerExternalID.Int32),
+		})
+	}
+
+	return marketplaceOnVerificationNotifications, nil
+}
+
 
 // AddUserToNewOrderNotifications creates a new order notification
 // list entry for some marketplace
