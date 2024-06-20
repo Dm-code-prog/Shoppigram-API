@@ -113,10 +113,8 @@ func (m *ChannelIntegrationSuccessNotification) BuildMessage() (string, error) {
 	}
 
 	tmaLink, err := TMALinkingScheme{
-		PageName: "/admin/new-marketplace",
+		PageName: "/admin",
 		PageData: map[string]any{
-			"integrated_tg_channel_name":        m.ChannelName,
-			"integrated_tg_channel_external_id": m.ChannelExternalID,
 		},
 	}.ToBase64String()
 	if err != nil {
