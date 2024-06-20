@@ -226,7 +226,7 @@ func (p *Pg) GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Cont
 func (p *Pg) GetNotificationsForMarketplacesOnVerificationAfterCursor(ctx context.Context, cur Cursor) ([]MarketplaceOnVerificationNotification, error) {
 	var marketplaceOnVerificationNotifications []MarketplaceOnVerificationNotification
 
-	rows, err := p.gen.GetNotificationsForMarketplacesOnVerificationAfterCursor(
+	rows, err := p.gen.GetNotificationsForVerifiedMarketplacesAfterCursor( // Should be GetNotificationsForMarketplacesOnVerificationAfterCursor
 		ctx,
 		generated.GetNotificationsForVerifiedMarketplacesAfterCursorParams{
 			VerifiedAt: pgtype.Timestamp{

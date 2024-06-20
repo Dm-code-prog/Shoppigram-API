@@ -139,7 +139,6 @@ func main() {
 		time.Duration(config.NewOrderNotifications.Timeout)*time.Second,
 		time.Duration(config.NewMarketplaceNotifications.Timeout)*time.Second,
 		time.Duration(config.VerifiedMarketplaceNotifications.Timeout)*time.Second,
-		time.Duration(config.MarketplaceOnVerificationNotifications.Timeout)*time.Second,
 		config.Bot.Token,
 	)
 
@@ -165,14 +164,6 @@ func main() {
 		})
 	} else {
 		log.Warn("verified marketplace notifications job is disabled")
-	}
-
-	if config.MarketplaceOnVerificationNotifications.IsEnabled {
-		g.Add(notificationsService.RunMarketplaceOnVerificationNotifier, func(err error) {
-			_ = notificationsService.Shutdown()
-		})
-	} else {
-		log.Warn("marketplace on verification notifications job is disabled")
 	}
 
 	adminsRepo := admins.NewPg(db)

@@ -100,7 +100,7 @@ const (
 )
 
 // New creates a new user service
-func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration, newMarketplaceProcessingTimer time.Duration, verifiedMarketplaceProcessingTimer time.Duration, MarketplaceOnVerificationProcessingTimer time.Duration, botToken string) *Service {
+func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration, newMarketplaceProcessingTimer time.Duration, verifiedMarketplaceProcessingTimer time.Duration, botToken string) *Service {
 	if log == nil {
 		log, _ = zap.NewProduction()
 		log.Warn("log *zap.Logger is nil, using zap.NewProduction")
@@ -135,7 +135,6 @@ func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration
 		newOrderProcessingTimer:                  newOrderProcessingTimer,
 		newMarketplaceProcessingTimer:            newMarketplaceProcessingTimer,
 		verifiedMarketplaceProcessingTimer:       verifiedMarketplaceProcessingTimer,
-		MarketplaceOnVerificationProcessingTimer: MarketplaceOnVerificationProcessingTimer,
 		bot:                                      bot,
 	}
 }
@@ -210,6 +209,11 @@ func (s *Service) RunNewMarketplaceNotifier() error {
 			err := s.runNewMarketplaceNotifierOnce()
 			if err != nil {
 				s.log.Error("runNewMarketplaceNotifierOnce failed", logging.SilentError(err))
+				continue
+			}
+			err = s.runMarketplaceOnVerificationNotifierOnce()
+			if err != nil {
+				s.log.Error("runMarketplaceOnVerificationNotifierOnce failed", logging.SilentError(err))
 				continue
 			}
 		case <-s.ctx.Done():
@@ -315,26 +319,6 @@ func (s *Service) runVerifiedMarketplaceNotifierOnce() error {
 	}
 
 	return nil
-}
-
-// RunVerifiedMarketplaceNotifier starts a job that batch loads verified marketplaces
-// and sends notifications to the owners of those marketplaces
-func (s *Service) RunMarketplaceOnVerificationNotifier() error {
-	ticker := time.NewTicker(s.MarketplaceOnVerificationProcessingTimer)
-
-	for {
-		select {
-		case <-ticker.C:
-			err := s.runMarketplaceOnVerificationNotifierOnce()
-			if err != nil {
-				s.log.Error("runMarketplaceOnVerificationNotifierOnce failed", logging.SilentError(err))
-				continue
-			}
-		case <-s.ctx.Done():
-			ticker.Stop()
-			return nil
-		}
-	}
 }
 
 // runVerifiedMarketplaceNotifierOnce executes one iteration of loading a batch of

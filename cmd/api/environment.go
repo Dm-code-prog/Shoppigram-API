@@ -39,9 +39,8 @@ type Environment struct {
 		IsEnabled bool `env:"MARKETPLACE_ON_VERIFICATION_NOTIFICATIONS_IS_ENABLED"`
 		BatchSize int  `env:"MARKETPLACE_ON_VERIFICATION_NOTIFICATIONS_BATCH_SIZE,required"`
 		Timeout   int  `env:"MARKETPLACE_ON_VERIFICATION_NOTIFICATIONS_TIMEOUT,required"`
-	
 	}
-
+	
 	Bot struct {
 		Token string `env:"BOT_TOKEN,required"`
 		ID    int64  `env:"BOT_ID,required"`
