@@ -72,7 +72,6 @@ type (
 		GetNotificationsForNewOrdersAfterCursor(ctx context.Context, cur Cursor) ([]NewOrderNotification, error)
 		GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]NewMarketplaceNotification, error)
 		GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]VerifiedMarketplaceNotification, error)
-		GetNotificationsForMarketplacesOnVerificationAfterCursor(ctx context.Context, cur Cursor) ([]MarketplaceOnVerificationNotification, error)
 		AddUserToNewOrderNotifications(ctx context.Context, req AddUserToNewOrderNotificationsRequest) error
 	}
 
@@ -85,7 +84,6 @@ type (
 		newOrderProcessingTimer                  time.Duration
 		newMarketplaceProcessingTimer            time.Duration
 		verifiedMarketplaceProcessingTimer       time.Duration
-		MarketplaceOnVerificationProcessingTimer time.Duration
 		bot                                     *tgbotapi.BotAPI
 	}
 )
@@ -94,7 +92,6 @@ const (
 	newOrderNotifierName                  = "new_order_notifications"
 	newMarketplaceNotifierName            = "new_marketplace_notifications"
 	verifiedMarketplaceNotifierName       = "verified_marketplace_notifications"
-	marletplaceOnVerificationNotifierName = "marketplace_on_verification_notifications"
 	marketplaceURL                        = "https://web-app.shoppigram.com/app/"
 	webAppURL                             = "https://t.me/shoppigrambot/"
 )
@@ -211,11 +208,6 @@ func (s *Service) RunNewMarketplaceNotifier() error {
 				s.log.Error("runNewMarketplaceNotifierOnce failed", logging.SilentError(err))
 				continue
 			}
-			err = s.runMarketplaceOnVerificationNotifierOnce()
-			if err != nil {
-				s.log.Error("runMarketplaceOnVerificationNotifierOnce failed", logging.SilentError(err))
-				continue
-			}
 		case <-s.ctx.Done():
 			ticker.Stop()
 			return nil
@@ -321,45 +313,6 @@ func (s *Service) runVerifiedMarketplaceNotifierOnce() error {
 	return nil
 }
 
-// runVerifiedMarketplaceNotifierOnce executes one iteration of loading a batch of
-// verified marketplaces and sending notifications to the owners of those marketplaces
-func (s *Service) runMarketplaceOnVerificationNotifierOnce() error {
-	cursor, err := s.repo.GetNotifierCursor(s.ctx, marletplaceOnVerificationNotifierName)
-	if err != nil {
-		return errors.Wrap(err, "s.repo.GetNotifierCursor")
-	}
-
-	marketplaceNotifications, err := s.repo.GetNotificationsForMarketplacesOnVerificationAfterCursor(s.ctx, cursor)
-	if err != nil {
-		return errors.Wrap(err, "s.repo.GetNotificationsForMarketplacesOnVerificationAfterCursor")
-	}
-
-	if len(marketplaceNotifications) == 0 {
-		return nil
-	}
-
-	s.log.With(
-		zap.String("count", strconv.Itoa(len(marketplaceNotifications))),
-	).Info("sending notifications for verified marketplaces")
-	err = s.sendMarketplaceOnVerificationNotifications(marketplaceNotifications)
-	if err != nil {
-		return errors.Wrap(err, "s.sendMarketplaceOnVerificationNotifications")
-	}
-
-	lastElem := marketplaceNotifications[len(marketplaceNotifications)-1]
-
-	err = s.repo.UpdateNotifierCursor(s.ctx, Cursor{
-		CursorDate:      lastElem.SentAt,
-		LastProcessedID: lastElem.ID,
-		Name:            marletplaceOnVerificationNotifierName,
-	})
-	if err != nil {
-		return errors.Wrap(err, "s.repo.UpdateNotifierCursor")
-	}
-
-	return nil
-}
-
 // Shutdown stops all of the notifications
 func (s *Service) Shutdown() error {
 	s.cancel()
@@ -394,6 +347,18 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 	return nil
 }
 
+// sendMessageToChat sends message specified in MsgText to chat with id chatID
+func (s *Service)sendMessageToChat(chatID int64, msgTxt string) error {
+	msg := tgbotapi.NewMessage(chatID, msgTxt)
+	msg.ParseMode = tgbotapi.ModeMarkdownV2
+	_, err := s.bot.Send(msg)
+	if err != nil {
+		return errors.Wrap(err, "bot.Send")
+	}
+	return nil
+}
+
+
 // sendNewMarketplaceNotifications sends batch of notifications for new marketplaces
 func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []NewMarketplaceNotification) error {
 	for _, notification := range marketplaceNotifications {
@@ -408,12 +373,13 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 			if err != nil {
 				return errors.Wrap(err, "a.BuildMessage")
 			}
-			msg := tgbotapi.NewMessage(v, msgTxt)
-			msg.ParseMode = tgbotapi.ModeMarkdownV2
-			_, err = s.bot.Send(msg)
+			s.sendMessageToChat(v, msgTxt)
+
+			onVerificationMsgTxt, err := notification.BuildMarketplaceOnVerificationNotification()
 			if err != nil {
-				return errors.Wrap(err, "bot.Send")
-			}
+				return errors.Wrap(err, "a.BuildMessage")
+			}			
+			s.sendMessageToChat(v, onVerificationMsgTxt) // Change v to shop owner's id
 		}
 
 	}
@@ -447,34 +413,6 @@ func (s *Service) sendVerifiedMarketplaceNotifications(marketplaceNotifications 
 
 	return nil
 }
-
-// sendMarketplaceOnVerificationNotifications sends batch of notifications for marketplaces being sent on verification
-func (s *Service) sendMarketplaceOnVerificationNotifications(marketplaceNotifications []MarketplaceOnVerificationNotification) error {
-	for _, notification := range marketplaceNotifications {
-		msgTxt, err := notification.BuildMessage()
-		if err != nil {
-			return errors.Wrap(err, "a.BuildMessage")
-		}
-
-		msg := tgbotapi.NewMessage(notification.OwnerExternalUserID, msgTxt)
-		msg.ParseMode = tgbotapi.ModeMarkdownV2
-		_, err = s.bot.Send(msg)
-		if err != nil {
-			if strings.Contains(err.Error(), "Bad Request: chat not found") {
-				s.log.With(
-					zap.String("method", "bot.Send"),
-					zap.String("user_id", strconv.FormatInt(notification.OwnerExternalUserID, 10)),
-				).Warn(err.Error())
-				continue
-			}
-			return errors.Wrap(err, "bot.Send")
-		}
-
-	}
-
-	return nil
-}
-
 
 // AddUserToNewOrderNotifications creates a new order notification
 // list entry for some marketplace

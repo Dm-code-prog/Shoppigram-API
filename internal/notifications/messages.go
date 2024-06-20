@@ -46,15 +46,6 @@ type (
 		ChannelName       string
 
 	}
-
-	// MarketplaceOnVerificationNotification defines the structure of notification that marletplace have been sent to verification
-	MarketplaceOnVerificationNotification struct {
-		ID                  uuid.UUID
-		Name                string
-		ShortName           string
-		SentAt              time.Time
-		OwnerExternalUserID int64
-	}
 )
 
 // BuildMessage creates a notification message for a new order
@@ -101,6 +92,29 @@ func (m *NewMarketplaceNotification) BuildMessage() (string, error) {
 	), nil
 }
 
+// BuildMarketplaceOnVerificationNotification creates a notification message for a marketplace on verification
+func (m *NewMarketplaceNotification)BuildMarketplaceOnVerificationNotification() (string, error) {
+	marketplaceVerificationMessageTemplate, err := templates.ReadFile("templates/marketplace_verification_message.md")
+	if err != nil {
+		return "", errors.Wrap(err, "templates.ReadFile")
+	}
+	tmaLink, err := TMALinkingScheme{
+		PageName: "/admin",
+		PageData: map[string]any{ // Add WebAppId here
+		},
+	}.ToBase64String()
+	if err != nil {
+		return "", errors.Wrap(err, "TMALinkingScheme.ToBase64String")
+	}
+	
+	return fmt.Sprintf(
+		escapeSpecialSymbols(string(marketplaceVerificationMessageTemplate)),
+		escapeSpecialSymbols(m.Name),
+		escapeSpecialSymbols(tmaLink),
+	), nil
+}
+
+
 // BuildMessage creates a notification message for a verified marketplace
 func (m *VerifiedMarketplaceNotification) BuildMessage() (string, error) {
 	verifiedMarketplaceMessageTemplate, err := templates.ReadFile("templates/verified_marketplace_message.md")
@@ -139,25 +153,3 @@ func (m *ChannelIntegrationSuccessNotification) BuildMessage() (string, error) {
 }
 
 
-// BuildMessage creates a notification message for a marketplace on verification
-func (m *MarketplaceOnVerificationNotification) BuildMessage() (string, error) {
-	marketplaceVerificationMessageTemplate, err := templates.ReadFile("templates/marketplace_verification_message.md")
-	if err != nil {
-		return "", errors.Wrap(err, "templates.ReadFile")
-	}
-
-	tmaLink, err := TMALinkingScheme{
-		PageName: "/admin",
-		PageData: map[string]any{
-		},
-	}.ToBase64String()
-	if err != nil {
-		return "", errors.Wrap(err, "TMALinkingScheme.ToBase64String")
-	}
-	
-	return fmt.Sprintf(
-		escapeSpecialSymbols(string(marketplaceVerificationMessageTemplate)),
-		escapeSpecialSymbols(m.Name),
-		escapeSpecialSymbols(tmaLink),
-	), nil
-}

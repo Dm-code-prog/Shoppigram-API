@@ -131,7 +131,6 @@ func main() {
 		config.NewOrderNotifications.BatchSize,
 		config.NewMarketplaceNotifications.BatchSize,
 		config.VerifiedMarketplaceNotifications.BatchSize,
-		config.MarketplaceOnVerificationNotifications.BatchSize,
 	)
 	notificationsService := notifications.New(
 		notificationsRepo,
