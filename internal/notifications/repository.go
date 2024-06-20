@@ -223,8 +223,8 @@ func (p *Pg) GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Cont
 
 // GetNotificationsForMarketplacesOnVerificationAfterCursor gets notifcations for marketplaces
 // which are on verification after date specified in cursor
-func (p *Pg) GetNotificationsForMarketplacesOnVerificationAfterCursor(ctx context.Context, cur Cursor) ([]VerifiedMarketplaceNotification, error) {
-	var marketplaceOnVerificationNotifications []VerifiedMarketplaceNotification
+func (p *Pg) GetNotificationsForMarketplacesOnVerificationAfterCursor(ctx context.Context, cur Cursor) ([]MarketplaceOnVerificationNotification, error) {
+	var marketplaceOnVerificationNotifications []MarketplaceOnVerificationNotification
 
 	rows, err := p.gen.GetNotificationsForMarketplacesOnVerificationAfterCursor(
 		ctx,
