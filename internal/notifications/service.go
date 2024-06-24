@@ -66,7 +66,7 @@ type (
 	// Repository provides access to the user storage
 	Repository interface {
 		GetAdminsNotificationList(ctx context.Context, webAppID uuid.UUID) ([]int64, error)
-		GetReviewersNotificationList(ctx context.Context, webAppID uuid.UUID) ([]int64, error)
+		GetReviewersNotificationList(ctx context.Context) ([]int64, error)
 		GetNotifierCursor(ctx context.Context, name string) (Cursor, error)
 		UpdateNotifierCursor(ctx context.Context, cur Cursor) error
 		GetNotificationsForNewOrdersAfterCursor(ctx context.Context, cur Cursor) ([]NewOrderNotification, error)
@@ -332,8 +332,9 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 		for _, v := range nl {
 			msgTxt, err := notification.BuildMessage()
 			if err != nil {
-				return errors.Wrap(err, "a.BuildMessage")
+				return errors.Wrap(err, "a.BuildMessageShoppigram")
 			}
+
 			msg := tgbotapi.NewMessage(v, msgTxt)
 			msg.ParseMode = tgbotapi.ModeMarkdownV2
 			_, err = s.bot.Send(msg)
@@ -347,25 +348,41 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 	return nil
 }
 
+// sendMessageToChat sends message specified in MsgText to chat with id chatID
+func (s *Service) sendMessageToChat(chatID int64, msgTxt string) error {
+	msg := tgbotapi.NewMessage(chatID, msgTxt)
+	msg.ParseMode = tgbotapi.ModeMarkdownV2
+	_, err := s.bot.Send(msg)
+	if err != nil {
+		return errors.Wrap(err, "bot.Send")
+	}
+	return nil
+}
+
 // sendNewMarketplaceNotifications sends batch of notifications for new marketplaces
 func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []NewMarketplaceNotification) error {
-	for _, notification := range marketplaceNotifications {
-		nl, err := s.repo.GetReviewersNotificationList(s.ctx, notification.ID)
+	reviewers, err := s.repo.GetReviewersNotificationList(s.ctx)
+	if err != nil {
+		return errors.Wrap(err, "s.repo.GetReviewersNotificationList")
+	}
+	for _, n := range marketplaceNotifications {
+		onVerificationMsgTxt, err := n.BuildMessageAdmin()
 		if err != nil {
-			return errors.Wrap(err, "s.repo.GetReviewersNotificationList")
+			return errors.Wrap(err, "a.BuildMessageShoppigram")
+		}
+		err = s.sendMessageToChat(n.OwnerExternalID, onVerificationMsgTxt)
+		if err != nil {
+			return errors.Wrap(err, "sendMessageToChat")
 		}
 
-		// need to get chat id's of users, who we are going to send messages
-		for _, v := range nl {
-			msgTxt, err := notification.BuildMessage()
+		for _, r := range reviewers {
+			msgTxt, err := n.BuildMessageShoppigram()
 			if err != nil {
-				return errors.Wrap(err, "a.BuildMessage")
+				return errors.Wrap(err, "a.BuildMessageShoppigram")
 			}
-			msg := tgbotapi.NewMessage(v, msgTxt)
-			msg.ParseMode = tgbotapi.ModeMarkdownV2
-			_, err = s.bot.Send(msg)
+			err = s.sendMessageToChat(r, msgTxt)
 			if err != nil {
-				return errors.Wrap(err, "bot.Send")
+				return errors.Wrap(err, "sendMessageToChat")
 			}
 		}
 
@@ -379,7 +396,7 @@ func (s *Service) sendVerifiedMarketplaceNotifications(marketplaceNotifications 
 	for _, notification := range marketplaceNotifications {
 		msgTxt, err := notification.BuildMessage()
 		if err != nil {
-			return errors.Wrap(err, "a.BuildMessage")
+			return errors.Wrap(err, "a.BuildMessageShoppigram")
 		}
 
 		msg := tgbotapi.NewMessage(notification.OwnerExternalUserID, msgTxt)
@@ -418,7 +435,7 @@ func (s *Service) NotifyChannelIntegrationSuccess(ctx context.Context, request N
 	message := ChannelIntegrationSuccessNotification(request)
 	msgTxt, err := message.BuildMessage()
 	if err != nil {
-		return errors.Wrap(err, "message.BuildMessage")
+		return errors.Wrap(err, "message.BuildMessageShoppigram")
 	}
 
 	msg := tgbotapi.NewMessage(request.UserExternalID, msgTxt)
@@ -509,7 +526,7 @@ func formatRussianTime(t time.Time) string {
 	return strings.ReplaceAll(t.Format("02.01.2006 15:04:05"), ".", "\\.")
 }
 
-var specialSymbols = []string{"_", "#", "-", ".", "!", "<", ">"}
+var specialSymbols = []string{"_", "#", "-", ".", "!", "<", ">", "|"}
 
 func escapeSpecialSymbols(s string) string {
 	for _, sym := range specialSymbols {
