@@ -14,19 +14,19 @@ import (
 // Pg implements the Repository interface
 // using PostgreSQL as the backing store.
 type Pg struct {
-	gen                                *generated.Queries
-	newOrderFetchLimit                  int
-	newMarketplaceFetchLimit            int
-	verifiedMarketplaceFetchLimit       int
+	gen                           *generated.Queries
+	newOrderFetchLimit            int
+	newMarketplaceFetchLimit      int
+	verifiedMarketplaceFetchLimit int
 }
 
 // NewPg creates a new Pg
 func NewPg(db *pgxpool.Pool, newOrderFetchLimit int, newMarketplaceFetchLimit int, verifiedMarketplaceFetchLimit int) *Pg {
 	return &Pg{
-		gen:                                 generated.New(db),
-		newOrderFetchLimit:                  newOrderFetchLimit,
-		newMarketplaceFetchLimit:            newMarketplaceFetchLimit,
-		verifiedMarketplaceFetchLimit:       verifiedMarketplaceFetchLimit,
+		gen:                           generated.New(db),
+		newOrderFetchLimit:            newOrderFetchLimit,
+		newMarketplaceFetchLimit:      newMarketplaceFetchLimit,
+		verifiedMarketplaceFetchLimit: verifiedMarketplaceFetchLimit,
 	}
 }
 
@@ -44,7 +44,7 @@ func (p *Pg) GetAdminsNotificationList(ctx context.Context, webAppID uuid.UUID) 
 }
 
 // GetReviewersNotificationList gets a list of reviewers to notify about a new marketplace
-func (p *Pg) GetReviewersNotificationList(ctx context.Context, webAppID uuid.UUID) ([]int64, error) {
+func (p *Pg) GetReviewersNotificationList(ctx context.Context) ([]int64, error) {
 	reviewersNotificationList, err := p.gen.GetReviewersNotificationList(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "p.gen.GetReviewersNotificationList")
@@ -174,11 +174,12 @@ func (p *Pg) GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, 
 
 	for _, r := range rows {
 		newMarketplaceNotifications = append(newMarketplaceNotifications, NewMarketplaceNotification{
-			ID:            r.ID,
-			Name:          r.Name,
-			ShortName:     r.ShortName,
-			CreatedAt:     r.CreatedAt.Time,
-			OwnerUsername: r.Username.String,
+			ID:              r.ID,
+			Name:            r.Name,
+			ShortName:       r.ShortName,
+			CreatedAt:       r.CreatedAt.Time,
+			OwnerUsername:   r.Username.String,
+			OwnerExternalID: int64(r.OwnerExternalID),
 		})
 	}
 
