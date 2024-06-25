@@ -18,6 +18,7 @@ type (
 		WebAppID        uuid.UUID
 		WebAppName      string
 		Products        []Product
+		ExternalUserID  int64
 	}
 
 	// NewMarketplaceNotification defines the structure of new marketplace notification
