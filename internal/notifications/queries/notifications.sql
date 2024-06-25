@@ -34,7 +34,7 @@ select ob.order_id,
        p.price_currency,
        op.quantity,
        u.username,
-	   u.external_id as user_id
+	   u.external_id as external_user_id
 from orders_batch ob
          join order_products op
               on ob.order_id = op.order_id

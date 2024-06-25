@@ -327,22 +327,26 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 		if err != nil {
 			return errors.Wrap(err, "s.repo.GetAdminsNotificationList")
 		}
-
-		// need to get chat id's of users, who we are going to send messages
-		for _, v := range nl {
-			msgTxt, err := notification.BuildMessage()
+		adminMsgTxt, err := notification.BuildMessageAdmin()
+		if err != nil {
+			return errors.Wrap(err, "a.BuildMessageAdmin")
+		}
+		
+		for _, v := range nl {			
+			err = s.sendMessageToChat(v, adminMsgTxt)
 			if err != nil {
-				return errors.Wrap(err, "a.BuildMessageShoppigram")
-			}
-
-			msg := tgbotapi.NewMessage(v, msgTxt)
-			msg.ParseMode = tgbotapi.ModeMarkdownV2
-			_, err = s.bot.Send(msg)
-			if err != nil {
-				return errors.Wrap(err, "bot.Send")
+				return errors.Wrap(err, "s.sendMessageToChat")
 			}
 		}
-
+		customerMsgTxt, err := notification.BuildMessageCustomer()
+		
+		if err != nil {
+			return errors.Wrap(err, "a.BuildMessageCustomer")
+		}
+		err = s.sendMessageToChat(notification.ExternalUserID, customerMsgTxt)
+		if err != nil {
+			return errors.Wrap(err, "s.sendMessageToChat")
+		}
 	}
 
 	return nil

@@ -49,8 +49,8 @@ type (
 	}
 )
 
-// BuildMessage creates a notification message for a new order
-func (o *NewOrderNotification) BuildMessage() (string, error) {
+// BuildMessageAdmin creates a notification message for a new order for an admin
+func (o *NewOrderNotification) BuildMessageAdmin() (string, error) {
 	var subtotal float64
 	var productList strings.Builder
 	var currency string
@@ -77,6 +77,35 @@ func (o *NewOrderNotification) BuildMessage() (string, error) {
 	), nil
 }
 
+// BuildMessageCustomer creates a notification message for a new order for a customer
+func (o *NewOrderNotification) BuildMessageCustomer() (string, error) {
+	var subtotal float64
+	var productList strings.Builder
+	var currency string
+	for _, p := range o.Products {
+		subtotal += p.Price * float64(p.Quantity)
+		currency = p.PriceCurrency
+		productList.WriteString(fmt.Sprintf(`\- %dx %s по цене %s %s
+`, p.Quantity, escapeSpecialSymbols(p.Name), escapeSpecialSymbols(formatFloat(p.Price)), formatCurrency(p.PriceCurrency)))
+	}
+
+	newOrderMessageTemplate, err := templates.ReadFile("templates/new_order_message.customer.md")
+	if err != nil {
+		return "", errors.Wrap(err, "templates.ReadFile")
+	}
+
+	orderLink := "#"
+
+	return fmt.Sprintf(
+		escapeSpecialSymbols(string(newOrderMessageTemplate)),
+		escapeSpecialSymbols(o.WebAppName),
+		escapeSpecialSymbols(formatFloat(subtotal))+" "+formatCurrency(currency),
+		strings.TrimRight(productList.String(), "; "),
+		escapeSpecialSymbols(orderLink),
+	), nil
+}
+
+
 // BuildMessageShoppigram creates a notification message for a new marketplace
 func (m *NewMarketplaceNotification) BuildMessageShoppigram() (string, error) {
 	newMarketplaceMessageTemplate, err := templates.ReadFile("templates/marketplace_needs_verification.shoppigram.md")
@@ -86,7 +115,7 @@ func (m *NewMarketplaceNotification) BuildMessageShoppigram() (string, error) {
 
 	return fmt.Sprintf(
 		escapeSpecialSymbols(string(newMarketplaceMessageTemplate)),
-		escapeSpecialSymbols(m.OwnerUsername),
+		escapeSpecialSymbols(m.Name),
 		escapeSpecialSymbols(m.Name),
 		escapeSpecialSymbols(m.ShortName),
 		escapeSpecialSymbols(marketplaceURL+m.ID.String()),

@@ -142,7 +142,7 @@ func (p *Pg) GetNotificationsForNewOrdersAfterCursor(ctx context.Context, cur Cu
 					Price:         r.Price,
 					PriceCurrency: r.PriceCurrency,
 				}},
-				ExternalUserID:  0,
+				ExternalUserID:  int64(r.ExternalUserID),
 			}
 		}
 	}
