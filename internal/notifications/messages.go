@@ -23,11 +23,12 @@ type (
 
 	// NewMarketplaceNotification defines the structure of new marketplace notification
 	NewMarketplaceNotification struct {
-		ID            uuid.UUID
-		Name          string
-		ShortName     string
-		CreatedAt     time.Time
-		OwnerUsername string
+		ID              uuid.UUID
+		Name            string
+		ShortName       string
+		CreatedAt       time.Time
+		OwnerUsername   string
+		OwnerExternalID int64
 	}
 
 	// VerifiedMarketplaceNotification defines the structure of verified marketplace notification
@@ -60,7 +61,7 @@ func (o *NewOrderNotification) BuildMessage() (string, error) {
 `, p.Quantity, escapeSpecialSymbols(p.Name), escapeSpecialSymbols(formatFloat(p.Price)), formatCurrency(p.PriceCurrency)))
 	}
 
-	newOrderMessageTemplate, err := templates.ReadFile("templates/new_order_message.md")
+	newOrderMessageTemplate, err := templates.ReadFile("templates/new_order_message.admin.md")
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
@@ -76,9 +77,9 @@ func (o *NewOrderNotification) BuildMessage() (string, error) {
 	), nil
 }
 
-// BuildMessage creates a notification message for a new marketplace
-func (m *NewMarketplaceNotification) BuildMessage() (string, error) {
-	newMarketplaceMessageTemplate, err := templates.ReadFile("templates/new_marketplace_message.md")
+// BuildMessageShoppigram creates a notification message for a new marketplace
+func (m *NewMarketplaceNotification) BuildMessageShoppigram() (string, error) {
+	newMarketplaceMessageTemplate, err := templates.ReadFile("templates/marketplace_needs_verification.shoppigram.md")
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
@@ -92,9 +93,30 @@ func (m *NewMarketplaceNotification) BuildMessage() (string, error) {
 	), nil
 }
 
+// BuildMessageAdmin creates a notification message for a marketplace on verification
+func (m *NewMarketplaceNotification) BuildMessageAdmin() (string, error) {
+	marketplaceVerificationMessageTemplate, err := templates.ReadFile("templates/marketplace_sent_for_verification.admin.md")
+	if err != nil {
+		return "", errors.Wrap(err, "templates.ReadFile")
+	}
+	tmaLink, err := TMALinkingScheme{
+		PageName: "/admin/marketplaces/" + m.ID.String(),
+		PageData: map[string]any{},
+	}.ToBase64String()
+	if err != nil {
+		return "", errors.Wrap(err, "TMALinkingScheme.ToBase64String")
+	}
+
+	return fmt.Sprintf(
+		escapeSpecialSymbols(string(marketplaceVerificationMessageTemplate)),
+		escapeSpecialSymbols(m.Name),
+		escapeSpecialSymbols(tmaLink),
+	), nil
+}
+
 // BuildMessage creates a notification message for a verified marketplace
 func (m *VerifiedMarketplaceNotification) BuildMessage() (string, error) {
-	verifiedMarketplaceMessageTemplate, err := templates.ReadFile("templates/verified_marketplace_message.md")
+	verifiedMarketplaceMessageTemplate, err := templates.ReadFile("templates/marketplace_verified.admin.md")
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
@@ -108,15 +130,14 @@ func (m *VerifiedMarketplaceNotification) BuildMessage() (string, error) {
 
 // BuildMessage creates a notification message for a successful channel integration
 func (m *ChannelIntegrationSuccessNotification) BuildMessage() (string, error) {
-	channelIntegrationSuccessMessageTemplate, err := templates.ReadFile("templates/channel_integration_success.md")
+	channelIntegrationSuccessMessageTemplate, err := templates.ReadFile("templates/channel_integrated.admin.md")
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
 
 	tmaLink, err := TMALinkingScheme{
 		PageName: "/admin",
-		PageData: map[string]any{
-		},
+		PageData: map[string]any{},
 	}.ToBase64String()
 	if err != nil {
 		return "", errors.Wrap(err, "TMALinkingScheme.ToBase64String")

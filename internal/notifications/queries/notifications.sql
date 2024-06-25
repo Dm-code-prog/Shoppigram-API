@@ -5,7 +5,7 @@ where name = $1;
 
 -- name: UpdateNotifierCursor :exec
 update notifier_cursors
-set cursor_date = $2,
+set cursor_date       = $2,
     last_processed_id = $3
 where name = $1;
 
@@ -49,16 +49,17 @@ with marketplaces_batch as (select wa.id,
                                    wa.short_name,
                                    wa.created_at,
                                    wa.owner_external_id
-         from web_apps wa
-         where wa.is_verified = false
-         and (wa.created_at, wa.id) > (@created_at::timestamp, @id::uuid)
-         order by wa.created_at, wa.id
-         limit $1)
+                            from web_apps wa
+                            where wa.is_verified = false
+                              and (wa.created_at, wa.id) > (@created_at::timestamp, @id::uuid)
+                            order by wa.created_at, wa.id
+                            limit $1)
 select mb.id,
        mb.name,
        mb.short_name,
        mb.created_at,
-       u.username
+       u.username,
+       u.external_id as owner_external_id
 from marketplaces_batch mb
          join telegram_users u
               on mb.owner_external_id = u.external_id
@@ -70,11 +71,11 @@ with marketplaces_batch as (select wa.id,
                                    wa.short_name,
                                    wa.verified_at,
                                    wa.owner_external_id
-         from web_apps wa
-         where wa.is_verified = true
-         and (wa.verified_at, wa.id) > (@verified_at::timestamp, @id::uuid)
-         order by wa.verified_at, wa.id
-         limit $1)
+                            from web_apps wa
+                            where wa.is_verified = true
+                              and (wa.verified_at, wa.id) > (@verified_at::timestamp, @id::uuid)
+                            order by wa.verified_at, wa.id
+                            limit $1)
 select mb.id,
        mb.name,
        mb.short_name,
