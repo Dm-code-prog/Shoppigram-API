@@ -94,14 +94,11 @@ func (o *NewOrderNotification) BuildMessageCustomer() (string, error) {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
 
-	// orderLink := "#"
-
 	return fmt.Sprintf(
 		escapeSpecialSymbols(string(newOrderMessageTemplate)),
 		escapeSpecialSymbols(o.WebAppName),
 		escapeSpecialSymbols(formatFloat(subtotal))+" "+formatCurrency(currency),
 		strings.TrimRight(productList.String(), "; "),
-		// escapeSpecialSymbols(orderLink),
 	), nil
 }
 
