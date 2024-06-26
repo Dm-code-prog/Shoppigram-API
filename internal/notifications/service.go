@@ -378,7 +378,7 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 			PageData: map[string]any{},
 		}.ToBase64String()
 		
-		button := tgbotapi.NewInlineKeyboardButtonURL(n.Name, "https://t.me/shoppigramBot/app?startapp=" + tmaLink)
+		button := tgbotapi.NewInlineKeyboardButtonURL("Перейти к магазину", "https://t.me/shoppigramBot/app?startapp=" + tmaLink)
 		if err != nil {
 			return errors.Wrap(err, "tgbotapi.NewInlineKeyboardButtonURL")
 		}
