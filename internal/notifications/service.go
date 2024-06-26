@@ -370,10 +370,28 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 		if err != nil {
 			return errors.Wrap(err, "a.BuildMessageShoppigram")
 		}
-		err = s.sendMessageToChat(n.OwnerExternalID, onVerificationMsgTxt)
+		msg := tgbotapi.NewMessage(n.OwnerExternalID, onVerificationMsgTxt)
+		msg.ParseMode = tgbotapi.ModeMarkdownV2
+
+		tmaLink, err := TMALinkingScheme{
+			PageName: "/admin/marketplaces/" + n.ID.String(),
+			PageData: map[string]any{},
+		}.ToBase64String()
+		
+		button := tgbotapi.NewInlineKeyboardButtonURL("Перейти к магазину", "https://t.me/shoppigramBot/app?startapp=" + tmaLink)
 		if err != nil {
-			return errors.Wrap(err, "sendMessageToChat")
+			return errors.Wrap(err, "tgbotapi.NewInlineKeyboardButtonURL")
 		}
+		
+		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			button,
+		))
+
+		_, err = s.bot.Send(msg)
+		if err != nil {
+			return errors.Wrap(err, "bot.Send")
+	}
 
 		for _, r := range reviewers {
 			msgTxt, err := n.BuildMessageShoppigram()
