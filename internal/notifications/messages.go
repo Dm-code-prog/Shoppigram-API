@@ -98,18 +98,10 @@ func (m *NewMarketplaceNotification) BuildMessageAdmin() (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
-	tmaLink, err := TMALinkingScheme{
-		PageName: "/admin/marketplaces/" + m.ID.String(),
-		PageData: map[string]any{},
-	}.ToBase64String()
-	if err != nil {
-		return "", errors.Wrap(err, "TMALinkingScheme.ToBase64String")
-	}
 
 	return fmt.Sprintf(
 		escapeSpecialSymbols(string(marketplaceVerificationMessageTemplate)),
 		escapeSpecialSymbols(m.Name),
-		escapeSpecialSymbols(tmaLink),
 	), nil
 }
 
