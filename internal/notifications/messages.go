@@ -82,7 +82,7 @@ func (m *NewMarketplaceNotification) BuildMessageShoppigram() (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
-
+	
 	return fmt.Sprintf(
 		escapeSpecialSymbols(string(newMarketplaceMessageTemplate)),
 		escapeSpecialSymbols(m.OwnerUsername),
