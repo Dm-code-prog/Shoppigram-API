@@ -94,14 +94,14 @@ func (o *NewOrderNotification) BuildMessageCustomer() (string, error) {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
 
-	orderLink := "#"
+	// orderLink := "#"
 
 	return fmt.Sprintf(
 		escapeSpecialSymbols(string(newOrderMessageTemplate)),
 		escapeSpecialSymbols(o.WebAppName),
 		escapeSpecialSymbols(formatFloat(subtotal))+" "+formatCurrency(currency),
 		strings.TrimRight(productList.String(), "; "),
-		escapeSpecialSymbols(orderLink),
+		// escapeSpecialSymbols(orderLink),
 	), nil
 }
 
@@ -115,7 +115,7 @@ func (m *NewMarketplaceNotification) BuildMessageShoppigram() (string, error) {
 
 	return fmt.Sprintf(
 		escapeSpecialSymbols(string(newMarketplaceMessageTemplate)),
-		escapeSpecialSymbols(m.Name),
+		escapeSpecialSymbols(m.OwnerUsername),
 		escapeSpecialSymbols(m.Name),
 		escapeSpecialSymbols(m.ShortName),
 		escapeSpecialSymbols(marketplaceURL+m.ID.String()),

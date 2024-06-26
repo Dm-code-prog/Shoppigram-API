@@ -59,7 +59,7 @@ select mb.id,
        mb.short_name,
        mb.created_at,
        u.username,
-       u.external_id as owner_external_id
+	   u.external_id as owner_external_id
 from marketplaces_batch mb
          join telegram_users u
               on mb.owner_external_id = u.external_id
