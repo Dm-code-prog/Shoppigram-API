@@ -128,7 +128,7 @@ func (p *Pg) GetNotificationsForNewOrdersAfterCursor(ctx context.Context, cur Cu
 			if err != nil {
 				return nil, errors.Wrap(err, "p.gen.GetNotificationsForNewOrdersAfterCursor")
 			}
-
+			
 			ordersMap[orderID] = NewOrderNotification{
 				ID:              r.OrderID,
 				ReadableOrderID: r.ReadableID.Int64,
@@ -142,6 +142,7 @@ func (p *Pg) GetNotificationsForNewOrdersAfterCursor(ctx context.Context, cur Cu
 					Price:         r.Price,
 					PriceCurrency: r.PriceCurrency,
 				}},
+				ExternalUserID:  int64(r.ExternalUserID),
 			}
 		}
 	}
