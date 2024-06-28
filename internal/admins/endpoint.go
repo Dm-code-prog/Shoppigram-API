@@ -61,6 +61,26 @@ func makeCreateMarketplaceEndpoint(s *Service) endpoint.Endpoint {
 	}
 }
 
+// makeDeleteMarketplaceEndpoint creates a new endpoint for access to
+// DeleteMarketplace service method
+//
+// Path: DELETE /api/v1/private/marketplaces
+func makeDeleteMarketplaceEndpoint(s *Service) endpoint.Endpoint {
+	return func(ctx context.Context, req any) (any, error) {
+		request, ok := req.(DeleteMarketplaceRequest)
+		if !ok {
+			return nil, ErrorBadRequest
+		}
+
+		err := s.DeleteMarketplace(ctx, request)
+		if err != nil {
+			return nil, errors.Wrap(err, "s.DeleteProduct")
+		}
+
+		return nil, nil
+	}
+}
+
 // makeUpdateMarketplaceEndpoint creates a new endpoint for access to
 // UpdateMarketplace service method
 //
