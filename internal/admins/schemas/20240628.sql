@@ -1,2 +1,2 @@
 ALTER TABLE web_apps
-	ADD is_deleted BOOLEAN DEFAULT false;
+	ADD COLUMN is_deleted BOOLEAN DEFAULT false;
