@@ -57,7 +57,8 @@ type (
 	}
 	// DeleteProductRequest specifies a product in a marketplace that needs to be deleted
 	DeleteMarketplaceRequest struct {
-		WebAppId             uuid.UUID `json:"id"`
+		WebAppId       uuid.UUID
+		ExternalUserID int64
 	}
 
 	// CreateProductRequest specifies the information about a product
@@ -341,7 +342,20 @@ func (s *Service) UpdateMarketplace(ctx context.Context, req UpdateMarketplaceRe
 }
 
 func (s *Service) DeleteMarketplace(ctx context.Context, req DeleteMarketplaceRequest) error {
-	err := s.repo.DeleteMarketplace(ctx, req)
+	isUserTheOwner, err := s.repo.IsUserTheOwnerOfMarketplace(ctx, req.ExternalUserID, req.WebAppId)
+	if err != nil {
+		return s.log.With(
+			zap.String("method", "s.repo.IsUserTheOwnerOfMarketplace"),
+			zap.String("web_app_id", req.WebAppId.String()),
+			zap.String("user_id", string(req.ExternalUserID)),
+		).Error(err.Error())
+	}
+	
+	if !isUserTheOwner {
+		return ErrorOpNotAllowed
+	}
+	
+	err = s.repo.DeleteMarketplace(ctx, req)
 	if err != nil {
 		s.log.With(
 			zap.String("method", "s.repo.DeleteMarketplace"),
@@ -597,8 +611,6 @@ func (s *Service) PublishMarketplaceBannerToChannel(ctx context.Context, req Pub
 
 	return nil
 }
-
-// func SoftDeleteMarketplace()
 
 func isMarketplaceShortNameValid(shortName string) bool {
 	return shortNameRegex.MatchString(shortName)

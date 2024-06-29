@@ -105,7 +105,7 @@ func MakeHandler(bs *Service, authMw endpoint.Middleware) http.Handler {
 	r.Get("/", getMarketplacesHandler.ServeHTTP)
 	r.Post("/", createMarketplaceHandler.ServeHTTP)
 	r.Put("/{web_app_id}", updateMarketplaceHandler.ServeHTTP)
-	r.Delete("/", deleteMarketplaceHandler.ServeHTTP)
+	r.Delete("/{web_app_id}", deleteMarketplaceHandler.ServeHTTP)
 
 	r.Post("/products/{web_app_id}", createProductHandler.ServeHTTP)
 	r.Put("/products/{web_app_id}", updateProductHandler.ServeHTTP)
@@ -150,10 +150,23 @@ func decodeUpdateMarketplaceRequest(c context.Context, r *http.Request) (interfa
 
 func decodeDeleteMarketplaceRequest(c context.Context, r *http.Request) (interface{}, error) {
 	var request DeleteMarketplaceRequest
+
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, ErrorBadRequest
 	}
+	
+	id := chi.URLParam(r, "web_app_id")
+	if id == "" {
+		return nil, ErrorBadRequest
+	}
 
+	asUUID, err := uuid.Parse(id)
+	if err != nil {
+		return nil, ErrorBadRequest
+	}
+	request.WebAppId = asUUID
+	
+	
 	return request, nil
 }
 

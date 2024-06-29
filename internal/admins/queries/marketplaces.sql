@@ -11,7 +11,7 @@ values ($1,
         $3)
 returning id;
 
--- name: SoftDeleteMarketplace :execresult
+-- name: SoftDeleteMarketplace :exec
 update web_apps
 set is_deleted=true
 where id = $1;
@@ -19,7 +19,8 @@ where id = $1;
 -- name: CountUserMarketplaces :one
 select count(*)
 from web_apps
-where owner_external_id = $1;
+where owner_external_id = $1
+   and is_deleted=false;
 
 -- name: UpdateMarketplace :execresult
 update web_apps
