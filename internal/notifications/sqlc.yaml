@@ -5,16 +5,7 @@ sql:
       - ./queries/notifications.sql
     schema:
       - ./schemas/20240429.sql
-      - ../orders/schemas/20240424.sql
-      - ../products/schemas/20240411.sql
-      - ../products/schemas/20240424.sql
-      - ../users/schemas/20240423.sql
-      - ../users/schemas/20240503.sql
-      - ../products/schemas/20240509.sql
-      - ../products/schemas/20240515.sql
-      - ./schemas/20240514.sql
-      - ./schemas/20240516.sql
-      - ./schemas/20240523.sql
+      - ../shared_sql/20240411-aggregate.sql
     gen:
       go:
         package: generated
