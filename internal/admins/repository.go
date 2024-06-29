@@ -103,6 +103,19 @@ func (p *Pg) UpdateMarketplace(ctx context.Context, req UpdateMarketplaceRequest
 	return nil
 }
 
+// DeleteMarketplace soft deletes marketplace
+func (p *Pg) DeleteMarketplace(ctx context.Context, req DeleteMarketplaceRequest) error {
+	execRes, err := p.gen.SoftDeleteMarketplace(ctx, req.WebAppId)
+	if err != nil {
+		return errors.Wrap(err, "p.gen.SoftDeleteMarketplace")
+	}
+	if execRes.RowsAffected() == 0 {
+		return ErrorOpNotAllowed
+	}
+
+	return nil
+}
+
 // CreateProduct saves a product to the database
 // and returns the ID that it assigned to it
 func (p *Pg) CreateProduct(ctx context.Context, req CreateProductRequest) (CreateProductResponse, error) {

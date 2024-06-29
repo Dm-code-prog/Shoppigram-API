@@ -64,6 +64,7 @@ const getMarketplaces = `-- name: GetMarketplaces :many
 select id, name, logo_url, is_verified
 from web_apps
 where owner_external_id = $1
+   and is_deleted=false
 `
 
 type GetMarketplacesRow struct {
@@ -114,6 +115,16 @@ func (q *Queries) IsUserTheOwnerOfMarketplace(ctx context.Context, arg IsUserThe
 	var column_1 bool
 	err := row.Scan(&column_1)
 	return column_1, err
+}
+
+const softDeleteMarketplace = `-- name: SoftDeleteMarketplace :execresult
+update web_apps
+set is_deleted=true
+where id = $1
+`
+
+func (q *Queries) SoftDeleteMarketplace(ctx context.Context, id uuid.UUID) (pgconn.CommandTag, error) {
+	return q.db.Exec(ctx, softDeleteMarketplace, id)
 }
 
 const updateMarketplace = `-- name: UpdateMarketplace :execresult

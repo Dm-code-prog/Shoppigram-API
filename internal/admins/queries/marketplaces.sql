@@ -1,7 +1,8 @@
 -- name: GetMarketplaces :many
 select id, name, logo_url, is_verified
 from web_apps
-where owner_external_id = $1;
+where owner_external_id = $1
+   and is_deleted=false;
 
 -- name: CreateMarketplace :one
 insert into web_apps (name, owner_external_id, short_name)
@@ -10,10 +11,16 @@ values ($1,
         $3)
 returning id;
 
+-- name: SoftDeleteMarketplace :exec
+update web_apps
+set is_deleted=true
+where id = $1;
+
 -- name: CountUserMarketplaces :one
 select count(*)
 from web_apps
-where owner_external_id = $1;
+where owner_external_id = $1
+   and is_deleted=false;
 
 -- name: UpdateMarketplace :execresult
 update web_apps

@@ -11,4 +11,5 @@ select p.id,
        wa.is_verified as web_app_is_verified
 from web_apps wa
          join products p on wa.id = p.web_app_id
-where wa.id = $1;
+where wa.id = $1
+and wa.is_deleted = false;

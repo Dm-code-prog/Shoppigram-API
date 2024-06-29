@@ -55,6 +55,11 @@ type (
 		Name           string `json:"name"`
 		ExternalUserID int64
 	}
+	// DeleteProductRequest specifies a product in a marketplace that needs to be deleted
+	DeleteMarketplaceRequest struct {
+		WebAppId       uuid.UUID
+		ExternalUserID int64
+	}
 
 	// CreateProductRequest specifies the information about a product
 	CreateProductRequest struct {
@@ -182,6 +187,7 @@ type (
 		GetMarketplaceShortName(ctx context.Context, id uuid.UUID) (string, error)
 		CreateMarketplace(ctx context.Context, req CreateMarketplaceRequest) (CreateMarketplaceResponse, error)
 		UpdateMarketplace(ctx context.Context, req UpdateMarketplaceRequest) error
+		DeleteMarketplace(ctx context.Context, req DeleteMarketplaceRequest) error
 
 		CreateProduct(ctx context.Context, req CreateProductRequest) (CreateProductResponse, error)
 		UpdateProduct(ctx context.Context, req UpdateProductRequest) error
@@ -330,6 +336,34 @@ func (s *Service) UpdateMarketplace(ctx context.Context, req UpdateMarketplaceRe
 			zap.String("user_id", strconv.FormatInt(req.ExternalUserID, 10)),
 		).Error(err.Error())
 		return errors.Wrap(err, "s.repo.UpdateMarketplace")
+	}
+
+	return nil
+}
+
+// DeleteMarketplace deletes a marketplace
+func (s *Service) DeleteMarketplace(ctx context.Context, req DeleteMarketplaceRequest) error {
+	ok, err := s.repo.IsUserTheOwnerOfMarketplace(ctx, req.ExternalUserID, req.WebAppId)
+	if err != nil {
+		s.log.With(
+			zap.String("method", "s.repo.IsUserTheOwnerOfMarketplace"),
+			zap.String("web_app_id", req.WebAppId.String()),
+			zap.String("user_id", strconv.FormatInt(req.ExternalUserID, 10)),
+		).Error(err.Error())
+		return errors.Wrap(err, "s.repo.IsUserTheOwnerOfMarketplace")
+	}
+
+	if !ok {
+		return ErrorOpNotAllowed
+	}
+
+	err = s.repo.DeleteMarketplace(ctx, req)
+	if err != nil {
+		s.log.With(
+			zap.String("method", "s.repo.DeleteMarketplace"),
+			zap.String("webapp_id", req.WebAppId.String()),
+		).Error(err.Error())
+		return errors.Wrap(err, "s.repo.DeleteMarketplace")
 	}
 
 	return nil
