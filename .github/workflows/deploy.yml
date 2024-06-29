@@ -3,6 +3,10 @@ name: Deploy to Digital Ocean App Platform
 on:
   pull_request:
     branches: [ "main" ]
+  push:
+    branches:
+      - SHT**
+
 
 jobs:
   build:
