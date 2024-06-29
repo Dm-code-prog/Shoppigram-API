@@ -341,20 +341,22 @@ func (s *Service) UpdateMarketplace(ctx context.Context, req UpdateMarketplaceRe
 	return nil
 }
 
+// DeleteMarketplace deletes a marketplace
 func (s *Service) DeleteMarketplace(ctx context.Context, req DeleteMarketplaceRequest) error {
-	isUserTheOwner, err := s.repo.IsUserTheOwnerOfMarketplace(ctx, req.ExternalUserID, req.WebAppId)
+	ok, err := s.repo.IsUserTheOwnerOfMarketplace(ctx, req.ExternalUserID, req.WebAppId)
 	if err != nil {
-		return s.log.With(
+		s.log.With(
 			zap.String("method", "s.repo.IsUserTheOwnerOfMarketplace"),
 			zap.String("web_app_id", req.WebAppId.String()),
-			zap.String("user_id", string(req.ExternalUserID)),
+			zap.String("user_id", strconv.FormatInt(req.ExternalUserID, 10)),
 		).Error(err.Error())
+		return errors.Wrap(err, "s.repo.IsUserTheOwnerOfMarketplace")
 	}
-	
-	if !isUserTheOwner {
+
+	if !ok {
 		return ErrorOpNotAllowed
 	}
-	
+
 	err = s.repo.DeleteMarketplace(ctx, req)
 	if err != nil {
 		s.log.With(
@@ -363,7 +365,7 @@ func (s *Service) DeleteMarketplace(ctx context.Context, req DeleteMarketplaceRe
 		).Error(err.Error())
 		return errors.Wrap(err, "s.repo.DeleteMarketplace")
 	}
-	
+
 	return nil
 }
 
