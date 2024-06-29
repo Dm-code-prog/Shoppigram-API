@@ -235,9 +235,16 @@ func (s *Service) runNewMarketplaceNotifierOnce() error {
 	s.log.With(
 		zap.String("count", strconv.Itoa(len(marketplaceNotifications))),
 	).Info("sending notifications for new marketplaces")
+
 	err = s.sendNewMarketplaceNotifications(marketplaceNotifications)
 	if err != nil {
-		return errors.Wrap(err, "s.sendNewMarketplaceNotifications")
+		if strings.Contains(err.Error(), "chat not found") {
+			s.log.With(
+				zap.String("method", "s.sendNewMarketplaceNotifications"),
+			).Warn("chat not found, skipping notification sending")
+		} else {
+			return errors.Wrap(err, "s.sendNewMarketplaceNotifications")
+		}
 	}
 
 	lastElem := marketplaceNotifications[len(marketplaceNotifications)-1]
