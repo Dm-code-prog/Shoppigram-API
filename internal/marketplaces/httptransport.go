@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/go-kit/kit/endpoint"
-	telegramusers "github.com/shoppigram-com/marketplace-api/internal/users"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -94,9 +93,14 @@ func decodeInvalidateProductsCacheRequest(_ context.Context, r *http.Request) (i
 }
 
 func decodeCreateOrderRequest(ctx context.Context, r *http.Request) (interface{}, error) {
-	webAppId, err := telegramusers.GetWebAppIDFromContext(ctx)
+	webAppID := chi.URLParam(r, "web_app_id")
+	if webAppID == "" {
+		return InvalidateProductsCacheRequest{}, ErrorInvalidWebAppID
+	}
+
+	webAppUUID, err := uuid.Parse(webAppID)
 	if err != nil {
-		return nil, ErrorBadRequest
+		return InvalidateProductsCacheRequest{}, errors.Wrap(ErrorInvalidWebAppID, "uuid.Parse")
 	}
 
 	var req CreateOrderRequest
@@ -104,7 +108,7 @@ func decodeCreateOrderRequest(ctx context.Context, r *http.Request) (interface{}
 		return nil, ErrorBadRequest
 	}
 
-	req.WebAppID = webAppId
+	req.WebAppID = webAppUUID
 	return req, nil
 }
 
