@@ -1,8 +1,10 @@
-package products
+package marketplaces
 
 import (
 	"context"
 	"encoding/json"
+	"github.com/go-kit/kit/endpoint"
+	telegramusers "github.com/shoppigram-com/marketplace-api/internal/users"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -11,8 +13,8 @@ import (
 	"github.com/pkg/errors"
 )
 
-// MakeHandler returns a handler for the booking service.
-func MakeHandler(bs *Service) http.Handler {
+// MakeProductsHandler returns a handler for products endpoints.
+func MakeProductsHandler(bs *Service) http.Handler {
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(encodeError),
 	}
@@ -35,6 +37,26 @@ func MakeHandler(bs *Service) http.Handler {
 	r.Get("/{web_app_id}", getProductsHandler.ServeHTTP)
 	r.Put("/{web_app_id}/invalidate", invalidateProductsCacheHandler.ServeHTTP)
 
+	return r
+}
+
+// MakeOrdersHandler returns a handler for orders endpoints.
+func MakeOrdersHandler(s *Service, authMW endpoint.Middleware) http.Handler {
+	opts := []kithttp.ServerOption{
+		kithttp.ServerErrorEncoder(encodeError),
+	}
+	ep := makeCreateOrderEndpoint(s)
+	ep = authMW(ep)
+
+	createOrderHandler := kithttp.NewServer(
+		ep,
+		decodeCreateOrderRequest,
+		encodeResponse,
+		opts...,
+	)
+
+	r := chi.NewRouter()
+	r.Post("/{web_app_id}", createOrderHandler.ServeHTTP)
 	return r
 }
 
@@ -71,6 +93,21 @@ func decodeInvalidateProductsCacheRequest(_ context.Context, r *http.Request) (i
 
 }
 
+func decodeCreateOrderRequest(ctx context.Context, r *http.Request) (interface{}, error) {
+	webAppId, err := telegramusers.GetWebAppIDFromContext(ctx)
+	if err != nil {
+		return nil, ErrorBadRequest
+	}
+
+	var req CreateOrderRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		return nil, ErrorBadRequest
+	}
+
+	req.WebAppID = webAppId
+	return req, nil
+}
+
 func encodeResponse(ctx context.Context, w http.ResponseWriter, response interface{}) error {
 	w.Header().Set("Content-Type", "application/json")
 	if response != nil {
@@ -86,6 +123,9 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 		err = ErrorProductsNotFound
 	case errors.Is(err, ErrorInvalidWebAppID):
 		w.WriteHeader(http.StatusBadRequest)
+	case errors.Is(err, ErrorInvalidProductQuantity):
+		w.WriteHeader(http.StatusBadRequest)
+		err = ErrorInvalidProductQuantity
 	default:
 		err = ErrorInternal
 		w.WriteHeader(http.StatusInternalServerError)

@@ -17,6 +17,7 @@ const countUserMarketplaces = `-- name: CountUserMarketplaces :one
 select count(*)
 from web_apps
 where owner_external_id = $1
+   and is_deleted=false
 `
 
 func (q *Queries) CountUserMarketplaces(ctx context.Context, ownerExternalID pgtype.Int4) (int64, error) {
@@ -117,14 +118,15 @@ func (q *Queries) IsUserTheOwnerOfMarketplace(ctx context.Context, arg IsUserThe
 	return column_1, err
 }
 
-const softDeleteMarketplace = `-- name: SoftDeleteMarketplace :execresult
+const softDeleteMarketplace = `-- name: SoftDeleteMarketplace :exec
 update web_apps
 set is_deleted=true
 where id = $1
 `
 
-func (q *Queries) SoftDeleteMarketplace(ctx context.Context, id uuid.UUID) (pgconn.CommandTag, error) {
-	return q.db.Exec(ctx, softDeleteMarketplace, id)
+func (q *Queries) SoftDeleteMarketplace(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, softDeleteMarketplace, id)
+	return err
 }
 
 const updateMarketplace = `-- name: UpdateMarketplace :execresult

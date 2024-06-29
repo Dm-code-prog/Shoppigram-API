@@ -1,2 +1,0 @@
-alter table new_web_apps_notifications_list drop column web_app_id;
-alter table notifier_cursors drop constraint notifier_cursors_last_processed_id_fkey;

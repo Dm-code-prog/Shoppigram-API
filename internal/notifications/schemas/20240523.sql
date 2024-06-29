@@ -1,1 +1,0 @@
-alter table new_order_notifications_list drop column admin_username;

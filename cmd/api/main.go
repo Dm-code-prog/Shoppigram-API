@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/shoppigram-com/marketplace-api/internal/marketplaces"
 	"net/http"
 	"os"
 	"syscall"
@@ -15,7 +16,6 @@ import (
 	"github.com/shoppigram-com/marketplace-api/internal/admins"
 	"github.com/shoppigram-com/marketplace-api/internal/logging"
 	"github.com/shoppigram-com/marketplace-api/internal/notifications"
-	"github.com/shoppigram-com/marketplace-api/internal/orders"
 	"go.uber.org/zap/zapcore"
 
 	"github.com/Netflix/go-env"
@@ -24,8 +24,6 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/oklog/run"
 	"github.com/shoppigram-com/marketplace-api/internal/httputils"
-	"github.com/shoppigram-com/marketplace-api/internal/products"
-	productsgenerated "github.com/shoppigram-com/marketplace-api/internal/products/generated"
 	telegramusers "github.com/shoppigram-com/marketplace-api/internal/users"
 	"go.uber.org/zap"
 )
@@ -114,17 +112,14 @@ func main() {
 
 	authMw := telegramusers.MakeAuthMiddleware(log.With(zap.String("service", "users")), config.Bot.Token)
 
-	productsRepo := products.NewPg(productsgenerated.New(db))
-	productsService := products.New(productsRepo, log.With(zap.String("service", "products")), productsCache)
-	productsHandler := products.MakeHandler(productsService)
-
 	tgUsersRepo := telegramusers.NewPg(db, config.Encryption.Key)
 	tgUsersService := telegramusers.New(tgUsersRepo, log.With(zap.String("service", "users")))
 	tgUsersHandler := telegramusers.MakeHandler(tgUsersService, authMw)
 
-	ordersRepo := orders.NewPg(db)
-	ordersService := orders.New(ordersRepo, log.With(zap.String("service", "orders")))
-	ordersHandler := orders.MakeHandler(ordersService, authMw)
+	marketplacesRepo := marketplaces.NewPg(db)
+	marketplacesService := marketplaces.New(marketplacesRepo, log.With(zap.String("service", "marketplaces")), productsCache)
+	productsHandler := marketplaces.MakeProductsHandler(marketplacesService)
+	ordersHandler := marketplaces.MakeOrdersHandler(marketplacesService, authMw)
 
 	notificationsRepo := notifications.NewPg(
 		db,
