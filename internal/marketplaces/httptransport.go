@@ -123,6 +123,9 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 		err = ErrorProductsNotFound
 	case errors.Is(err, ErrorInvalidWebAppID):
 		w.WriteHeader(http.StatusBadRequest)
+	case errors.Is(err, ErrorBadRequest):
+		w.WriteHeader(http.StatusBadRequest)
+		err = ErrorBadRequest
 	case errors.Is(err, ErrorInvalidProductQuantity):
 		w.WriteHeader(http.StatusBadRequest)
 		err = ErrorInvalidProductQuantity
