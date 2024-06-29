@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/go-kit/kit/endpoint"
+	telegramusers "github.com/shoppigram-com/marketplace-api/internal/users"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -95,12 +96,12 @@ func decodeInvalidateProductsCacheRequest(_ context.Context, r *http.Request) (i
 func decodeCreateOrderRequest(ctx context.Context, r *http.Request) (interface{}, error) {
 	webAppID := chi.URLParam(r, "web_app_id")
 	if webAppID == "" {
-		return InvalidateProductsCacheRequest{}, ErrorInvalidWebAppID
+		return nil, ErrorInvalidWebAppID
 	}
 
 	webAppUUID, err := uuid.Parse(webAppID)
 	if err != nil {
-		return InvalidateProductsCacheRequest{}, errors.Wrap(ErrorInvalidWebAppID, "uuid.Parse")
+		return nil, ErrorInvalidWebAppID
 	}
 
 	var req CreateOrderRequest
@@ -133,6 +134,9 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 	case errors.Is(err, ErrorInvalidProductQuantity):
 		w.WriteHeader(http.StatusBadRequest)
 		err = ErrorInvalidProductQuantity
+	case errors.Is(err, telegramusers.ErrorInitDataIsInvalid):
+		w.WriteHeader(http.StatusUnauthorized)
+		err = telegramusers.ErrorInitDataIsInvalid
 	default:
 		err = ErrorInternal
 		w.WriteHeader(http.StatusInternalServerError)
