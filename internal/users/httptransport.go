@@ -13,7 +13,7 @@ import (
 )
 
 // MakeHandler returns a handler for the users service.
-func MakeHandler(bs *Service, authMw endpoint.Middleware) http.Handler {
+func MakeHandler(bs Service, authMw endpoint.Middleware) http.Handler {
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(encodeError),
 	}

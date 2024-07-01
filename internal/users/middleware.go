@@ -6,13 +6,10 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
-	kithttp "github.com/go-kit/kit/transport/http"
-	"github.com/shoppigram-com/marketplace-api/internal/logging"
-
 	"github.com/go-kit/kit/endpoint"
+	kithttp "github.com/go-kit/kit/transport/http"
 	"github.com/google/uuid"
 	initdata "github.com/telegram-mini-apps/init-data-golang"
-	"go.uber.org/zap"
 )
 
 type (
@@ -109,24 +106,21 @@ var AuthServerBefore = []kithttp.ServerOption{
 
 // MakeAuthMiddleware constructs a middleware which is responsible for
 // Telegram user auth.
-func MakeAuthMiddleware(log *zap.Logger, botToken string) endpoint.Middleware {
+func MakeAuthMiddleware(botToken string) endpoint.Middleware {
 	return func(next endpoint.Endpoint) endpoint.Endpoint {
 		return func(ctx context.Context, request any) (any, error) {
 			xInitData, err := GetInitDataFromContext(ctx)
 			if err != nil {
-				log.Debug("GetInitDataFromContext", logging.SilentError(err))
 				return nil, err
 			}
 
 			err = initdata.Validate(xInitData, botToken, initDataTTL)
 			if err != nil {
-				log.Info("initdata.Validate", logging.SilentError(err))
 				return nil, ErrorInitDataIsInvalid
 			}
 
 			parsedInitData, err := initdata.Parse(xInitData)
 			if err != nil {
-				log.Error("initData.Parse", logging.SilentError(err))
 				return nil, ErrorInitDataIsInvalid
 			}
 

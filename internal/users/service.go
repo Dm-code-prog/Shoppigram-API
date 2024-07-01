@@ -5,7 +5,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
 )
 
 type (
@@ -29,45 +28,33 @@ type (
 	CreateOrUpdateTgUserResponse struct {
 		ID uuid.UUID `json:"id"`
 	}
+)
 
+type (
 	// Repository provides access to the user storage
 	Repository interface {
 		CreateOrUpdateTgUser(ctx context.Context, request CreateOrUpdateTgUserRequest) (uuid.UUID, error)
 	}
 
-	// Service provides user operations
-	Service struct {
-		repo Repository
-		log  *zap.Logger
+	Service interface {
+		CreateOrUpdateTgUser(ctx context.Context, request CreateOrUpdateTgUserRequest) (CreateOrUpdateTgUserResponse, error)
 	}
-)
 
-var (
-	ErrorBadRequest        = errors.New("bad request")
-	ErrorUserNotFound      = errors.New("user not found")
-	ErrorInitDataIsMissing = errors.New("init data is missing, it must be present in x-init-data header")
-	ErrorInitDataNotFound  = errors.New("init data not found")
-	ErrorInitDataIsInvalid = errors.New("init data is invalid")
-	ErrorInitDataIsEmpty   = errors.New("init data is empty")
-	ErrorWebAppNotFound    = errors.New("web app id not found")
-	ErrorInternal          = errors.New("internal server error")
+	// DefaultService provides user operations
+	DefaultService struct {
+		repo Repository
+	}
 )
 
 // New creates a new user service
-func New(repo Repository, log *zap.Logger) *Service {
-	if log == nil {
-		log, _ = zap.NewProduction()
-		log.Warn("log *zap.Logger is nil, using zap.NewProduction")
-	}
-
-	return &Service{
+func New(repo Repository) *DefaultService {
+	return &DefaultService{
 		repo: repo,
-		log:  log,
 	}
 }
 
 // CreateOrUpdateTgUser creates or updates a user record
-func (s *Service) CreateOrUpdateTgUser(ctx context.Context, request CreateOrUpdateTgUserRequest) (CreateOrUpdateTgUserResponse, error) {
+func (s *DefaultService) CreateOrUpdateTgUser(ctx context.Context, request CreateOrUpdateTgUserRequest) (CreateOrUpdateTgUserResponse, error) {
 	id, err := s.repo.CreateOrUpdateTgUser(ctx, request)
 	if err != nil {
 		return CreateOrUpdateTgUserResponse{}, errors.Wrap(err, "s.repo.CreateOrUpdateTgUser")

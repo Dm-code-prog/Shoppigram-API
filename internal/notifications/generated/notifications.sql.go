@@ -159,7 +159,7 @@ type GetNotificationsForNewOrdersAfterCursorRow struct {
 	WebAppName     string
 	Name           string
 	Price          float64
-	PriceCurrency  string
+	PriceCurrency  ProductCurrency
 	Quantity       int32
 	Username       pgtype.Text
 	ExternalUserID int32

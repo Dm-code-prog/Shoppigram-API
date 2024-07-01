@@ -35,10 +35,11 @@ type Environment struct {
 		BatchSize int  `env:"VERIFIED_MARKETPLACE_NOTIFICATIONS_BATCH_SIZE,required"`
 		Timeout   int  `env:"VERIFIED_MARKETPLACE_NOTIFICATIONS_TIMEOUT,required"`
 	}
-	
+
 	Bot struct {
 		Token string `env:"BOT_TOKEN,required"`
 		ID    int64  `env:"BOT_ID,required"`
+		Name  string `env:"BOT_NAME,required"`
 	}
 
 	DigitalOcean struct {

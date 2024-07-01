@@ -5,20 +5,60 @@
 package generated
 
 import (
+	"database/sql/driver"
+	"fmt"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type Channel struct {
-	ID           uuid.UUID
-	TelegramName string
-	EndUserBotID pgtype.UUID
-	AdminBotID   pgtype.UUID
+type ProductCurrency string
+
+const (
+	ProductCurrencyRub ProductCurrency = "rub"
+	ProductCurrencyUsd ProductCurrency = "usd"
+	ProductCurrencyEur ProductCurrency = "eur"
+)
+
+func (e *ProductCurrency) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ProductCurrency(s)
+	case string:
+		*e = ProductCurrency(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ProductCurrency: %T", src)
+	}
+	return nil
+}
+
+type NullProductCurrency struct {
+	ProductCurrency ProductCurrency
+	Valid           bool // Valid is true if ProductCurrency is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullProductCurrency) Scan(value interface{}) error {
+	if value == nil {
+		ns.ProductCurrency, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ProductCurrency.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullProductCurrency) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ProductCurrency), nil
 }
 
 type NewOrderNotificationsList struct {
-	WebAppID    pgtype.UUID
-	AdminChatID int64
+	WebAppID      pgtype.UUID
+	AdminUsername pgtype.Text
+	AdminChatID   int64
 }
 
 type NewWebAppsNotificationsList struct {
@@ -52,8 +92,9 @@ type Product struct {
 	Name          string
 	Description   pgtype.Text
 	Price         float64
-	PriceCurrency string
+	PriceCurrency ProductCurrency
 	ImageUrl      pgtype.Text
+	Category      pgtype.Text
 }
 
 type TelegramUser struct {
@@ -71,15 +112,13 @@ type TelegramUser struct {
 }
 
 type WebApp struct {
-	ID                  uuid.UUID
-	Name                string
-	EndUserBotName      pgtype.Text
-	EndUserBotEncrToken []byte
-	AdminBotName        pgtype.Text
-	AdminBotEncrToken   []byte
-	OwnerExternalID     pgtype.Int4
-	ImageUrl            pgtype.Text
-	ShortName           string
-	CreatedAt           pgtype.Timestamp
-	VerifiedAt          pgtype.Timestamp
+	ID              uuid.UUID
+	Name            string
+	OwnerExternalID pgtype.Int4
+	LogoUrl         pgtype.Text
+	IsVerified      pgtype.Bool
+	ShortName       string
+	VerifiedAt      pgtype.Timestamp
+	CreatedAt       pgtype.Timestamp
+	IsDeleted       pgtype.Bool
 }

@@ -85,6 +85,7 @@ type (
 		newMarketplaceProcessingTimer      time.Duration
 		verifiedMarketplaceProcessingTimer time.Duration
 		bot                                *tgbotapi.BotAPI
+		botName                            string
 	}
 )
 
@@ -93,11 +94,10 @@ const (
 	newMarketplaceNotifierName      = "new_marketplace_notifications"
 	verifiedMarketplaceNotifierName = "verified_marketplace_notifications"
 	marketplaceURL                  = "https://web-app.shoppigram.com/app/"
-	webAppURL                       = "https://t.me/shoppigrambot/"
 )
 
 // New creates a new user service
-func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration, newMarketplaceProcessingTimer time.Duration, verifiedMarketplaceProcessingTimer time.Duration, botToken string) *Service {
+func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration, newMarketplaceProcessingTimer time.Duration, verifiedMarketplaceProcessingTimer time.Duration, botToken string, botName string) *Service {
 	if log == nil {
 		log, _ = zap.NewProduction()
 		log.Warn("log *zap.Logger is nil, using zap.NewProduction")
@@ -133,6 +133,7 @@ func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration
 		newMarketplaceProcessingTimer:      newMarketplaceProcessingTimer,
 		verifiedMarketplaceProcessingTimer: verifiedMarketplaceProcessingTimer,
 		bot:                                bot,
+		botName:                            botName,
 	}
 }
 
@@ -199,7 +200,6 @@ func (s *Service) runNewOrderNotifierOnce() error {
 // and sends notifications to the reviewers of marketplaces
 func (s *Service) RunNewMarketplaceNotifier() error {
 	ticker := time.NewTicker(s.newMarketplaceProcessingTimer)
-
 	for {
 		select {
 		case <-ticker.C:
@@ -235,9 +235,16 @@ func (s *Service) runNewMarketplaceNotifierOnce() error {
 	s.log.With(
 		zap.String("count", strconv.Itoa(len(marketplaceNotifications))),
 	).Info("sending notifications for new marketplaces")
+
 	err = s.sendNewMarketplaceNotifications(marketplaceNotifications)
 	if err != nil {
-		return errors.Wrap(err, "s.sendNewMarketplaceNotifications")
+		if strings.Contains(err.Error(), "chat not found") {
+			s.log.With(
+				zap.String("method", "s.sendNewMarketplaceNotifications"),
+			).Warn("chat not found, skipping notification sending")
+		} else {
+			return errors.Wrap(err, "s.sendNewMarketplaceNotifications")
+		}
 	}
 
 	lastElem := marketplaceNotifications[len(marketplaceNotifications)-1]
@@ -331,15 +338,15 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 		if err != nil {
 			return errors.Wrap(err, "a.BuildMessageAdmin")
 		}
-		
-		for _, v := range nl {			
+
+		for _, v := range nl {
 			err = s.sendMessageToChat(v, adminMsgTxt)
 			if err != nil {
 				return errors.Wrap(err, "s.sendMessageToChat")
 			}
 		}
 		customerMsgTxt, err := notification.BuildMessageCustomer()
-		
+
 		if err != nil {
 			return errors.Wrap(err, "a.BuildMessageCustomer")
 		}
@@ -381,21 +388,21 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 			PageName: "/admin/marketplaces/" + n.ID.String(),
 			PageData: map[string]any{},
 		}.ToBase64String()
-		
-		button := tgbotapi.NewInlineKeyboardButtonURL("Перейти к магазину", "https://t.me/shoppigramBot/app?startapp=" + tmaLink)
+
+		button := tgbotapi.NewInlineKeyboardButtonURL("Перейти к магазину", "https://t.me/"+s.botName+"/app?startapp="+tmaLink)
 		if err != nil {
 			return errors.Wrap(err, "tgbotapi.NewInlineKeyboardButtonURL")
 		}
-		
+
 		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(
-			button,
-		))
+			tgbotapi.NewInlineKeyboardRow(
+				button,
+			))
 
 		_, err = s.bot.Send(msg)
 		if err != nil {
-			return errors.Wrap(err, "bot.Send")
-	}
+			return errors.Wrap(err, "bot.Send to chat:"+strconv.FormatInt(n.OwnerExternalID, 10))
+		}
 
 		for _, r := range reviewers {
 			msgTxt, err := n.BuildMessageShoppigram()
@@ -425,7 +432,7 @@ func (s *Service) sendVerifiedMarketplaceNotifications(marketplaceNotifications 
 		msg.ParseMode = tgbotapi.ModeMarkdownV2
 		_, err = s.bot.Send(msg)
 		if err != nil {
-			if strings.Contains(err.Error(), "Bad Request: chat not found") {
+			if strings.Contains(err.Error(), "chat not found") {
 				s.log.With(
 					zap.String("method", "bot.Send"),
 					zap.String("user_id", strconv.FormatInt(notification.OwnerExternalUserID, 10)),
@@ -499,63 +506,4 @@ func (s *Service) PinNotification(_ context.Context, req PinNotificationParams) 
 
 	return nil
 
-}
-
-func formatFloat(num float64) string {
-	str := strconv.FormatFloat(num, 'f', -1, 64)
-	parts := strings.Split(str, ".")
-	intPart := parts[0]
-	var decimalPart string
-	if len(parts) > 1 {
-		decimalPart = "." + parts[1]
-	}
-
-	n := len(intPart)
-	if n <= 3 {
-		return intPart + decimalPart
-	}
-
-	var result string
-	for i := 0; i < n; i++ {
-		result = string(intPart[n-1-i]) + result
-		if (i+1)%3 == 0 && i != n-1 {
-			result = "," + result
-		}
-	}
-	return result + decimalPart
-}
-
-func formatCurrency(currency string) string {
-	currency = strings.ToLower(currency)
-	switch currency {
-	case "usd":
-		return "$"
-	case "eur":
-		return "€"
-	case "rub":
-		return "₽"
-	default:
-		return currency
-	}
-}
-
-func formatRussianTime(t time.Time) string {
-	loc, err := time.LoadLocation("Europe/Moscow")
-	if err != nil {
-		return ""
-	}
-	t = t.In(loc)
-	return strings.ReplaceAll(t.Format("02.01.2006 15:04:05"), ".", "\\.")
-}
-
-var specialSymbols = []string{"_", "#", "-", ".", "!", "<", ">", "|"}
-
-func escapeSpecialSymbols(s string) string {
-	for _, sym := range specialSymbols {
-		if strings.Contains(s, sym) {
-			s = strings.ReplaceAll(s, sym, "\\"+sym)
-		}
-	}
-
-	return s
 }

@@ -7,12 +7,13 @@ import (
 
 // List of allowed origins
 var allowedOrigins = map[string]struct{}{
-	"https://web-app.shoppigram.com": {},
-	"https://admin.shoppigram.com":   {},
-	"https://web-app.shoppigram.ru":  {},
-	"https://web-app.shoppigram.dev": {},
-	"http://localhost:3000":          {},
-	"http://localhost:5173":          {},
+	"https://web-app.shoppigram.com":             {},
+	"https://admin.shoppigram.com":               {},
+	"https://web-app.shoppigram.ru":              {},
+	"https://dev-marketplace-web-app.vercel.app": {},
+	"https://web-app.shoppigram.dev":             {},
+	"http://localhost:3000":                      {},
+	"http://localhost:5173":                      {},
 }
 
 // Slice of regex patterns for matching dynamic subdomains or origins

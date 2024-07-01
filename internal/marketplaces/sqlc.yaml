@@ -3,8 +3,9 @@ sql:
   - engine: postgresql
     queries:
       - ./queries/orders.sql
+      - ./queries/products.sql
     schema:
-      - ./schemas/20240424.sql
+      - ../shared_sql/20240411-aggregate.sql
     gen:
       go:
         package: generated

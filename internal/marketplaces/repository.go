@@ -1,14 +1,16 @@
-package orders
+package marketplaces
 
 import (
 	"context"
-	"strings"
-
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"strings"
+
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/pkg/errors"
-	"github.com/shoppigram-com/marketplace-api/internal/orders/generated"
+	"github.com/shoppigram-com/marketplace-api/internal/marketplaces/generated"
 )
 
 // Pg implements the Repository interface
@@ -21,6 +23,45 @@ type Pg struct {
 // NewPg creates a new Pg
 func NewPg(pool *pgxpool.Pool) *Pg {
 	return &Pg{gen: generated.New(pool), pool: pool}
+}
+
+// GetProducts returns a list of products
+func (p *Pg) GetProducts(ctx context.Context, request GetProductsRequest) (GetProductsResponse, error) {
+	prod, err := p.gen.GetProducts(ctx, request.WebAppID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return GetProductsResponse{}, nil
+		}
+		return GetProductsResponse{}, errors.Wrap(err, "p.gen.GetProducts")
+	}
+
+	var id uuid.UUID
+	var name string
+	var shortName string
+	var isVerified bool
+	var products []Product
+	for _, p := range prod {
+		products = append(products, Product{
+			ID:            p.ID,
+			Name:          p.Name,
+			Description:   p.Description.String,
+			Category:      p.Category.String,
+			Price:         p.Price,
+			PriceCurrency: p.PriceCurrency,
+		})
+		id = p.WebAppID
+		name = p.WebAppName
+		shortName = p.WebAppShortName
+		isVerified = p.WebAppIsVerified.Bool
+	}
+
+	return GetProductsResponse{
+		WebAppID:         id,
+		WebAppName:       name,
+		WebAppShortName:  shortName,
+		WebAppIsVerified: isVerified,
+		Products:         products,
+	}, nil
 }
 
 // CreateOrder adds a new order to the database
