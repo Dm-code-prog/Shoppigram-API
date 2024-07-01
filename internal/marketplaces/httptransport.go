@@ -45,6 +45,8 @@ func MakeOrdersHandler(s Service, authMW endpoint.Middleware) http.Handler {
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(encodeError),
 	}
+	opts = append(opts, telegramusers.AuthServerBefore...)
+
 	ep := makeCreateOrderEndpoint(s)
 	ep = authMW(ep)
 
