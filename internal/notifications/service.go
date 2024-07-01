@@ -85,6 +85,7 @@ type (
 		newMarketplaceProcessingTimer      time.Duration
 		verifiedMarketplaceProcessingTimer time.Duration
 		bot                                *tgbotapi.BotAPI
+		botName                            string
 	}
 )
 
@@ -93,11 +94,10 @@ const (
 	newMarketplaceNotifierName      = "new_marketplace_notifications"
 	verifiedMarketplaceNotifierName = "verified_marketplace_notifications"
 	marketplaceURL                  = "https://web-app.shoppigram.com/app/"
-	webAppURL                       = "https://t.me/shoppigrambot/"
 )
 
 // New creates a new user service
-func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration, newMarketplaceProcessingTimer time.Duration, verifiedMarketplaceProcessingTimer time.Duration, botToken string) *Service {
+func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration, newMarketplaceProcessingTimer time.Duration, verifiedMarketplaceProcessingTimer time.Duration, botToken string, botName string) *Service {
 	if log == nil {
 		log, _ = zap.NewProduction()
 		log.Warn("log *zap.Logger is nil, using zap.NewProduction")
@@ -133,6 +133,7 @@ func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration
 		newMarketplaceProcessingTimer:      newMarketplaceProcessingTimer,
 		verifiedMarketplaceProcessingTimer: verifiedMarketplaceProcessingTimer,
 		bot:                                bot,
+		botName:                            botName,
 	}
 }
 
@@ -388,7 +389,7 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 			PageData: map[string]any{},
 		}.ToBase64String()
 
-		button := tgbotapi.NewInlineKeyboardButtonURL("Перейти к магазину", "https://t.me/shoppigramBot/app?startapp="+tmaLink)
+		button := tgbotapi.NewInlineKeyboardButtonURL("Перейти к магазину", "https://t.me/"+s.botName+"/app?startapp="+tmaLink)
 		if err != nil {
 			return errors.Wrap(err, "tgbotapi.NewInlineKeyboardButtonURL")
 		}

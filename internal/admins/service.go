@@ -235,6 +235,7 @@ type (
 		spaces   *s3.S3
 		bucket   string
 		notifier Notifier
+		botName  string
 	}
 )
 
@@ -267,7 +268,7 @@ const (
 )
 
 // New creates a new admin service
-func New(repo Repository, conf DOSpacesConfig, notifier Notifier) *DefaultService {
+func New(repo Repository, conf DOSpacesConfig, notifier Notifier, botName string) *DefaultService {
 	sess := session.Must(session.NewSession(&aws.Config{
 		Region: aws.String("fra1"),
 		Credentials: credentials.NewStaticCredentials(
@@ -284,6 +285,7 @@ func New(repo Repository, conf DOSpacesConfig, notifier Notifier) *DefaultServic
 		spaces:   s3.New(sess),
 		bucket:   conf.Bucket,
 		notifier: notifier,
+		botName:  botName,
 	}
 }
 
@@ -549,7 +551,7 @@ func (s *DefaultService) PublishMarketplaceBannerToChannel(ctx context.Context, 
 	}
 
 	messageID, err := s.notifier.SendMarketplaceBanner(ctx, SendMarketplaceBannerParams{
-		WebAppLink:    "https://t.me/shoppigramBot/" + shortName,
+		WebAppLink:    "https://t.me/" + s.botName + "/" + shortName,
 		Message:       req.Message,
 		ChannelChatID: req.ExternalChannelID,
 	})

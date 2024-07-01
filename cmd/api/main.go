@@ -143,6 +143,7 @@ func main() {
 		time.Duration(config.NewMarketplaceNotifications.Timeout)*time.Second,
 		time.Duration(config.VerifiedMarketplaceNotifications.Timeout)*time.Second,
 		config.Bot.Token,
+		config.Bot.Name,
 	)
 
 	////////////////////////////////////// ADMINS //////////////////////////////////////
@@ -159,6 +160,7 @@ func main() {
 			&notificationsAdminAdapter{
 				notifier: notificationsService,
 			},
+			config.Bot.Name,
 		),
 		log.With(zap.String("service", "admins")),
 	)
