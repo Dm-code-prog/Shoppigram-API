@@ -14,7 +14,7 @@ import (
 )
 
 // MakeProductsHandler returns a handler for products endpoints.
-func MakeProductsHandler(bs *Service) http.Handler {
+func MakeProductsHandler(bs Service) http.Handler {
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(encodeError),
 	}
@@ -41,7 +41,7 @@ func MakeProductsHandler(bs *Service) http.Handler {
 }
 
 // MakeOrdersHandler returns a handler for orders endpoints.
-func MakeOrdersHandler(s *Service, authMW endpoint.Middleware) http.Handler {
+func MakeOrdersHandler(s Service, authMW endpoint.Middleware) http.Handler {
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(encodeError),
 	}
@@ -122,6 +122,17 @@ func encodeResponse(ctx context.Context, w http.ResponseWriter, response interfa
 }
 
 func encodeError(_ context.Context, err error, w http.ResponseWriter) {
+	for _, e := range telegramusers.AuthenticationErrors {
+		if errors.Is(err, e) {
+			w.WriteHeader(http.StatusUnauthorized)
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(map[string]interface{}{
+				"error": e.Error(),
+			})
+			return
+		}
+	}
+
 	switch {
 	case errors.Is(err, ErrorProductsNotFound):
 		w.WriteHeader(http.StatusNotFound)
@@ -134,16 +145,11 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 	case errors.Is(err, ErrorInvalidProductQuantity):
 		w.WriteHeader(http.StatusBadRequest)
 		err = ErrorInvalidProductQuantity
-	case errors.Is(err, telegramusers.ErrorInitDataIsInvalid):
-		w.WriteHeader(http.StatusUnauthorized)
-		err = telegramusers.ErrorInitDataIsInvalid
-	default:
-		err = ErrorInternal
-		w.WriteHeader(http.StatusInternalServerError)
 	}
 
+	w.WriteHeader(http.StatusInternalServerError)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"error": err.Error(),
+		"error": ErrorInternal.Error(),
 	})
 }

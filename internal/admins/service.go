@@ -3,10 +3,7 @@ package admins
 import (
 	"context"
 	"regexp"
-	"strconv"
 	"time"
-
-	"github.com/shoppigram-com/marketplace-api/internal/logging"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -14,7 +11,6 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	"go.uber.org/zap"
 )
 
 type (
@@ -55,7 +51,7 @@ type (
 		Name           string `json:"name"`
 		ExternalUserID int64
 	}
-	// DeleteProductRequest specifies a product in a marketplace that needs to be deleted
+	// DeleteMarketplaceRequest specifies a marketplace that needs to be deleted
 	DeleteMarketplaceRequest struct {
 		WebAppId       uuid.UUID
 		ExternalUserID int64
@@ -195,8 +191,6 @@ type (
 
 		IsUserTheOwnerOfMarketplace(ctx context.Context, externalUserID int64, webAppID uuid.UUID) (bool, error)
 		IsUserTheOwnerOfProduct(ctx context.Context, externalUserID int64, productID uuid.UUID) (bool, error)
-
-		// IsUserTheOwnerOfTelegramChannel checks if the user is the owner of the Telegram channel
 		IsUserTheOwnerOfTelegramChannel(ctx context.Context, externalUserID, channelID int64) (bool, error)
 
 		CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error
@@ -217,11 +211,28 @@ type (
 		PinNotification(ctx context.Context, req PinNotificationParams) error
 	}
 
-	// Service provides admin operations
-	Service struct {
+	Service interface {
+		GetMarketplaces(ctx context.Context, req GetMarketplacesRequest) (GetMarketplacesResponse, error)
+		CreateMarketplace(ctx context.Context, req CreateMarketplaceRequest) (CreateMarketplaceResponse, error)
+		UpdateMarketplace(ctx context.Context, req UpdateMarketplaceRequest) error
+		DeleteMarketplace(ctx context.Context, req DeleteMarketplaceRequest) error
+
+		CreateProduct(ctx context.Context, req CreateProductRequest) (CreateProductResponse, error)
+		UpdateProduct(ctx context.Context, req UpdateProductRequest) error
+		DeleteProduct(ctx context.Context, req DeleteProductRequest) error
+
+		CreateProductImageUploadURL(ctx context.Context, request CreateProductImageUploadURLRequest) (CreateProductImageUploadURLResponse, error)
+		CreateMarketplaceLogoUploadURL(ctx context.Context, request CreateMarketplaceLogoUploadURLRequest) (CreateMarketplaceLogoUploadURLResponse, error)
+
+		GetTelegramChannels(ctx context.Context, ownerExternalID int64) (GetTelegramChannelsResponse, error)
+		CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error
+		PublishMarketplaceBannerToChannel(ctx context.Context, req PublishMarketplaceBannerToChannelRequest) error
+	}
+
+	// DefaultService provides admin operations
+	DefaultService struct {
 		repo     Repository
 		spaces   *s3.S3
-		log      *zap.Logger
 		bucket   string
 		notifier Notifier
 	}
@@ -256,12 +267,7 @@ const (
 )
 
 // New creates a new admin service
-func New(repo Repository, log *zap.Logger, conf DOSpacesConfig, notifier Notifier) *Service {
-	if log == nil {
-		log, _ = zap.NewProduction()
-		log.Warn("log *zap.Logger is nil, using zap.NewProduction")
-	}
-
+func New(repo Repository, conf DOSpacesConfig, notifier Notifier) *DefaultService {
 	sess := session.Must(session.NewSession(&aws.Config{
 		Region: aws.String("fra1"),
 		Credentials: credentials.NewStaticCredentials(
@@ -273,9 +279,8 @@ func New(repo Repository, log *zap.Logger, conf DOSpacesConfig, notifier Notifie
 		S3ForcePathStyle: aws.Bool(false),
 	}))
 
-	return &Service{
+	return &DefaultService{
 		repo:     repo,
-		log:      log,
 		spaces:   s3.New(sess),
 		bucket:   conf.Bucket,
 		notifier: notifier,
@@ -283,13 +288,9 @@ func New(repo Repository, log *zap.Logger, conf DOSpacesConfig, notifier Notifie
 }
 
 // GetMarketplaces gets all marketplaces created by user
-func (s *Service) GetMarketplaces(ctx context.Context, req GetMarketplacesRequest) (GetMarketplacesResponse, error) {
+func (s *DefaultService) GetMarketplaces(ctx context.Context, req GetMarketplacesRequest) (GetMarketplacesResponse, error) {
 	marketplaces, err := s.repo.GetMarketplaces(ctx, req)
 	if err != nil {
-		s.log.With(
-			zap.String("method", "s.repo.GetProducts"),
-			zap.String("user_id", strconv.FormatInt(req.ExternalUserID, 10)),
-		).Error(err.Error())
 		return GetMarketplacesResponse{}, errors.Wrap(err, "s.repo.CreateOrUpdateTgUser")
 	}
 
@@ -297,7 +298,7 @@ func (s *Service) GetMarketplaces(ctx context.Context, req GetMarketplacesReques
 }
 
 // CreateMarketplace creates and saves a new marketplace
-func (s *Service) CreateMarketplace(ctx context.Context, req CreateMarketplaceRequest) (CreateMarketplaceResponse, error) {
+func (s *DefaultService) CreateMarketplace(ctx context.Context, req CreateMarketplaceRequest) (CreateMarketplaceResponse, error) {
 	if !isMarketplaceNameValid(req.Name) {
 		return CreateMarketplaceResponse{}, ErrorInvalidName
 	}
@@ -308,10 +309,6 @@ func (s *Service) CreateMarketplace(ctx context.Context, req CreateMarketplaceRe
 
 	res, err := s.repo.CreateMarketplace(ctx, req)
 	if err != nil {
-		s.log.With(
-			zap.String("method", "s.repo.CreateProducts"),
-			zap.String("user_id", strconv.FormatInt(req.ExternalUserID, 10)),
-		).Error(err.Error())
 		return CreateMarketplaceResponse{}, errors.Wrap(err, "s.repo.CreateMarketplace")
 	}
 
@@ -324,17 +321,13 @@ func (s *Service) CreateMarketplace(ctx context.Context, req CreateMarketplaceRe
 }
 
 // UpdateMarketplace edits the name of an existing marketplace
-func (s *Service) UpdateMarketplace(ctx context.Context, req UpdateMarketplaceRequest) error {
+func (s *DefaultService) UpdateMarketplace(ctx context.Context, req UpdateMarketplaceRequest) error {
 	if !isMarketplaceNameValid(req.Name) {
 		return ErrorInvalidName
 	}
 
 	err := s.repo.UpdateMarketplace(ctx, req)
 	if err != nil {
-		s.log.With(
-			zap.String("method", "s.repo.UpdateProducts"),
-			zap.String("user_id", strconv.FormatInt(req.ExternalUserID, 10)),
-		).Error(err.Error())
 		return errors.Wrap(err, "s.repo.UpdateMarketplace")
 	}
 
@@ -342,14 +335,9 @@ func (s *Service) UpdateMarketplace(ctx context.Context, req UpdateMarketplaceRe
 }
 
 // DeleteMarketplace deletes a marketplace
-func (s *Service) DeleteMarketplace(ctx context.Context, req DeleteMarketplaceRequest) error {
+func (s *DefaultService) DeleteMarketplace(ctx context.Context, req DeleteMarketplaceRequest) error {
 	ok, err := s.repo.IsUserTheOwnerOfMarketplace(ctx, req.ExternalUserID, req.WebAppId)
 	if err != nil {
-		s.log.With(
-			zap.String("method", "s.repo.IsUserTheOwnerOfMarketplace"),
-			zap.String("web_app_id", req.WebAppId.String()),
-			zap.String("user_id", strconv.FormatInt(req.ExternalUserID, 10)),
-		).Error(err.Error())
 		return errors.Wrap(err, "s.repo.IsUserTheOwnerOfMarketplace")
 	}
 
@@ -359,10 +347,6 @@ func (s *Service) DeleteMarketplace(ctx context.Context, req DeleteMarketplaceRe
 
 	err = s.repo.DeleteMarketplace(ctx, req)
 	if err != nil {
-		s.log.With(
-			zap.String("method", "s.repo.DeleteMarketplace"),
-			zap.String("webapp_id", req.WebAppId.String()),
-		).Error(err.Error())
 		return errors.Wrap(err, "s.repo.DeleteMarketplace")
 	}
 
@@ -370,7 +354,7 @@ func (s *Service) DeleteMarketplace(ctx context.Context, req DeleteMarketplaceRe
 }
 
 // CreateProduct creates a new product in a marketplace
-func (s *Service) CreateProduct(ctx context.Context, req CreateProductRequest) (CreateProductResponse, error) {
+func (s *DefaultService) CreateProduct(ctx context.Context, req CreateProductRequest) (CreateProductResponse, error) {
 	ok, err := s.repo.IsUserTheOwnerOfMarketplace(ctx, req.ExternalUserID, req.WebAppID)
 	if err != nil {
 		return CreateProductResponse{}, errors.Wrap(err, "s.repo.IsUserTheOwnerOfMarketplace")
@@ -390,10 +374,6 @@ func (s *Service) CreateProduct(ctx context.Context, req CreateProductRequest) (
 
 	res, err := s.repo.CreateProduct(ctx, req)
 	if err != nil {
-		s.log.With(
-			zap.String("method", "s.repo.CreateProducts"),
-			zap.String("web_app_id", req.WebAppID.String()),
-		).Error(err.Error())
 		return CreateProductResponse{}, errors.Wrap(err, "s.repo.CreateProduct")
 	}
 
@@ -401,7 +381,7 @@ func (s *Service) CreateProduct(ctx context.Context, req CreateProductRequest) (
 }
 
 // UpdateProduct updates a product of a marketplace
-func (s *Service) UpdateProduct(ctx context.Context, req UpdateProductRequest) error {
+func (s *DefaultService) UpdateProduct(ctx context.Context, req UpdateProductRequest) error {
 	if ok, err := s.repo.IsUserTheOwnerOfProduct(ctx, req.ExternalUserID, req.ID); err != nil {
 		return errors.Wrap(err, "s.repo.IsUserTheOwnerOfProduct")
 	} else if !ok {
@@ -418,18 +398,13 @@ func (s *Service) UpdateProduct(ctx context.Context, req UpdateProductRequest) e
 
 	err := s.repo.UpdateProduct(ctx, req)
 	if err != nil {
-		s.log.With(
-			zap.String("method", "s.repo.UpdateProducts"),
-			zap.String("web_app_id", req.WebAppID.String()),
-			zap.String("product_id", req.ID.String()),
-		).Error(err.Error())
 		return errors.Wrap(err, "s.repo.UpdateProduct")
 	}
 
 	return nil
 }
 
-func (s *Service) DeleteProduct(ctx context.Context, req DeleteProductRequest) error {
+func (s *DefaultService) DeleteProduct(ctx context.Context, req DeleteProductRequest) error {
 	if ok, err := s.repo.IsUserTheOwnerOfProduct(ctx, req.ExternalUserID, req.ID); err != nil {
 		return errors.Wrap(err, "s.repo.IsUserTheOwnerOfProduct")
 	} else if !ok {
@@ -438,11 +413,6 @@ func (s *Service) DeleteProduct(ctx context.Context, req DeleteProductRequest) e
 
 	err := s.repo.DeleteProduct(ctx, req)
 	if err != nil {
-		s.log.With(
-			zap.String("method", "s.repo.DeleteProduct"),
-			zap.String("web_app_id", req.WebAppID.String()),
-			zap.String("product_id", req.ID.String()),
-		).Error(err.Error())
 		return errors.Wrap(err, "s.repo.DeleteProduct")
 	}
 
@@ -450,13 +420,8 @@ func (s *Service) DeleteProduct(ctx context.Context, req DeleteProductRequest) e
 }
 
 // CreateProductImageUploadURL creates a new upload URL for a product image
-func (s *Service) CreateProductImageUploadURL(ctx context.Context, request CreateProductImageUploadURLRequest) (CreateProductImageUploadURLResponse, error) {
+func (s *DefaultService) CreateProductImageUploadURL(ctx context.Context, request CreateProductImageUploadURLRequest) (CreateProductImageUploadURLResponse, error) {
 	if ok, err := s.repo.IsUserTheOwnerOfProduct(ctx, request.ExternalUserID, request.ProductID); err != nil {
-		s.log.With(
-			zap.String("method", "s.repo.IsUserTheOwnerOfProduct"),
-			zap.String("user_id", strconv.FormatInt(request.ExternalUserID, 10)),
-			zap.String("product_id", request.ProductID.String()),
-		).Error(err.Error())
 		return CreateProductImageUploadURLResponse{}, errors.Wrap(err, "s.repo.IsUserTheOwnerOfProduct")
 	} else if !ok {
 		return CreateProductImageUploadURLResponse{}, ErrorOpNotAllowed
@@ -496,13 +461,8 @@ func (s *Service) CreateProductImageUploadURL(ctx context.Context, request Creat
 }
 
 // CreateMarketplaceLogoUploadURL creates a new upload URL for a marketplace logo
-func (s *Service) CreateMarketplaceLogoUploadURL(ctx context.Context, request CreateMarketplaceLogoUploadURLRequest) (CreateMarketplaceLogoUploadURLResponse, error) {
+func (s *DefaultService) CreateMarketplaceLogoUploadURL(ctx context.Context, request CreateMarketplaceLogoUploadURLRequest) (CreateMarketplaceLogoUploadURLResponse, error) {
 	if ok, err := s.repo.IsUserTheOwnerOfMarketplace(ctx, request.ExternalUserID, request.WebAppID); err != nil {
-		s.log.With(
-			zap.String("method", "s.repo.IsUserTheOwnerOfMarketplace"),
-			zap.String("user_id", strconv.FormatInt(request.ExternalUserID, 10)),
-			zap.String("web_app_id", request.WebAppID.String()),
-		).Error(err.Error())
 		return CreateMarketplaceLogoUploadURLResponse{}, errors.Wrap(err, "s.repo.IsUserTheOwnerOfMarketplace")
 	} else if !ok {
 		return CreateMarketplaceLogoUploadURLResponse{}, ErrorOpNotAllowed
@@ -542,7 +502,7 @@ func (s *Service) CreateMarketplaceLogoUploadURL(ctx context.Context, request Cr
 }
 
 // GetTelegramChannels gets a list of Telegram channels owned by a specific user
-func (s *Service) GetTelegramChannels(ctx context.Context, ownerExternalID int64) (GetTelegramChannelsResponse, error) {
+func (s *DefaultService) GetTelegramChannels(ctx context.Context, ownerExternalID int64) (GetTelegramChannelsResponse, error) {
 	res, err := s.repo.GetTelegramChannels(ctx, ownerExternalID)
 	if err != nil {
 		return GetTelegramChannelsResponse{}, errors.Wrap(err, "s.repo.GetTelegramChannels")
@@ -552,13 +512,9 @@ func (s *Service) GetTelegramChannels(ctx context.Context, ownerExternalID int64
 }
 
 // CreateOrUpdateTelegramChannel creates or updates a Telegram channel
-func (s *Service) CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error {
+func (s *DefaultService) CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error {
 	err := s.repo.CreateOrUpdateTelegramChannel(ctx, req)
 	if err != nil {
-		s.log.With(
-			zap.String("method", "s.repo.CreateOrUpdateTelegramChannel"),
-			zap.String("external_id", strconv.FormatInt(req.ExternalID, 10)),
-		).Error("error", logging.SilentError(err))
 		return errors.Wrap(err, "s.repo.CreateOrUpdateTelegramChannel")
 	}
 
@@ -566,7 +522,7 @@ func (s *Service) CreateOrUpdateTelegramChannel(ctx context.Context, req CreateO
 }
 
 // PublishMarketplaceBannerToChannel publishes a banner to a Telegram channel
-func (s *Service) PublishMarketplaceBannerToChannel(ctx context.Context, req PublishMarketplaceBannerToChannelRequest) error {
+func (s *DefaultService) PublishMarketplaceBannerToChannel(ctx context.Context, req PublishMarketplaceBannerToChannelRequest) error {
 	if req.Message == "" {
 		return ErrorBadRequest
 	}

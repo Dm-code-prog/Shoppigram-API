@@ -10,8 +10,8 @@ import (
 // makeGetProductsEndpoint constructs a GetProducts endpoint wrapping the service.
 //
 // Path: GET /api/v1/public/products/{web_app_id}
-func makeGetProductsEndpoint(s *Service) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (interface{}, error) {
+func makeGetProductsEndpoint(s Service) endpoint.Endpoint {
+	return func(ctx context.Context, request any) (any, error) {
 		req, ok := request.(GetProductsRequest)
 		if !ok {
 			return GetProductsResponse{}, ErrorInvalidWebAppID
@@ -27,8 +27,8 @@ func makeGetProductsEndpoint(s *Service) endpoint.Endpoint {
 // makeInvalidateProductsCacheEndpoint constructs a InvalidateProductsCache endpoint wrapping the service.
 //
 // Path: PUT /api/v1/public/products/{web_app_id}/invalidate
-func makeInvalidateProductsCacheEndpoint(s *Service) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (interface{}, error) {
+func makeInvalidateProductsCacheEndpoint(s Service) endpoint.Endpoint {
+	return func(ctx context.Context, request any) (any, error) {
 		req, ok := request.(InvalidateProductsCacheRequest)
 		if !ok {
 			return nil, ErrorInvalidWebAppID
@@ -41,8 +41,8 @@ func makeInvalidateProductsCacheEndpoint(s *Service) endpoint.Endpoint {
 // makeGetProductsEndpoint constructs a CreateOrder endpoint wrapping the service.
 //
 // Path: PUT /api/v1/public/orders/{web_app_id}
-func makeCreateOrderEndpoint(svc *Service) endpoint.Endpoint {
-	return func(ctx context.Context, request interface{}) (interface{}, error) {
+func makeCreateOrderEndpoint(svc Service) endpoint.Endpoint {
+	return func(ctx context.Context, request any) (any, error) {
 		req, ok := request.(CreateOrderRequest)
 		if !ok {
 			return CreateOrderResponse{}, ErrorBadRequest

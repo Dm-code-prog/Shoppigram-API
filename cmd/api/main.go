@@ -87,6 +87,7 @@ func main() {
 	}
 
 	r.Use(
+		middleware.Logger,
 		middleware.Timeout(10*time.Second),
 		middleware.Recoverer,
 		middleware.Compress(5, "application/json"),
@@ -110,17 +111,25 @@ func main() {
 		return
 	}
 
-	authMw := telegramusers.MakeAuthMiddleware(log.With(zap.String("service", "users")), config.Bot.Token)
-
+	////////////////////////////////////// TELEGRAM USERS //////////////////////////////////////
+	authMw := telegramusers.MakeAuthMiddleware(config.Bot.Token)
 	tgUsersRepo := telegramusers.NewPg(db, config.Encryption.Key)
-	tgUsersService := telegramusers.New(tgUsersRepo, log.With(zap.String("service", "users")))
+	tgUsersService := telegramusers.NewServiceWithObservability(
+		telegramusers.New(tgUsersRepo),
+		log.With(zap.String("service", "telegram_users")),
+	)
 	tgUsersHandler := telegramusers.MakeHandler(tgUsersService, authMw)
 
+	////////////////////////////////////// MARKETPLACES //////////////////////////////////////
 	marketplacesRepo := marketplaces.NewPg(db)
-	marketplacesService := marketplaces.New(marketplacesRepo, log.With(zap.String("service", "marketplaces")), productsCache)
+	marketplacesService := marketplaces.NewServiceWithObservability(
+		marketplaces.New(marketplacesRepo, productsCache),
+		log.With(zap.String("service", "marketplaces")),
+	)
 	productsHandler := marketplaces.MakeProductsHandler(marketplacesService)
 	ordersHandler := marketplaces.MakeOrdersHandler(marketplacesService, authMw)
 
+	////////////////////////////////////// NOTIFICATIONS //////////////////////////////////////
 	notificationsRepo := notifications.NewPg(
 		db,
 		config.NewOrderNotifications.BatchSize,
@@ -136,6 +145,38 @@ func main() {
 		config.Bot.Token,
 	)
 
+	////////////////////////////////////// ADMINS //////////////////////////////////////
+	adminsRepo := admins.NewPg(db)
+	adminsService := admins.NewServiceWithObservability(
+		admins.New(
+			adminsRepo,
+			admins.DOSpacesConfig{
+				Endpoint: config.DigitalOcean.Spaces.Endpoint,
+				Bucket:   config.DigitalOcean.Spaces.Bucket,
+				ID:       config.DigitalOcean.Spaces.Key,
+				Secret:   config.DigitalOcean.Spaces.Secret,
+			},
+			&notificationsAdminAdapter{
+				notifier: notificationsService,
+			},
+		),
+		log.With(zap.String("service", "admins")),
+	)
+	adminsHandler := admins.MakeHandler(adminsService, authMw)
+
+	////////////////////////////////////// WEBHOOKS //////////////////////////////////////
+	webhookService := webhooks.New(
+		&adminWebhooksAdapter{admin: adminsService},
+		&notificationsWebhooksAdapter{notifier: notificationsService},
+		log.With(zap.String("service", "webhooks")),
+		config.Bot.ID,
+	)
+	webhooksHandler := webhooks.MakeHandler(
+		webhookService,
+		log.With(zap.String("service", "webhooks_server")),
+		config.TelegramWebhooks.SecretToken)
+
+	////////////////////////////////////// RUN NOTIFICATION JOBS //////////////////////////////////////
 	if config.NewOrderNotifications.IsEnabled {
 		g.Add(notificationsService.RunNewOrderNotifier, func(err error) {
 			_ = notificationsService.Shutdown()
@@ -160,33 +201,7 @@ func main() {
 		log.Warn("verified marketplace notifications job is disabled")
 	}
 
-	adminsRepo := admins.NewPg(db)
-	adminsService := admins.New(
-		adminsRepo,
-		log.With(zap.String("service", "admins")),
-		admins.DOSpacesConfig{
-			Endpoint: config.DigitalOcean.Spaces.Endpoint,
-			Bucket:   config.DigitalOcean.Spaces.Bucket,
-			ID:       config.DigitalOcean.Spaces.Key,
-			Secret:   config.DigitalOcean.Spaces.Secret,
-		},
-		&notificationsAdminAdapter{
-			notifier: notificationsService,
-		},
-	)
-	adminsHandler := admins.MakeHandler(adminsService, authMw)
-
-	webhookService := webhooks.New(
-		&adminWebhooksAdapter{admin: adminsService},
-		&notificationsWebhooksAdapter{notifier: notificationsService},
-		log.With(zap.String("service", "webhooks")),
-		config.Bot.ID,
-	)
-	webhooksHandler := webhooks.MakeHandler(
-		webhookService,
-		log.With(zap.String("service", "webhooks_server")),
-		config.TelegramWebhooks.SecretToken)
-
+	////////////////////////////////////// RUN HTTP SERVER //////////////////////////////////////
 	r.Mount("/api/v1/public/products", productsHandler)
 	r.Mount("/api/v1/public/auth", tgUsersHandler)
 	r.Mount("/api/v1/public/orders", ordersHandler)
