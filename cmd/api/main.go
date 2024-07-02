@@ -87,7 +87,7 @@ func main() {
 	}
 
 	r.Use(
-		middleware.Logger,
+		//middleware.Logger,
 		middleware.Timeout(10*time.Second),
 		middleware.Recoverer,
 		middleware.Compress(5, "application/json"),
