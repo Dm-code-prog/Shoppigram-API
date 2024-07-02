@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	"os"
 	"strings"
 	"time"
 )
@@ -48,6 +49,8 @@ type (
 		ChannelName       string
 	}
 )
+
+var botName = os.Getenv("BOT_NAME")
 
 // BuildMessageAdmin creates a notification message for a new order for an admin
 func (o *NewOrderNotification) BuildMessageAdmin() (string, error) {
@@ -102,14 +105,13 @@ func (o *NewOrderNotification) BuildMessageCustomer() (string, error) {
 	), nil
 }
 
-
 // BuildMessageShoppigram creates a notification message for a new marketplace
 func (m *NewMarketplaceNotification) BuildMessageShoppigram() (string, error) {
 	newMarketplaceMessageTemplate, err := templates.ReadFile("templates/marketplace_needs_verification.shoppigram.md")
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
-	
+
 	return fmt.Sprintf(
 		escapeSpecialSymbols(string(newMarketplaceMessageTemplate)),
 		escapeSpecialSymbols(m.OwnerUsername),
@@ -142,7 +144,7 @@ func (m *VerifiedMarketplaceNotification) BuildMessage() (string, error) {
 	return fmt.Sprintf(
 		escapeSpecialSymbols(string(verifiedMarketplaceMessageTemplate)),
 		escapeSpecialSymbols(m.Name),
-		escapeSpecialSymbols(webAppURL+m.ShortName),
+		escapeSpecialSymbols("https://t.me/"+botName+"/"+m.ShortName),
 	), nil
 }
 
@@ -164,6 +166,6 @@ func (m *ChannelIntegrationSuccessNotification) BuildMessage() (string, error) {
 	return fmt.Sprintf(
 		escapeSpecialSymbols(string(channelIntegrationSuccessMessageTemplate)),
 		escapeSpecialSymbols(m.ChannelTitle),
-		escapeSpecialSymbols(tmaLink),
+		escapeSpecialSymbols("https://t.me/"+botName+"/"+"app?startapp="+tmaLink),
 	), nil
 }

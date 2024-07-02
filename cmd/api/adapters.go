@@ -28,7 +28,7 @@ func (a *notificationsAdminAdapter) PinNotification(ctx context.Context, req adm
 // adminWebhooksAdapter is an adapter for the admin service
 // meant to be used by the webhooks service
 type adminWebhooksAdapter struct {
-	admin *admins.Service
+	admin admins.Service
 }
 
 func (a *adminWebhooksAdapter) CreateOrUpdateTelegramChannel(ctx context.Context, req webhooks.CreateOrUpdateTelegramChannelRequest) error {

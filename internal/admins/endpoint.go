@@ -6,19 +6,15 @@ import (
 	"github.com/go-kit/kit/endpoint"
 	"github.com/pkg/errors"
 	telegramusers "github.com/shoppigram-com/marketplace-api/internal/users"
-	"go.uber.org/zap"
 )
 
 // makeGetMarketplacesEndpoint constructs a GetMarketplaces endpoint wrapping the service.
 //
 // Path: GET /api/v1/private/marketplaces
-func makeGetMarketplacesEndpoint(s *Service) endpoint.Endpoint {
+func makeGetMarketplacesEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, _ any) (any, error) {
 		usr, err := telegramusers.GetUserFromContext(ctx)
 		if err != nil {
-			s.log.With(
-				zap.String("method", "GetUserFromContext"),
-			).Error(err.Error())
 			return nil, err
 		}
 
@@ -36,13 +32,10 @@ func makeGetMarketplacesEndpoint(s *Service) endpoint.Endpoint {
 // CreateMarketplace service method
 //
 // Path: POST /api/v1/private/marketplaces
-func makeCreateMarketplaceEndpoint(s *Service) endpoint.Endpoint {
+func makeCreateMarketplaceEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
 		usr, err := telegramusers.GetUserFromContext(ctx)
 		if err != nil {
-			s.log.With(
-				zap.String("method", "GetUserFromContext"),
-			).Error(err.Error())
 			return nil, err
 		}
 
@@ -65,7 +58,7 @@ func makeCreateMarketplaceEndpoint(s *Service) endpoint.Endpoint {
 // DeleteMarketplace service method
 //
 // Path: DELETE /api/v1/private/marketplaces
-func makeDeleteMarketplaceEndpoint(s *Service) endpoint.Endpoint {
+func makeDeleteMarketplaceEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
 		request, ok := req.(DeleteMarketplaceRequest)
 		if !ok {
@@ -85,13 +78,10 @@ func makeDeleteMarketplaceEndpoint(s *Service) endpoint.Endpoint {
 // UpdateMarketplace service method
 //
 // Path: PUT /api/v1/private/marketplaces/<web_app_id>
-func makeUpdateMarketplaceEndpoint(s *Service) endpoint.Endpoint {
+func makeUpdateMarketplaceEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
 		usr, err := telegramusers.GetUserFromContext(ctx)
 		if err != nil {
-			s.log.With(
-				zap.String("method", "GetUserFromContext"),
-			).Error(err.Error())
 			return nil, err
 		}
 
@@ -114,13 +104,10 @@ func makeUpdateMarketplaceEndpoint(s *Service) endpoint.Endpoint {
 // CreateProduct service method
 //
 // Path: POST /api/v1/private/marketplaces/products/<web_app_id>
-func makeCreateProductEndpoint(s *Service) endpoint.Endpoint {
+func makeCreateProductEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
 		usr, err := telegramusers.GetUserFromContext(ctx)
 		if err != nil {
-			s.log.With(
-				zap.String("method", "GetUserFromContext"),
-			).Error(err.Error())
 			return nil, err
 		}
 
@@ -143,13 +130,10 @@ func makeCreateProductEndpoint(s *Service) endpoint.Endpoint {
 // UpdateProduct service method
 //
 // Path: PUT /api/v1/private/marketplaces/products/<web_app_id>
-func makeUpdateProductEndpoint(s *Service) endpoint.Endpoint {
+func makeUpdateProductEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
 		usr, err := telegramusers.GetUserFromContext(ctx)
 		if err != nil {
-			s.log.With(
-				zap.String("method", "GetUserFromContext"),
-			).Error(err.Error())
 			return nil, err
 		}
 
@@ -172,13 +156,10 @@ func makeUpdateProductEndpoint(s *Service) endpoint.Endpoint {
 // DeleteProduct service method
 //
 // Path: DELETE /api/v1/private/marketplaces/products/<web_app_id>
-func makeDeleteProductEndpoint(s *Service) endpoint.Endpoint {
+func makeDeleteProductEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
 		usr, err := telegramusers.GetUserFromContext(ctx)
 		if err != nil {
-			s.log.With(
-				zap.String("method", "GetUserFromContext"),
-			).Error(err.Error())
 			return nil, err
 		}
 
@@ -201,13 +182,10 @@ func makeDeleteProductEndpoint(s *Service) endpoint.Endpoint {
 // CreateProductImageUploadURL service method
 //
 // Path: POST /api/v1/private/marketplaces/products/upload-image-url/<web_app_id>
-func makeCreateProductImageUploadURLEndpoint(s *Service) endpoint.Endpoint {
+func makeCreateProductImageUploadURLEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
 		usr, err := telegramusers.GetUserFromContext(ctx)
 		if err != nil {
-			s.log.With(
-				zap.String("method", "GetUserFromContext"),
-			).Error(err.Error())
 			return nil, err
 		}
 
@@ -230,13 +208,10 @@ func makeCreateProductImageUploadURLEndpoint(s *Service) endpoint.Endpoint {
 // CreateMarketplaceLogoUploadURL service method
 //
 // Path: POST /api/v1/private/marketplaces/upload-logo-url/<web_app_id>
-func makeCreateMarketplaceLogoUploadURLEndpoint(s *Service) endpoint.Endpoint {
+func makeCreateMarketplaceLogoUploadURLEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
 		usr, err := telegramusers.GetUserFromContext(ctx)
 		if err != nil {
-			s.log.With(
-				zap.String("method", "GetUserFromContext"),
-			).Error(err.Error())
 			return nil, err
 		}
 
@@ -259,13 +234,10 @@ func makeCreateMarketplaceLogoUploadURLEndpoint(s *Service) endpoint.Endpoint {
 // PublishMarketplaceBannerToChannel service method
 //
 // Path: POST /api/v1/private/marketplaces/publish-to-channel/<web_app_id>
-func makePublishMarketplaceBannerToChannelEndpoint(s *Service) endpoint.Endpoint {
+func makePublishMarketplaceBannerToChannelEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
 		usr, err := telegramusers.GetUserFromContext(ctx)
 		if err != nil {
-			s.log.With(
-				zap.String("method", "GetUserFromContext"),
-			).Error(err.Error())
 			return nil, err
 		}
 
@@ -277,11 +249,6 @@ func makePublishMarketplaceBannerToChannelEndpoint(s *Service) endpoint.Endpoint
 		request.ExternalUserID = usr.ExternalId
 		err = s.PublishMarketplaceBannerToChannel(ctx, request)
 		if err != nil {
-			// TODO:
-			// Move to observability middleware
-			s.log.With(
-				zap.String("method", "s.PublishMarketplaceBannerToChannel"),
-			).Error(err.Error())
 			return nil, errors.Wrap(err, "s.PublishMarketplaceBannerToChannel")
 		}
 
@@ -293,13 +260,10 @@ func makePublishMarketplaceBannerToChannelEndpoint(s *Service) endpoint.Endpoint
 // GetTelegramChannels service method
 //
 // Path: GET /api/v1/private/telegram-channels
-func makeGetTelegramChannelsEndpoint(s *Service) endpoint.Endpoint {
+func makeGetTelegramChannelsEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, _ any) (any, error) {
 		usr, err := telegramusers.GetUserFromContext(ctx)
 		if err != nil {
-			s.log.With(
-				zap.String("method", "GetUserFromContext"),
-			).Error(err.Error())
 			return nil, err
 		}
 

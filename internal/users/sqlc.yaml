@@ -4,8 +4,7 @@ sql:
     queries:
       - ./queries/users.sql
     schema:
-      - ./schemas/20240423.sql
-      - ./schemas/20240503.sql
+      - ../shared_sql/20240503_telegram_users.sql
     gen:
       go:
         package: generated
