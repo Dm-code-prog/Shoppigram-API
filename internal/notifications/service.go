@@ -331,20 +331,34 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 		if err != nil {
 			return errors.Wrap(err, "a.BuildMessageAdmin")
 		}
-		
-		for _, v := range nl {			
+
+		for _, v := range nl {
 			err = s.sendMessageToChat(v, adminMsgTxt)
 			if err != nil {
+				if strings.Contains(err.Error(), "chat not found") {
+					s.log.With(
+						zap.String("method", "bot.Send"),
+						zap.String("user_id", strconv.FormatInt(v, 10)),
+					).Warn(err.Error())
+					continue
+				}
 				return errors.Wrap(err, "s.sendMessageToChat")
 			}
 		}
 		customerMsgTxt, err := notification.BuildMessageCustomer()
-		
+
 		if err != nil {
 			return errors.Wrap(err, "a.BuildMessageCustomer")
 		}
 		err = s.sendMessageToChat(notification.ExternalUserID, customerMsgTxt)
 		if err != nil {
+			if strings.Contains(err.Error(), "chat not found") {
+				s.log.With(
+					zap.String("method", "bot.Send"),
+					zap.String("user_id", strconv.FormatInt(notification.ExternalUserID, 10)),
+				).Warn(err.Error())
+				continue
+			}
 			return errors.Wrap(err, "s.sendMessageToChat")
 		}
 	}
@@ -381,21 +395,21 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 			PageName: "/admin/marketplaces/" + n.ID.String(),
 			PageData: map[string]any{},
 		}.ToBase64String()
-		
-		button := tgbotapi.NewInlineKeyboardButtonURL("Перейти к магазину", "https://t.me/shoppigramBot/app?startapp=" + tmaLink)
+
+		button := tgbotapi.NewInlineKeyboardButtonURL("Перейти к магазину", "https://t.me/shoppigramBot/app?startapp="+tmaLink)
 		if err != nil {
 			return errors.Wrap(err, "tgbotapi.NewInlineKeyboardButtonURL")
 		}
-		
+
 		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(
-			button,
-		))
+			tgbotapi.NewInlineKeyboardRow(
+				button,
+			))
 
 		_, err = s.bot.Send(msg)
 		if err != nil {
 			return errors.Wrap(err, "bot.Send")
-	}
+		}
 
 		for _, r := range reviewers {
 			msgTxt, err := n.BuildMessageShoppigram()
