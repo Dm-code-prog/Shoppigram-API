@@ -31,7 +31,7 @@ func MakeLoggingMiddleware(logger *zap.Logger) func(next http.Handler) http.Hand
 			method := r.Method
 			statusCode := sw.StatusCode()
 			logger.Info(
-				"request completed",
+				"http request",
 				zap.String("path", path),
 				zap.String("method", method),
 				zap.Int("status_code", statusCode),
