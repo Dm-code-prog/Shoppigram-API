@@ -34,6 +34,7 @@ func main() {
 		zapConfig zap.Config
 	)
 
+
 	ctx := context.Background()
 
 	var config Environment
@@ -87,7 +88,7 @@ func main() {
 	}
 
 	r.Use(
-		middleware.Logger,
+		httputils.MakeLoggingMiddleware(log),
 		middleware.Timeout(10*time.Second),
 		middleware.Recoverer,
 		middleware.Compress(5, "application/json"),

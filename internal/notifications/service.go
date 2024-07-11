@@ -342,6 +342,13 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 		for _, v := range nl {
 			err = s.sendMessageToChat(v, adminMsgTxt)
 			if err != nil {
+				if strings.Contains(err.Error(), "chat not found") {
+					s.log.With(
+						zap.String("method", "bot.Send"),
+						zap.String("user_id", strconv.FormatInt(v, 10)),
+					).Warn(err.Error())
+					continue
+				}
 				return errors.Wrap(err, "s.sendMessageToChat")
 			}
 		}
@@ -352,6 +359,13 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 		}
 		err = s.sendMessageToChat(notification.ExternalUserID, customerMsgTxt)
 		if err != nil {
+			if strings.Contains(err.Error(), "chat not found") {
+				s.log.With(
+					zap.String("method", "bot.Send"),
+					zap.String("user_id", strconv.FormatInt(notification.ExternalUserID, 10)),
+				).Warn(err.Error())
+				continue
+			}
 			return errors.Wrap(err, "s.sendMessageToChat")
 		}
 	}
