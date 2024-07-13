@@ -29,13 +29,17 @@ func MakeLoggingMiddleware(logger *zap.Logger) func(next http.Handler) http.Hand
 
 			path := r.URL.Path
 			method := r.Method
+
+			if method == http.MethodOptions {
+				return
+			}
+
 			statusCode := sw.StatusCode()
 			logger.Info(
 				"http request",
 				zap.String("path", path),
 				zap.String("method", method),
 				zap.Int("status_code", statusCode),
-				zap.String("host", r.Host),
 			)
 		})
 	}
