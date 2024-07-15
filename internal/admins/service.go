@@ -258,7 +258,7 @@ var (
 )
 
 var (
-	shortNameRegex = regexp.MustCompile("^[a-z][0-9]{5,}$")
+	shortNameRegex = regexp.MustCompile("^[a-z-0-9]{5,}$")
 )
 
 const (
