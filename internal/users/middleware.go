@@ -21,7 +21,7 @@ const (
 	initDataKey contextKeyT = "init_data_key"
 	webAppIDKey contextKeyT = "web_app_id"
 
-	initDataTTL = time.Minute * 30
+	initDataTTL = time.Hour * 12
 )
 
 // PutUserToContext puts User data into context
