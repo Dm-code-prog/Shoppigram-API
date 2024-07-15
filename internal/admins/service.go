@@ -586,7 +586,7 @@ func isProductNameValid(name string) bool {
 
 func isValidImageExtension(ext string) bool {
 	switch ext {
-	case "png", "jpg", "jpeg":
+	case "png", "jpg", "jpeg", "webp":
 		return true
 	}
 
