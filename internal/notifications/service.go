@@ -241,6 +241,7 @@ func (s *Service) runNewMarketplaceNotifierOnce() error {
 		if strings.Contains(err.Error(), "chat not found") {
 			s.log.With(
 				zap.String("method", "s.sendNewMarketplaceNotifications"),
+				zap.String("user_id", strconv.FormatInt(marketplaceNotifications[0].OwnerExternalID, 10)),
 			).Warn("chat not found, skipping notification sending")
 		} else {
 			return errors.Wrap(err, "s.sendNewMarketplaceNotifications")
@@ -320,7 +321,7 @@ func (s *Service) runVerifiedMarketplaceNotifierOnce() error {
 	return nil
 }
 
-// Shutdown stops all of the notifications
+// Shutdown stops all the notifications
 func (s *Service) Shutdown() error {
 	s.cancel()
 	<-s.ctx.Done()
@@ -346,7 +347,7 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 					s.log.With(
 						zap.String("method", "bot.Send"),
 						zap.String("user_id", strconv.FormatInt(v, 10)),
-					).Warn(err.Error())
+					).Warn("chat not found")
 					continue
 				}
 				return errors.Wrap(err, "s.sendMessageToChat")
@@ -363,7 +364,7 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 				s.log.With(
 					zap.String("method", "bot.Send"),
 					zap.String("user_id", strconv.FormatInt(notification.ExternalUserID, 10)),
-				).Warn(err.Error())
+				).Warn("chat not found")
 				continue
 			}
 			return errors.Wrap(err, "s.sendMessageToChat")
