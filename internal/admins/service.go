@@ -581,7 +581,7 @@ func isMarketplaceNameValid(name string) bool {
 }
 
 func isProductNameValid(name string) bool {
-	return len(name) >= 3 && len(name) <= 50
+	return len(name) >= 3 && len(name) <= 75
 }
 
 func isValidImageExtension(ext string) bool {
