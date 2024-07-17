@@ -34,7 +34,6 @@ func main() {
 		zapConfig zap.Config
 	)
 
-
 	ctx := context.Background()
 
 	var config Environment

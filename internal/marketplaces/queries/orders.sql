@@ -9,3 +9,4 @@ insert into order_products (order_id, product_id, quantity)
 values ($1,
         $2,
         $3);
+
