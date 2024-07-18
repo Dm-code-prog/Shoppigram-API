@@ -80,6 +80,11 @@ func makeGetOrderEndpoint(s Service) endpoint.Endpoint {
 		if err != nil {
 			return nil, err
 		}
+
+		if len(responce.Products) == 0 {
+			return nil, ErrorGetOrderNotPremited
+		}
+
 		return responce, nil
 	}
 }

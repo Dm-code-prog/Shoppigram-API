@@ -47,11 +47,8 @@ func MakeOrdersHandler(s Service, authMW endpoint.Middleware) http.Handler {
 	}
 	opts = append(opts, telegramusers.AuthServerBefore...)
 
-	ep := makeCreateOrderEndpoint(s)
-	ep = authMW(ep)
-
 	createOrderHandler := kithttp.NewServer(
-		ep,
+		authMW(makeCreateOrderEndpoint(s)),
 		decodeCreateOrderRequest,
 		encodeResponse,
 		opts...,
@@ -171,6 +168,9 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 	case errors.Is(err, ErrorInvalidProductQuantity):
 		w.WriteHeader(http.StatusBadRequest)
 		err = ErrorInvalidProductQuantity
+	case errors.Is(err, ErrorGetOrderNotPremited):
+		w.WriteHeader(http.StatusForbidden)
+		err = ErrorGetOrderNotPremited
 	}
 
 	w.WriteHeader(http.StatusInternalServerError)
