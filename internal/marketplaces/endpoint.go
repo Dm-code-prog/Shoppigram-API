@@ -61,7 +61,7 @@ func makeCreateOrderEndpoint(svc Service) endpoint.Endpoint {
 // makeGetOrderEndpoint creates a new endpoint for access to
 // GetOrder service method
 //
-// Path: GET /api/v1/public/order/<order_id>
+// Path: GET /api/v1/public/orders/<order_id>
 func makeGetOrderEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
 		usr, err := telegramusers.GetUserFromContext(ctx)
@@ -79,10 +79,6 @@ func makeGetOrderEndpoint(s Service) endpoint.Endpoint {
 		response, err := s.GetOrder(ctx, request)
 		if err != nil {
 			return nil, err
-		}
-
-		if len(response.Products) == 0 {
-			return GetOrderResponse{}, ErrorGetOrderNotPremited
 		}
 
 		return response, nil

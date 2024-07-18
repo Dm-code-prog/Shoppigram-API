@@ -135,7 +135,7 @@ func (p *Pg) GetOrder(ctx context.Context, orderId uuid.UUID, userId int64) (Get
 	products := make([]Product, len(rows))
 
 	if len(rows) == 0 {
-		return GetOrderResponse{}, nil
+		return GetOrderResponse{}, ErrorGetOrderNotPremited
 	}
 	WebAppName := rows[0].WebAppName
 	WebAppShortName := rows[0].WebAppShortName
