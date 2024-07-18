@@ -181,7 +181,7 @@ func decodePublishMarketplaceBannerToChannelRequest(c context.Context, r *http.R
 
 func decodeGetOrderRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	var request GetOrderRequest
-	orderId := chi.URLParam(r, "web_app_id")
+	orderId := chi.URLParam(r, "order_id")
 	if orderId == "" {
 		return nil, ErrorBadRequest
 	}
