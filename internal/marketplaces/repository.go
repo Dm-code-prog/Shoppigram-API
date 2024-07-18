@@ -118,4 +118,38 @@ func (pg *Pg) CreateOrder(ctx context.Context, req SaveOrderRequest) (SaveOrderR
 	}
 
 	return SaveOrderResponse{ReadableID: int(res.ReadableID.Int64)}, nil
+
+}
+
+// GetOrder gets a list of products in order
+func (p *Pg) GetOrder(ctx context.Context, orderId uuid.UUID, userId int64) (GetOrderResponse, error) {
+	rows, err := p.gen.GetOrder(ctx, generated.GetOrderParams{
+		ID:             orderId,
+		ExternalUserID: pgtype.Int4{Int32: int32(userId), Valid: userId != 0},
+	})
+
+	if err != nil {
+		return GetOrderResponse{}, errors.Wrap(err, "p.gen.GetOrder")
+	}
+
+	products := make([]Product, len(rows))
+
+	if len(rows) == 0 {
+		return GetOrderResponse{}, ErrorGetOrderNotPremited
+	}
+	WebAppName := rows[0].WebAppName
+	WebAppShortName := rows[0].WebAppShortName
+
+	for i, v := range rows {
+		products[i] = Product{
+			ID:            v.ID,
+			Name:          v.Name,
+			Description:   v.Description.String,
+			Category:      v.Category.String,
+			Price:         v.Price,
+			PriceCurrency: v.PriceCurrency,
+		}
+	}
+
+	return GetOrderResponse{Products: products, WebAppName: WebAppName, WebAppShortName: WebAppShortName}, nil
 }

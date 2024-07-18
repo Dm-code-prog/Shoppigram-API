@@ -77,6 +77,19 @@ type (
 	SaveOrderResponse struct {
 		ReadableID int
 	}
+
+	// GetOrderRequest defines the request for the GetOrder endpoint
+	GetOrderRequest struct {
+		OrderId        uuid.UUID
+		ExternalUserId int64
+	}
+
+	// GetOrderResponse contains the data about all products in order
+	GetOrderResponse struct {
+		Products        []Product `json:"products"`
+		WebAppName      string    `json:"web_app_name"`
+		WebAppShortName string    `json:"web_app_short_name"`
+	}
 )
 
 type (
@@ -84,12 +97,14 @@ type (
 	Repository interface {
 		GetProducts(ctx context.Context, request GetProductsRequest) (GetProductsResponse, error)
 		CreateOrder(context.Context, SaveOrderRequest) (SaveOrderResponse, error)
+		GetOrder(ctx context.Context, orderID uuid.UUID, externalUserId int64) (GetOrderResponse, error)
 	}
 
 	Service interface {
 		GetProducts(ctx context.Context, request GetProductsRequest) (GetProductsResponse, error)
 		CreateOrder(ctx context.Context, req CreateOrderRequest) (CreateOrderResponse, error)
 		InvalidateProductsCache(ctx context.Context, req InvalidateProductsCacheRequest)
+		GetOrder(ctx context.Context, req GetOrderRequest) (GetOrderResponse, error)
 	}
 
 	// DefaultService provides product operations
@@ -153,6 +168,16 @@ func (s *DefaultService) CreateOrder(ctx context.Context, req CreateOrderRequest
 		return CreateOrderResponse{}, errors.Wrap(err, "s.repo.CreateOrder")
 	}
 	return CreateOrderResponse(res), nil
+}
+
+// GetOrder gets the products in order
+func (s *DefaultService) GetOrder(ctx context.Context, req GetOrderRequest) (GetOrderResponse, error) {
+	resp, err := s.repo.GetOrder(ctx, req.OrderId, req.ExternalUserId)
+	if err != nil {
+		return GetOrderResponse{}, errors.Wrap(err, "s.repo.GetOrder")
+	}
+
+	return resp, nil
 }
 
 // InvalidateProductsCache invalidates the cache for the given web app id

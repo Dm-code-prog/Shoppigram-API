@@ -12,30 +12,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createOrder = `-- name: CreateOrder :one
-insert into orders (web_app_id, external_user_id)
-values ($1,
-        $2)
-returning id,readable_id
-`
-
-type CreateOrderParams struct {
-	WebAppID       pgtype.UUID
-	ExternalUserID pgtype.Int4
-}
-
-type CreateOrderRow struct {
-	ID         uuid.UUID
-	ReadableID pgtype.Int8
-}
-
-func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (CreateOrderRow, error) {
-	row := q.db.QueryRow(ctx, createOrder, arg.WebAppID, arg.ExternalUserID)
-	var i CreateOrderRow
-	err := row.Scan(&i.ID, &i.ReadableID)
-	return i, err
-}
-
 const getOrder = `-- name: GetOrder :many
 select p.id,
        p.name,

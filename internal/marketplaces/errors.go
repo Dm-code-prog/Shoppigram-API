@@ -8,4 +8,5 @@ var (
 	ErrorInvalidWebAppID        = errors.New("invalid web app id")
 	ErrorInvalidProductQuantity = errors.New("the product quantity must be greater than zero")
 	ErrorBadRequest             = errors.New("the request is malformed")
+	ErrorGetOrderNotPremited    = errors.New("No previleges to get order")
 )
