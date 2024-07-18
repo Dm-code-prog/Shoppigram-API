@@ -265,31 +265,3 @@ func (p *Pg) GetTelegramChannels(ctx context.Context, ownerExternalID int64) (Ge
 
 	return GetTelegramChannelsResponse{Channels: channels}, nil
 }
-
-// GetOrder gets a list of products in order
-func (p *Pg) GetOrder(ctx context.Context, orderId uuid.UUID, userId int64) (GetOrderResponce, error) {
-	rows, err := p.gen.GetOrder(ctx, generated.GetOrderParams{
-		ID:             orderId,
-		ExternalUserID: pgtype.Int4{Int32: int32(userId), Valid: userId != 0},
-	})
-
-	if err != nil {
-		return GetOrderResponce{}, errors.Wrap(err, "p.gen.GetOrder")
-	}
-
-	products := make([]Product, len(rows))
-
-	for i, v := range rows {
-		products[i] = Product{
-			ID:              v.ID,
-			Name:            v.Name,
-			Categoty:        v.Category.String,
-			Price:           v.Price,
-			PriceCurrency:   v.PriceCurrency,
-			WebAppName:      v.WebAppName,
-			WebAppShortName: v.WebAppShortName,
-		}
-	}
-
-	return GetOrderResponce{Products: products}, nil
-}

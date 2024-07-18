@@ -57,8 +57,16 @@ func MakeOrdersHandler(s Service, authMW endpoint.Middleware) http.Handler {
 		opts...,
 	)
 
+	getOrdersHandler := kithttp.NewServer(
+		authMW(makeGetOrderEndpoint(s)),
+		decodeGetOrderRequest,
+		encodeResponse,
+		opts...,
+	)
+
 	r := chi.NewRouter()
 	r.Post("/{web_app_id}", createOrderHandler.ServeHTTP)
+	r.Get("/{order_id}", getOrdersHandler.ServeHTTP)
 	return r
 }
 
@@ -113,6 +121,22 @@ func decodeCreateOrderRequest(ctx context.Context, r *http.Request) (interface{}
 
 	req.WebAppID = webAppUUID
 	return req, nil
+}
+
+func decodeGetOrderRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	var request GetOrderRequest
+	orderId := chi.URLParam(r, "order_id")
+	if orderId == "" {
+		return nil, ErrorBadRequest
+	}
+
+	asUUID, err := uuid.Parse(orderId)
+	if err != nil {
+		return nil, ErrorBadRequest
+	}
+	request.OrderId = asUUID
+
+	return request, nil
 }
 
 func encodeResponse(ctx context.Context, w http.ResponseWriter, response interface{}) error {

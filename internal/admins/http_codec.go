@@ -179,22 +179,6 @@ func decodePublishMarketplaceBannerToChannelRequest(c context.Context, r *http.R
 	return request, nil
 }
 
-func decodeGetOrderRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	var request GetOrderRequest
-	orderId := chi.URLParam(r, "order_id")
-	if orderId == "" {
-		return nil, ErrorBadRequest
-	}
-
-	asUUID, err := uuid.Parse(orderId)
-	if err != nil {
-		return nil, ErrorBadRequest
-	}
-	request.OrderId = asUUID
-
-	return request, nil
-}
-
 func encodeResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {
 	if response == nil {
 		w.WriteHeader(http.StatusNoContent)

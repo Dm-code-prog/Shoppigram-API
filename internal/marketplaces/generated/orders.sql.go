@@ -35,3 +35,66 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Creat
 	err := row.Scan(&i.ID, &i.ReadableID)
 	return i, err
 }
+
+const getOrder = `-- name: GetOrder :many
+select p.id,
+       p.name,
+       p.description,
+       p.category,
+       p.price,
+       p.price_currency::text as price_currency,
+       wa.name        as web_app_name,
+       wa.short_name  as web_app_short_name
+from orders o
+	 join order_products op on o.id = op.order_id
+	 join products p on op.product_id = p.id
+     join web_apps wa on o.web_app_id = wa.id
+where o.id = $1
+	  and (o.external_user_id = $2
+	  or wa.owner_external_id = $2)
+`
+
+type GetOrderParams struct {
+	ID             uuid.UUID
+	ExternalUserID pgtype.Int4
+}
+
+type GetOrderRow struct {
+	ID              uuid.UUID
+	Name            string
+	Description     pgtype.Text
+	Category        pgtype.Text
+	Price           float64
+	PriceCurrency   string
+	WebAppName      string
+	WebAppShortName string
+}
+
+func (q *Queries) GetOrder(ctx context.Context, arg GetOrderParams) ([]GetOrderRow, error) {
+	rows, err := q.db.Query(ctx, getOrder, arg.ID, arg.ExternalUserID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetOrderRow
+	for rows.Next() {
+		var i GetOrderRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Description,
+			&i.Category,
+			&i.Price,
+			&i.PriceCurrency,
+			&i.WebAppName,
+			&i.WebAppShortName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

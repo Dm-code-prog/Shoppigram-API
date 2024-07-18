@@ -50,3 +50,16 @@ func (s *ServiceWithObservability) CreateOrder(ctx context.Context, request Crea
 func (s *ServiceWithObservability) InvalidateProductsCache(ctx context.Context, request InvalidateProductsCacheRequest) {
 	s.service.InvalidateProductsCache(ctx, request)
 }
+
+// GetOrder gets the products in order
+func (s *ServiceWithObservability) GetOrder(ctx context.Context, req GetOrderRequest) (GetOrderResponce, error) {
+	resp, err := s.service.GetOrder(ctx, req)
+	if err != nil {
+		s.log.
+			With(zap.String("order_id", req.OrderId.String())).
+			With(zap.Int64("external_user_id", req.ExternalUserId)).
+			Error("s.service.GetOrder", logging.SilentError(err))
+	}
+
+	return resp, nil
+}

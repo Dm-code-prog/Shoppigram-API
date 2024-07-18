@@ -274,29 +274,3 @@ func makeGetTelegramChannelsEndpoint(s Service) endpoint.Endpoint {
 		return v0, nil
 	}
 }
-
-// makeGetOrderEndpoint creates a new endpoint for access to
-// GetOrder service method
-//
-// Path: GET /api/v1/private/order/<order_id>
-func makeGetOrderEndpoint(s Service) endpoint.Endpoint {
-	return func(ctx context.Context, req any) (any, error) {
-		usr, err := telegramusers.GetUserFromContext(ctx)
-		if err != nil {
-			return nil, err
-		}
-
-		request, ok := req.(GetOrderRequest)
-		if !ok {
-			return nil, ErrorBadRequest
-		}
-
-		request.ExternalUserId = usr.ExternalId
-
-		responce, err := s.GetOrder(ctx, request)
-		if err != nil {
-			return nil, err
-		}
-		return responce, nil
-	}
-}

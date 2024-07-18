@@ -5,7 +5,6 @@ sql:
       - ./queries/marketplaces.sql
       - ./queries/products.sql
       - ./queries/telegram_channels.sql
-      - ./queries/orders.sql
     schema:
       - ../shared_sql/20240411-aggregate.sql
       - ./schemas/20240526.sql
