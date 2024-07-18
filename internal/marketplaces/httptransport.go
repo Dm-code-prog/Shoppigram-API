@@ -145,6 +145,7 @@ func encodeResponse(ctx context.Context, w http.ResponseWriter, response interfa
 }
 
 func encodeError(_ context.Context, err error, w http.ResponseWriter) {
+
 	for _, e := range telegramusers.AuthenticationErrors {
 		if errors.Is(err, e) {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -171,11 +172,13 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 	case errors.Is(err, ErrorGetOrderNotPremited):
 		w.WriteHeader(http.StatusForbidden)
 		err = ErrorGetOrderNotPremited
+	default:
+		w.WriteHeader(http.StatusInternalServerError)
+		err = ErrorInternal
 	}
 
-	w.WriteHeader(http.StatusInternalServerError)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"error": ErrorInternal.Error(),
+		"error": err.Error(),
 	})
 }
