@@ -99,6 +99,13 @@ func MakeHandler(bs Service, authMw endpoint.Middleware) http.Handler {
 		opts...,
 	)
 
+	getOrders := kithttp.NewServer(
+		authMw(makeGetOrderEndpoint(bs)),
+		decodeGetOrderRequest,
+		encodeResponse,
+		opts...,
+	)
+
 	r := chi.NewRouter()
 	r.Get("/", getMarketplacesHandler.ServeHTTP)
 	r.Post("/", createMarketplaceHandler.ServeHTTP)
@@ -114,6 +121,8 @@ func MakeHandler(bs Service, authMw endpoint.Middleware) http.Handler {
 
 	r.Post("/publish-to-channel/{web_app_id}", publishMarketplaceBannerToChannelHandler.ServeHTTP)
 	r.Get("/telegram-channels", getTelegramChannels.ServeHTTP)
+
+	r.Get("/order/{order_id}", getOrders.ServeHTTP)
 	return r
 }
 

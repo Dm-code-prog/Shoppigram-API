@@ -174,6 +174,28 @@ type (
 	GetTelegramChannelsResponse struct {
 		Channels []TelegramChannel `json:"channels"`
 	}
+
+	// GetOrderRequest defines the request for the GetOrder endpoint
+	GetOrderRequest struct {
+		OrderId        uuid.UUID
+		ExternalUserId int64
+	}
+
+	// Product contains the data about product in order
+	Product struct {
+		ID              uuid.UUID `json:"id"`
+		Name            string    `json:"name"`
+		Categoty        string    `json:"category"`
+		Price           float64   `json:"price"`
+		PriceCurrency   string    `json:"pricecurrency"`
+		WebAppName      string    `json:"web_app_name"`
+		WebAppShortName string    `json:"web_appshort_name"`
+	}
+
+	// GetOrderResponce contains the data about all products in order
+	GetOrderResponce struct {
+		Products []Product `json:"products"`
+	}
 )
 
 type (
@@ -195,6 +217,8 @@ type (
 
 		CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error
 		GetTelegramChannels(ctx context.Context, ownerExternalID int64) (GetTelegramChannelsResponse, error)
+
+		GetOrder(ctx context.Context, orderID uuid.UUID, externalUserId int64) (GetOrderResponce, error)
 	}
 
 	// DOSpacesConfig holds the credentials for the S3 bucket
@@ -227,6 +251,8 @@ type (
 		GetTelegramChannels(ctx context.Context, ownerExternalID int64) (GetTelegramChannelsResponse, error)
 		CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error
 		PublishMarketplaceBannerToChannel(ctx context.Context, req PublishMarketplaceBannerToChannelRequest) error
+
+		GetOrder(ctx context.Context, req GetOrderRequest) (GetOrderResponce, error)
 	}
 
 	// DefaultService provides admin operations
@@ -570,6 +596,16 @@ func (s *DefaultService) PublishMarketplaceBannerToChannel(ctx context.Context, 
 	}
 
 	return nil
+}
+
+// GetOrder gets the products in order
+func (s *DefaultService) GetOrder(ctx context.Context, req GetOrderRequest) (GetOrderResponce, error) {
+	resp, err := s.repo.GetOrder(ctx, req.OrderId, req.ExternalUserId)
+	if err != nil {
+		return GetOrderResponce{}, errors.Wrap(err, "s.repo.GetOrder")
+	}
+
+	return resp, nil
 }
 
 func isMarketplaceShortNameValid(shortName string) bool {

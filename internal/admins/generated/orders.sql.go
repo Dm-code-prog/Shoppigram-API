@@ -19,15 +19,21 @@ select p.id,
        p.category,
        p.price,
        p.price_currency::text as price_currency,
-       wa.id          as web_app_id,
        wa.name        as web_app_name,
        wa.short_name  as web_app_short_name
 from orders o
 	 join order_products op on o.id = op.order_id
 	 join products p on op.product_id = p.id
-     join web_apps wa on p.web_app_id = wa.id
+     join web_apps wa on o.web_app_id = wa.id
 where o.id = $1
+	  and (o.external_user_id = $2
+	  or wa.owner_external_id = $2)
 `
+
+type GetOrderParams struct {
+	ID             uuid.UUID
+	ExternalUserID pgtype.Int4
+}
 
 type GetOrderRow struct {
 	ID              uuid.UUID
@@ -36,13 +42,12 @@ type GetOrderRow struct {
 	Category        pgtype.Text
 	Price           float64
 	PriceCurrency   string
-	WebAppID        uuid.UUID
 	WebAppName      string
 	WebAppShortName string
 }
 
-func (q *Queries) GetOrder(ctx context.Context, id uuid.UUID) ([]GetOrderRow, error) {
-	rows, err := q.db.Query(ctx, getOrder, id)
+func (q *Queries) GetOrder(ctx context.Context, arg GetOrderParams) ([]GetOrderRow, error) {
+	rows, err := q.db.Query(ctx, getOrder, arg.ID, arg.ExternalUserID)
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +62,6 @@ func (q *Queries) GetOrder(ctx context.Context, id uuid.UUID) ([]GetOrderRow, er
 			&i.Category,
 			&i.Price,
 			&i.PriceCurrency,
-			&i.WebAppID,
 			&i.WebAppName,
 			&i.WebAppShortName,
 		); err != nil {

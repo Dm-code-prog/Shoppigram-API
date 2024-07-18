@@ -169,3 +169,16 @@ func (s *ServiceWithObservability) PublishMarketplaceBannerToChannel(ctx context
 
 	return err
 }
+
+// GetOrder gets the products in order
+func (s *ServiceWithObservability) GetOrder(ctx context.Context, req GetOrderRequest) (GetOrderResponce, error) {
+	resp, err := s.service.GetOrder(ctx, req)
+	if err != nil {
+		s.log.
+			With(zap.String("order_id", req.OrderId.String())).
+			With(zap.Int64("external_user_id", req.ExternalUserId)).
+			Error("s.service.GetOrder", logging.SilentError(err))
+	}
+
+	return resp, nil
+}
