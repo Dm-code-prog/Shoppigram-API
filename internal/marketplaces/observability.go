@@ -52,7 +52,7 @@ func (s *ServiceWithObservability) InvalidateProductsCache(ctx context.Context, 
 }
 
 // GetOrder gets the products in order
-func (s *ServiceWithObservability) GetOrder(ctx context.Context, req GetOrderRequest) (GetOrderResponce, error) {
+func (s *ServiceWithObservability) GetOrder(ctx context.Context, req GetOrderRequest) (GetOrderResponse, error) {
 	resp, err := s.service.GetOrder(ctx, req)
 	if err != nil {
 		s.log.

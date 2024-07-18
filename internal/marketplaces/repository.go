@@ -122,20 +122,20 @@ func (pg *Pg) CreateOrder(ctx context.Context, req SaveOrderRequest) (SaveOrderR
 }
 
 // GetOrder gets a list of products in order
-func (p *Pg) GetOrder(ctx context.Context, orderId uuid.UUID, userId int64) (GetOrderResponce, error) {
+func (p *Pg) GetOrder(ctx context.Context, orderId uuid.UUID, userId int64) (GetOrderResponse, error) {
 	rows, err := p.gen.GetOrder(ctx, generated.GetOrderParams{
 		ID:             orderId,
 		ExternalUserID: pgtype.Int4{Int32: int32(userId), Valid: userId != 0},
 	})
 
 	if err != nil {
-		return GetOrderResponce{}, errors.Wrap(err, "p.gen.GetOrder")
+		return GetOrderResponse{}, errors.Wrap(err, "p.gen.GetOrder")
 	}
 
 	products := make([]Product, len(rows))
 
-	if len(products) == 0 {
-		return GetOrderResponce{}, nil
+	if len(rows) == 0 {
+		return GetOrderResponse{}, nil
 	}
 	WebAppName := rows[0].WebAppName
 	WebAppShortName := rows[0].WebAppShortName
@@ -151,5 +151,5 @@ func (p *Pg) GetOrder(ctx context.Context, orderId uuid.UUID, userId int64) (Get
 		}
 	}
 
-	return GetOrderResponce{Products: products, WebAppName: WebAppName, WebAppShortName: WebAppShortName}, nil
+	return GetOrderResponse{Products: products, WebAppName: WebAppName, WebAppShortName: WebAppShortName}, nil
 }

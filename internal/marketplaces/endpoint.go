@@ -76,15 +76,15 @@ func makeGetOrderEndpoint(s Service) endpoint.Endpoint {
 
 		request.ExternalUserId = usr.ExternalId
 
-		responce, err := s.GetOrder(ctx, request)
+		response, err := s.GetOrder(ctx, request)
 		if err != nil {
 			return nil, err
 		}
 
-		if len(responce.Products) == 0 {
-			return nil, ErrorGetOrderNotPremited
+		if len(response.Products) == 0 {
+			return GetOrderResponse{}, ErrorGetOrderNotPremited
 		}
 
-		return responce, nil
+		return response, nil
 	}
 }
