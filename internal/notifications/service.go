@@ -353,21 +353,34 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 				return errors.Wrap(err, "s.sendMessageToChat")
 			}
 		}
+
 		customerMsgTxt, err := notification.BuildMessageCustomer()
 
 		if err != nil {
 			return errors.Wrap(err, "a.BuildMessageCustomer")
 		}
-		err = s.sendMessageToChat(notification.ExternalUserID, customerMsgTxt)
+
+		msg := tgbotapi.NewMessage(notification.ExternalUserID, customerMsgTxt)
+		msg.ParseMode = tgbotapi.ModeMarkdownV2
+
+		tmaLink, err := TMALinkingScheme{
+			PageName: "/app/" + notification.WebAppID.String() + "/order/" + notification.ID.String(),
+			PageData: map[string]any{},
+		}.ToBase64String()
+
+		button := tgbotapi.NewInlineKeyboardButtonURL("Посмотреть заказ", "https://t.me/"+s.botName+"/app?startapp="+tmaLink)
 		if err != nil {
-			if strings.Contains(err.Error(), "chat not found") {
-				s.log.With(
-					zap.String("method", "bot.Send"),
-					zap.String("user_id", strconv.FormatInt(notification.ExternalUserID, 10)),
-				).Warn("chat not found")
-				continue
-			}
-			return errors.Wrap(err, "s.sendMessageToChat")
+			return errors.Wrap(err, "tgbotapi.NewInlineKeyboardButtonURL")
+		}
+
+		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+			tgbotapi.NewInlineKeyboardRow(
+				button,
+			))
+
+		_, err = s.bot.Send(msg)
+		if err != nil {
+			return errors.Wrap(err, "bot.Send to chat:"+strconv.FormatInt(notification.ExternalUserID, 10))
 		}
 	}
 
