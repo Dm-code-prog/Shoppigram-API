@@ -140,7 +140,10 @@ func (p *Pg) GetOrder(ctx context.Context, orderId uuid.UUID, userId int64) (Get
 	WebAppName := rows[0].WebAppName
 	WebAppShortName := rows[0].WebAppShortName
 
-	var totalPrice float64
+	var (
+		totalPrice float64
+		readableID int
+	)
 
 	for i, v := range rows {
 		products[i] = Product{
@@ -154,7 +157,13 @@ func (p *Pg) GetOrder(ctx context.Context, orderId uuid.UUID, userId int64) (Get
 		}
 
 		totalPrice += v.Price * float64(v.Quantity)
+		readableID = int(v.ReadableID.Int64)
 	}
 
-	return GetOrderResponse{Products: products, WebAppName: WebAppName, WebAppShortName: WebAppShortName, TotalPrice: totalPrice}, nil
+	return GetOrderResponse{
+		Products:        products,
+		WebAppName:      WebAppName,
+		WebAppShortName: WebAppShortName,
+		TotalPrice:      totalPrice,
+		ReadableOrderID: readableID}, nil
 }

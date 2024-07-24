@@ -91,6 +91,7 @@ type (
 		TotalPrice      float64   `json:"total_price"`
 		WebAppName      string    `json:"web_app_name"`
 		WebAppShortName string    `json:"web_app_short_name"`
+		ReadableOrderID int       `json:"readable_order_id"`
 	}
 )
 

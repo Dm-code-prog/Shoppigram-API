@@ -19,7 +19,8 @@ select p.id,
        p.price,
        p.price_currency::text as price_currency,
        wa.name                as web_app_name,
-       wa.short_name          as web_app_short_name
+       wa.short_name          as web_app_short_name,
+       o.readable_id
 from orders o
          join order_products op on o.id = op.order_id
          join products p on op.product_id = p.id
