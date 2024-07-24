@@ -92,6 +92,7 @@ type (
 		WebAppName      string    `json:"web_app_name"`
 		WebAppShortName string    `json:"web_app_short_name"`
 		ReadableOrderID int       `json:"readable_order_id"`
+		SellerUsername  string    `json:"seller_username"`
 	}
 )
 

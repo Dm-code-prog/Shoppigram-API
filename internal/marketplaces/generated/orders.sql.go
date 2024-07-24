@@ -46,11 +46,13 @@ select p.id,
        p.price_currency::text as price_currency,
        wa.name                as web_app_name,
        wa.short_name          as web_app_short_name,
-       o.readable_id
+       o.readable_id,
+       tu.username            as seller_username
 from orders o
          join order_products op on o.id = op.order_id
          join products p on op.product_id = p.id
          join web_apps wa on o.web_app_id = wa.id
+         join telegram_users tu on wa.owner_external_id = tu.external_id
 where o.id = $1
   and (o.external_user_id = $2
     or wa.owner_external_id = $2)
@@ -72,6 +74,7 @@ type GetOrderRow struct {
 	WebAppName      string
 	WebAppShortName string
 	ReadableID      pgtype.Int8
+	SellerUsername  pgtype.Text
 }
 
 func (q *Queries) GetOrder(ctx context.Context, arg GetOrderParams) ([]GetOrderRow, error) {
@@ -94,6 +97,7 @@ func (q *Queries) GetOrder(ctx context.Context, arg GetOrderParams) ([]GetOrderR
 			&i.WebAppName,
 			&i.WebAppShortName,
 			&i.ReadableID,
+			&i.SellerUsername,
 		); err != nil {
 			return nil, err
 		}
