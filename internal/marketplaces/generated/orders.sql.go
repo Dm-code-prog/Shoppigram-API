@@ -39,19 +39,20 @@ func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (Creat
 const getOrder = `-- name: GetOrder :many
 select p.id,
        p.name,
+       op.quantity,
        p.description,
        p.category,
        p.price,
        p.price_currency::text as price_currency,
-       wa.name        as web_app_name,
-       wa.short_name  as web_app_short_name
+       wa.name                as web_app_name,
+       wa.short_name          as web_app_short_name
 from orders o
-	 join order_products op on o.id = op.order_id
-	 join products p on op.product_id = p.id
-     join web_apps wa on o.web_app_id = wa.id
+         join order_products op on o.id = op.order_id
+         join products p on op.product_id = p.id
+         join web_apps wa on o.web_app_id = wa.id
 where o.id = $1
-	  and (o.external_user_id = $2
-	  or wa.owner_external_id = $2)
+  and (o.external_user_id = $2
+    or wa.owner_external_id = $2)
 `
 
 type GetOrderParams struct {
@@ -62,6 +63,7 @@ type GetOrderParams struct {
 type GetOrderRow struct {
 	ID              uuid.UUID
 	Name            string
+	Quantity        int32
 	Description     pgtype.Text
 	Category        pgtype.Text
 	Price           float64
@@ -82,6 +84,7 @@ func (q *Queries) GetOrder(ctx context.Context, arg GetOrderParams) ([]GetOrderR
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
+			&i.Quantity,
 			&i.Description,
 			&i.Category,
 			&i.Price,

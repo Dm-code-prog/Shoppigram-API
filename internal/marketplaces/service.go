@@ -18,6 +18,7 @@ type (
 		ID            uuid.UUID `json:"id"`
 		Name          string    `json:"name"`
 		Description   string    `json:"description,omitempty"`
+		Quantity      int32     `json:"quantity,omitempty"`
 		Category      string    `json:"category,omitempty"`
 		Price         float64   `json:"price"`
 		PriceCurrency string    `json:"price_currency"`
@@ -87,6 +88,7 @@ type (
 	// GetOrderResponse contains the data about all products in order
 	GetOrderResponse struct {
 		Products        []Product `json:"products"`
+		TotalPrice      float64   `json:"total_price"`
 		WebAppName      string    `json:"web_app_name"`
 		WebAppShortName string    `json:"web_app_short_name"`
 	}

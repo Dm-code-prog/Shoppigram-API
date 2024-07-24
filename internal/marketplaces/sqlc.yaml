@@ -4,7 +4,6 @@ sql:
     queries:
       - ./queries/orders.sql
       - ./queries/products.sql
-      - ./queries/orders.sql
     schema:
       - ../shared_sql/20240411-aggregate.sql
     gen:
