@@ -380,7 +380,14 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 
 		_, err = s.bot.Send(msg)
 		if err != nil {
-			return errors.Wrap(err, "bot.Send to chat:"+strconv.FormatInt(notification.ExternalUserID, 10))
+			if strings.Contains(err.Error(), "chat not found") {
+				s.log.With(
+					zap.String("method", "bot.Send"),
+					zap.String("user_id", strconv.FormatInt(notification.ExternalUserID, 10)),
+				).Warn("chat not found")
+				continue
+			}
+			return errors.Wrap(err, "s.sendMessageToChat")
 		}
 	}
 
