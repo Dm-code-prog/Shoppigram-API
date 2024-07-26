@@ -33,11 +33,19 @@ type (
 		ChannelName       string
 	}
 
+	// NotifyGreetingsRequest contains the initial greeting message
+	// of the bot
+	NotifyGreetingsRequest struct {
+		UserExternalID  int64
+		GreetingMessage string
+	}
+
 	// Notifier is the service for notifications
 	// The interface requires a method for notifying a user about a successful
 	// channel integration with Shoppigram
 	Notifier interface {
 		NotifyChannelIntegrationSuccess(ctx context.Context, request NotifyChannelIntegrationSuccessRequest) error
+		NotifyGreetings(ctx context.Context, request NotifyGreetingsRequest) error
 	}
 
 	// Service is the service for handling Telegram webhooks
@@ -71,6 +79,8 @@ func (s *Service) HandleTelegramWebhook(ctx context.Context, update tgbotapi.Upd
 	switch {
 	case s.isUpdateTypeShoppigramBotAddedToChannelAsAdmin(update):
 		return s.handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx, update)
+	case s.isUpdateTypeStartCommand(update):
+		return s.handleUpdateTypeStartCommand(ctx, update)
 	default:
 		b, err := json.MarshalIndent(update, "", "  ")
 		if err != nil {
@@ -114,27 +124,29 @@ func (s *Service) handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx context
 	return nil
 }
 
-func (s *Service) isUpdateTypeShoppigramBotAddedToChannelAsAdmin(update tgbotapi.Update) bool {
-	if update.MyChatMember == nil {
-		return false
-	}
-	event := update.MyChatMember
+func (s *Service) handleUpdateTypeStartCommand(ctx context.Context, update tgbotapi.Update) error {
+	// Send a button with the link to the mini app
 
-	if event.Chat.Type != "channel" {
-		return false
+	var greetingMessage = `
+Приобретайте товары прямо в Telegram - легко и безопасно!
+
+Новости:
+RU - @ShoppigramRU
+EN - @ShoppigramEN
+
+Поддержка:
+
+@ShoppigramSupport
+`
+
+	// Send the message to the user
+	err := s.notifier.NotifyGreetings(ctx, NotifyGreetingsRequest{
+		UserExternalID:  update.Message.From.ID,
+		GreetingMessage: tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, greetingMessage),
+	})
+	if err != nil {
+		return errors.Wrap(err, "s.notifier.NotifyGreetings")
 	}
 
-	if event.NewChatMember.Status != "administrator" {
-		return false
-	}
-
-	if event.NewChatMember.User.ID != s.shoppigramBotID {
-		return false
-	}
-
-	if !event.NewChatMember.CanPostMessages {
-		return false
-	}
-
-	return true
+	return nil
 }

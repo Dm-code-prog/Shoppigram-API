@@ -63,6 +63,12 @@ type (
 		MessageID int64
 	}
 
+	// NotifyGreetingsRequest contains the initial greeting message
+	NotifyGreetingsRequest struct {
+		UserExternalID  int64
+		GreetingMessage string
+	}
+
 	// Repository provides access to the user storage
 	Repository interface {
 		GetAdminsNotificationList(ctx context.Context, webAppID uuid.UUID) ([]int64, error)
@@ -205,6 +211,7 @@ func (s *Service) RunNewMarketplaceNotifier() error {
 		case <-ticker.C:
 			err := s.runNewMarketplaceNotifierOnce()
 			if err != nil {
+				s.log.Error("runNewMarketplaceNotifierOnce failed", logging.SilentError(err))
 				s.log.Error("runNewMarketplaceNotifierOnce failed", logging.SilentError(err))
 				continue
 			}
@@ -495,7 +502,7 @@ func (s *Service) AddUserToNewOrderNotifications(ctx context.Context, req AddUse
 
 // NotifyChannelIntegrationSuccess notifies a user about a successful
 // channel integration with Shoppigram
-func (s *Service) NotifyChannelIntegrationSuccess(ctx context.Context, request NotifyChannelIntegrationSuccessRequest) error {
+func (s *Service) NotifyChannelIntegrationSuccess(_ context.Context, request NotifyChannelIntegrationSuccessRequest) error {
 	message := ChannelIntegrationSuccessNotification(request)
 	msgTxt, err := message.BuildMessage()
 	if err != nil {
@@ -505,6 +512,18 @@ func (s *Service) NotifyChannelIntegrationSuccess(ctx context.Context, request N
 	msg := tgbotapi.NewMessage(request.UserExternalID, msgTxt)
 	msg.ParseMode = tgbotapi.ModeMarkdownV2
 	_, err = s.bot.Send(msg)
+	if err != nil {
+		return errors.Wrap(err, "bot.Send")
+	}
+
+	return nil
+}
+
+// NotifyGreetings sends a greeting message to a user
+func (s *Service) NotifyGreetings(_ context.Context, request NotifyGreetingsRequest) error {
+	msg := tgbotapi.NewMessage(request.UserExternalID, request.GreetingMessage)
+	msg.ParseMode = tgbotapi.ModeMarkdownV2
+	_, err := s.bot.Send(msg)
 	if err != nil {
 		return errors.Wrap(err, "bot.Send")
 	}
