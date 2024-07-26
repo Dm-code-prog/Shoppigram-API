@@ -141,10 +141,11 @@ func (s *Service) handleUpdateTypeStartCommand(ctx context.Context, update tgbot
 [Магазин кроссовок](https://t.me/shoppigrambot/sneakerboss) 
   
 [Кофейня](https://t.me/ShoppigramBot/mycoffe)  
-` +
-		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, ` 
+
 🛠 [Связаться с поддержкой](https://t.me/ShoppigramSupport)  
 🌟 [Открыть бота](https://t.me/shoppigramBot/app)  
+
+` + tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, `
 Спасибо, что выбрали Shoppigram! Давайте вместе сделаем ваш бизнес ещё успешнее.
 `)
 
