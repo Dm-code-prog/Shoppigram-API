@@ -12,26 +12,28 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createOrder = `-- name: CreateOrder :one
-insert into orders (web_app_id, external_user_id)
+const createP2POrder = `-- name: CreateP2POrder :one
+insert into orders (web_app_id, external_user_id, type, state)
 values ($1,
-        $2)
+        $2,
+        'p2p',
+        'approved')
 returning id,readable_id
 `
 
-type CreateOrderParams struct {
+type CreateP2POrderParams struct {
 	WebAppID       pgtype.UUID
 	ExternalUserID pgtype.Int4
 }
 
-type CreateOrderRow struct {
+type CreateP2POrderRow struct {
 	ID         uuid.UUID
 	ReadableID pgtype.Int8
 }
 
-func (q *Queries) CreateOrder(ctx context.Context, arg CreateOrderParams) (CreateOrderRow, error) {
-	row := q.db.QueryRow(ctx, createOrder, arg.WebAppID, arg.ExternalUserID)
-	var i CreateOrderRow
+func (q *Queries) CreateP2POrder(ctx context.Context, arg CreateP2POrderParams) (CreateP2POrderRow, error) {
+	row := q.db.QueryRow(ctx, createP2POrder, arg.WebAppID, arg.ExternalUserID)
+	var i CreateP2POrderRow
 	err := row.Scan(&i.ID, &i.ReadableID)
 	return i, err
 }

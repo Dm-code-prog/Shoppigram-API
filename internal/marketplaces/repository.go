@@ -73,7 +73,7 @@ func (pg *Pg) CreateOrder(ctx context.Context, req SaveOrderRequest) (SaveOrderR
 	defer tx.Rollback(ctx)
 	qtx := pg.gen.WithTx(tx)
 
-	res, err := qtx.CreateOrder(ctx, generated.CreateOrderParams{
+	res, err := qtx.CreateP2POrder(ctx, generated.CreateP2POrderParams{
 		WebAppID: pgtype.UUID{
 			Bytes: req.WebAppID,
 			Valid: true,
