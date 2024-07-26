@@ -52,7 +52,6 @@ func makeWebhookAuthMiddleware(secretToken string) endpoint.Middleware {
 			return next(ctx, request)
 		}
 	}
-
 }
 
 func encodeError(_ context.Context, err error, w http.ResponseWriter) {
@@ -72,4 +71,21 @@ func decodeTelegramWebhookRequest(_ context.Context, r *http.Request) (any, erro
 	}
 
 	return request, nil
+}
+
+func MakeCloudPaymentsHandler(s *CloudPaymentsService, log *zap.Logger, login string, password string) http.Handler {
+	opts := []kithttp.ServerOption{
+		kithttp.ServerErrorHandler(serverErrorLogger{logger: log}),
+	}
+
+	ep := makeCloudPaymentEndpoint(s)
+	handler := kithttp.NewServer(ep, decodeCloudPaymentsRequest, encodeResponse, opts...)
+
+	r := chi.NewRouter()
+	r.Post("/check/", handler.ServeHTTP)
+	return r
+}
+
+func decodeCloudPaymentsRequest(_ context.Context, r *http.Request) (any, error) {
+	return r, nil
 }

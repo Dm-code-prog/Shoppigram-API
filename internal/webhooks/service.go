@@ -3,7 +3,11 @@ package webhooks
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
@@ -31,6 +35,19 @@ type (
 		ChannelExternalID int64
 		ChannelTitle      string
 		ChannelName       string
+	}
+
+	CloudPaymentsCheckRequest struct {
+		InvoiceID       string
+		Amount          float64
+		Currency        string
+		PaymentAmount   string
+		PaymentCurrency string
+		DateTime        string
+	}
+
+	CloudPaymentsCheckResponce struct {
+		Code int `json:"code"`
 	}
 
 	// Notifier is the service for notifications
@@ -137,4 +154,100 @@ func (s *Service) isUpdateTypeShoppigramBotAddedToChannelAsAdmin(update tgbotapi
 	}
 
 	return true
+}
+
+type (
+	Repository interface {
+		GetOrder(ctx context.Context, invoiceId string) (Order, error)
+	}
+
+	Order struct {
+		ID        uuid.UUID
+		UpdatedAt pgtype.Timestamp
+		Sum       int64
+	}
+
+	CloudPaymentsService struct {
+		repo Repository
+	}
+)
+
+func NewCloudPaymentsService(repo Repository) *CloudPaymentsService {
+	return &CloudPaymentsService{
+		repo: repo,
+	}
+}
+
+func (s *CloudPaymentsService) HandleCloudPaymentsWebHook(ctx context.Context, request http.Request) error {
+	// Pass raw data here
+	// Check what type of request is this
+	// Pass data to handler
+	// Parse data into structure in handler
+
+	checkRequest, err := parseCloudPaymentsCheckRequest(request)
+	if err == nil {
+		InvoiceID := checkRequest.InvoiceID
+		order, err := s.repo.GetOrder(ctx, InvoiceID) // Change here!!!
+		if err != nil {
+			return errors.Wrap(err, "s.repo.GetOrder()")
+		}
+		return handleCloudPaymentsCheckWebHook(ctx, checkRequest, order)
+	}
+
+	return errors.New("No handler for this request")
+}
+
+func handleCloudPaymentsCheckWebHook(ctx context.Context, check CloudPaymentsCheckRequest, orderInfo Order) error {
+	if check.Amount != float64(orderInfo.Sum) {
+		return errors.New("Sum is incorrect") // All checks here
+	}
+	return nil
+}
+
+func parseCloudPaymentsCheckRequest(request http.Request) (CloudPaymentsCheckRequest, error) {
+	p := make([]byte, 1024)
+	_, err := request.Body.Read(p)
+	if err != nil {
+		return CloudPaymentsCheckRequest{}, errors.Wrap(err, "")
+	}
+	var checkRequest map[string]interface{}
+
+	err = json.Unmarshal(p, &checkRequest)
+	if err != nil {
+		// error
+	}
+
+	InvoiceId, ok := checkRequest["InvoiceId"].(string)
+	if !ok {
+		return CloudPaymentsCheckRequest{}, errors.New("Not check request")
+	}
+	Amount, ok := checkRequest["Amount"].(float64)
+	if !ok {
+		return CloudPaymentsCheckRequest{}, errors.New("Not check request")
+	}
+	Currency, ok := checkRequest["Currency"].(string)
+	if !ok {
+		return CloudPaymentsCheckRequest{}, errors.New("Not check request")
+	}
+	PaymentAmount, ok := checkRequest["PaymentAmount"].(string)
+	if !ok {
+		return CloudPaymentsCheckRequest{}, errors.New("Not check request")
+	}
+	PaymentCurrency, ok := checkRequest["PaymentCurrency"].(string)
+	if !ok {
+		return CloudPaymentsCheckRequest{}, errors.New("Not check request")
+	}
+	DateTime, ok := checkRequest["DateTime"].(string)
+	if !ok {
+		return CloudPaymentsCheckRequest{}, errors.New("Not check request")
+	}
+
+	return CloudPaymentsCheckRequest{
+		InvoiceID:       InvoiceId,
+		Amount:          Amount,
+		Currency:        Currency,
+		PaymentAmount:   PaymentAmount,
+		PaymentCurrency: PaymentCurrency,
+		DateTime:        DateTime,
+	}, nil
 }
