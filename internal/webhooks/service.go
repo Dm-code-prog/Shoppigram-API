@@ -142,7 +142,7 @@ EN - @ShoppigramEN
 	// Send the message to the user
 	err := s.notifier.NotifyGreetings(ctx, NotifyGreetingsRequest{
 		UserExternalID:  update.Message.From.ID,
-		GreetingMessage: greetingMessage,
+		GreetingMessage: tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, greetingMessage),
 	})
 	if err != nil {
 		return errors.Wrap(err, "s.notifier.NotifyGreetings")

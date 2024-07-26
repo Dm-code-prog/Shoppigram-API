@@ -2,6 +2,7 @@ package notifications
 
 import (
 	"fmt"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"os"
@@ -61,7 +62,7 @@ func (o *NewOrderNotification) BuildMessageAdmin() (string, error) {
 		subtotal += p.Price * float64(p.Quantity)
 		currency = p.PriceCurrency
 		productList.WriteString(fmt.Sprintf(`\- %dx %s по цене %s %s
-`, p.Quantity, escapeSpecialSymbols(p.Name), escapeSpecialSymbols(formatFloat(p.Price)), formatCurrency(p.PriceCurrency)))
+`, p.Quantity, tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, p.Name), tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, formatFloat(p.Price)), formatCurrency(p.PriceCurrency)))
 	}
 
 	newOrderMessageTemplate, err := templates.ReadFile("templates/new_order_message.admin.md")
@@ -70,12 +71,12 @@ func (o *NewOrderNotification) BuildMessageAdmin() (string, error) {
 	}
 
 	return fmt.Sprintf(
-		escapeSpecialSymbols(string(newOrderMessageTemplate)),
-		escapeSpecialSymbols(o.WebAppName),
-		escapeSpecialSymbols(o.UserNickname),
+		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, string(newOrderMessageTemplate)),
+		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, o.WebAppName),
+		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, o.UserNickname),
 		o.ReadableOrderID,
 		formatRussianTime(o.CreatedAt),
-		escapeSpecialSymbols(formatFloat(subtotal))+" "+formatCurrency(currency),
+		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, formatFloat(subtotal))+" "+formatCurrency(currency),
 		strings.TrimRight(productList.String(), "; "),
 	), nil
 }
@@ -89,7 +90,7 @@ func (o *NewOrderNotification) BuildMessageCustomer() (string, error) {
 		subtotal += p.Price * float64(p.Quantity)
 		currency = p.PriceCurrency
 		productList.WriteString(fmt.Sprintf(`\- %dx %s по цене %s %s
-`, p.Quantity, escapeSpecialSymbols(p.Name), escapeSpecialSymbols(formatFloat(p.Price)), formatCurrency(p.PriceCurrency)))
+`, p.Quantity, tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, p.Name), tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, formatFloat(p.Price)), formatCurrency(p.PriceCurrency)))
 	}
 
 	newOrderMessageTemplate, err := templates.ReadFile("templates/new_order_message.customer.md")
@@ -98,9 +99,9 @@ func (o *NewOrderNotification) BuildMessageCustomer() (string, error) {
 	}
 
 	return fmt.Sprintf(
-		escapeSpecialSymbols(string(newOrderMessageTemplate)),
-		escapeSpecialSymbols(o.WebAppName),
-		escapeSpecialSymbols(formatFloat(subtotal))+" "+formatCurrency(currency),
+		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, string(newOrderMessageTemplate)),
+		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, o.WebAppName),
+		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, formatFloat(subtotal))+" "+formatCurrency(currency),
 		strings.TrimRight(productList.String(), "; "),
 	), nil
 }
@@ -113,11 +114,11 @@ func (m *NewMarketplaceNotification) BuildMessageShoppigram() (string, error) {
 	}
 
 	return fmt.Sprintf(
-		escapeSpecialSymbols(string(newMarketplaceMessageTemplate)),
-		escapeSpecialSymbols(m.OwnerUsername),
-		escapeSpecialSymbols(m.Name),
-		escapeSpecialSymbols(m.ShortName),
-		escapeSpecialSymbols(marketplaceURL+m.ID.String()),
+		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, string(newMarketplaceMessageTemplate)),
+		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, m.OwnerUsername),
+		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, m.Name),
+		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, m.ShortName),
+		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, marketplaceURL+m.ID.String()),
 	), nil
 }
 
@@ -129,8 +130,8 @@ func (m *NewMarketplaceNotification) BuildMessageAdmin() (string, error) {
 	}
 
 	return fmt.Sprintf(
-		escapeSpecialSymbols(string(marketplaceVerificationMessageTemplate)),
-		escapeSpecialSymbols(m.Name),
+		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, string(marketplaceVerificationMessageTemplate)),
+		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, m.Name),
 	), nil
 }
 
@@ -142,9 +143,9 @@ func (m *VerifiedMarketplaceNotification) BuildMessage() (string, error) {
 	}
 
 	return fmt.Sprintf(
-		escapeSpecialSymbols(string(verifiedMarketplaceMessageTemplate)),
-		escapeSpecialSymbols(m.Name),
-		escapeSpecialSymbols("https://t.me/"+botName+"/"+m.ShortName),
+		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, string(verifiedMarketplaceMessageTemplate)),
+		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, m.Name),
+		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, "https://t.me/"+botName+"/"+m.ShortName),
 	), nil
 }
 
@@ -164,8 +165,8 @@ func (m *ChannelIntegrationSuccessNotification) BuildMessage() (string, error) {
 	}
 
 	return fmt.Sprintf(
-		escapeSpecialSymbols(string(channelIntegrationSuccessMessageTemplate)),
-		escapeSpecialSymbols(m.ChannelTitle),
-		escapeSpecialSymbols("https://t.me/"+botName+"/"+"app?startapp="+tmaLink),
+		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, string(channelIntegrationSuccessMessageTemplate)),
+		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, m.ChannelTitle),
+		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, "https://t.me/"+botName+"/"+"app?startapp="+tmaLink),
 	), nil
 }
