@@ -5,7 +5,7 @@ sql:
       - ./queries/orders.sql
       - ./queries/products.sql
     schema:
-      - ../shared_sql/20240411-aggregate.sql
+      - ../shared_sql/2024-04-11-aggregate.sql
     gen:
       go:
         package: generated
