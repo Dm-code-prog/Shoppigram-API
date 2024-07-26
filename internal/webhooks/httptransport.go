@@ -3,6 +3,8 @@ package webhooks
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-kit/kit/endpoint"
 	kithttp "github.com/go-kit/kit/transport/http"
@@ -10,7 +12,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/shoppigram-com/marketplace-api/internal/logging"
 	"go.uber.org/zap"
-	"net/http"
 )
 
 type serverErrorLogger struct {
@@ -89,9 +90,9 @@ func decodeTelegramWebhookRequest(_ context.Context, r *http.Request) (any, erro
 }
 
 func decodeCloudPaymentsRequest(_ context.Context, r *http.Request) (any, error) {
-	rBody, err := r.GetBody()
-	if err != nil {
-		return nil, errors.Wrap(err, "r.GetBody")
+	rBody := r.Body
+	if rBody == nil {
+		return nil, errors.New("Can't get request body")
 	}
 	return rBody, nil
 }

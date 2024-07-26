@@ -42,8 +42,11 @@ func makeCloudPaymentEndpoint(s *CloudPaymentsService) endpoint.Endpoint {
 			return nil, errors.New("Flailed to cast request to io.ReadCloser")
 		}
 		resp, err := s.HandleCloudPaymentsWebHook(ctx, data)
-		if err != nil && resp != nil {
-			return resp, errors.Wrap(err, "Failed to handle CloudPayments webhook")
+		if resp != nil {
+			if err != nil {
+				return resp, errors.Wrap(err, "Failed to handle CloudPayments webhook")
+			}
+			return resp, nil
 		}
 
 		return nil, errors.New("Can't handle CloudPayment request Unknown request")

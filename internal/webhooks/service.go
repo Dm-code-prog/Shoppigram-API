@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"net/http"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
@@ -208,53 +207,5 @@ func handleCloudPaymentsCheckWebHook(_ context.Context, check CloudPaymentsCheck
 	}
 	return CloudPaymentsCheckResponce{
 		Code: CloudPaymentsCheckResponceCode_success,
-	}, nil
-}
-
-func parseCloudPaymentsCheckRequest(request http.Request) (CloudPaymentsCheckRequest, error) {
-	p := make([]byte, 1024)
-	_, err := request.Body.Read(p)
-	if err != nil {
-		return CloudPaymentsCheckRequest{}, errors.Wrap(err, "")
-	}
-	var checkRequest map[string]interface{}
-
-	err = json.Unmarshal(p, &checkRequest)
-	if err != nil {
-		// error
-	}
-
-	InvoiceId, ok := checkRequest["InvoiceId"].(string)
-	if !ok {
-		return CloudPaymentsCheckRequest{}, errors.New("Not check request")
-	}
-	Amount, ok := checkRequest["Amount"].(float64)
-	if !ok {
-		return CloudPaymentsCheckRequest{}, errors.New("Not check request")
-	}
-	Currency, ok := checkRequest["Currency"].(string)
-	if !ok {
-		return CloudPaymentsCheckRequest{}, errors.New("Not check request")
-	}
-	PaymentAmount, ok := checkRequest["PaymentAmount"].(string)
-	if !ok {
-		return CloudPaymentsCheckRequest{}, errors.New("Not check request")
-	}
-	PaymentCurrency, ok := checkRequest["PaymentCurrency"].(string)
-	if !ok {
-		return CloudPaymentsCheckRequest{}, errors.New("Not check request")
-	}
-	DateTime, ok := checkRequest["DateTime"].(string)
-	if !ok {
-		return CloudPaymentsCheckRequest{}, errors.New("Not check request")
-	}
-
-	return CloudPaymentsCheckRequest{
-		InvoiceID:       InvoiceId,
-		Amount:          Amount,
-		Currency:        Currency,
-		PaymentAmount:   PaymentAmount,
-		PaymentCurrency: PaymentCurrency,
-		DateTime:        DateTime,
 	}, nil
 }
