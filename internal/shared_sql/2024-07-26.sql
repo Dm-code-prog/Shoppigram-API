@@ -10,7 +10,7 @@ create type order_type as enum ('p2p', 'online');
   It the order type is p2p, it instantly goes to the 'confirmed' state.
   If the order type is `online`, it goes to the 'confirmed' state after the user pays for it.
  */
-create type order_state as enum ('created', 'confirmed');
+create type order_state as enum ('created', 'confirmed', 'done', 'rejected');
 
 alter table orders add column type order_type default 'p2p'::order_type not null;
 
