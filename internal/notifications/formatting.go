@@ -52,15 +52,3 @@ func formatRussianTime(t time.Time) string {
 	t = t.In(loc)
 	return strings.ReplaceAll(t.Format("02.01.2006 15:04:05"), ".", "\\.")
 }
-
-var specialSymbols = []string{"_", "#", "-", ".", "!", "<", ">", "|"}
-
-func escapeSpecialSymbols(s string) string {
-	for _, sym := range specialSymbols {
-		if strings.Contains(s, sym) {
-			s = strings.ReplaceAll(s, sym, "\\"+sym)
-		}
-	}
-
-	return s
-}
