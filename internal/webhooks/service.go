@@ -38,6 +38,7 @@ type (
 		ChannelName       string
 	}
 
+	// CloudPaymentsCheckResponce represents needed fields from check request from CloudPayments
 	CloudPaymentsCheckRequest struct {
 		InvoiceID       string  `json:"InvoiceID"`
 		Amount          float64 `json:"Amount"`
@@ -47,6 +48,7 @@ type (
 		DateTime        string  `json:"DateTime"`
 	}
 
+	// CloudPaymentsCheckResponce represents check response for CloudPayments
 	CloudPaymentsCheckResponce struct {
 		Code int8 `json:"code"`
 	}
@@ -58,12 +60,30 @@ type (
 		NotifyChannelIntegrationSuccess(ctx context.Context, request NotifyChannelIntegrationSuccessRequest) error
 	}
 
+	// Order represents order record in datapase
+	Order struct {
+		ID        uuid.UUID
+		UpdatedAt pgtype.Timestamp
+		Sum       int64
+	}
+
+	// Repository provides access to the webhooks storage
+	Repository interface {
+		GetOrder(ctx context.Context, id string) (Order, error)
+	}
+
 	// Service is the service for handling Telegram webhooks
 	Service struct {
 		channelStorage  ChannelStorage
 		notifier        Notifier
 		log             *zap.Logger
 		shoppigramBotID int64
+	}
+
+	// CloudPaymentsService is the service for handling CloudPayments webhooks
+	CloudPaymentsService struct {
+		repo Repository
+		log  *zap.Logger
 	}
 )
 
@@ -101,6 +121,28 @@ func (s *Service) HandleTelegramWebhook(ctx context.Context, update tgbotapi.Upd
 	}
 
 	return nil
+}
+
+func NewCloudPaymentsService(repo Repository, log *zap.Logger) *CloudPaymentsService {
+	return &CloudPaymentsService{
+		repo: repo,
+		log:  log,
+	}
+}
+
+func (s *CloudPaymentsService) HandleCloudPaymentsWebHook(ctx context.Context, data io.ReadCloser) (resp interface{}, err error) {
+	var checkRequest CloudPaymentsCheckRequest
+	err = json.NewDecoder(data).Decode(&checkRequest)
+	if err == nil {
+		InvoiceID := checkRequest.InvoiceID
+		order, err := s.repo.GetOrder(ctx, InvoiceID)
+		if err != nil {
+			return CloudPaymentsCheckResponceCode_wrongInvoiceID, errors.Wrap(err, "s.repo.GetOrder()")
+		}
+		return handleCloudPaymentsCheckWebHook(ctx, checkRequest, order)
+	}
+
+	return nil, errors.New("No handler for this request")
 }
 
 func (s *Service) handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx context.Context, update tgbotapi.Update) error {
@@ -155,43 +197,6 @@ func (s *Service) isUpdateTypeShoppigramBotAddedToChannelAsAdmin(update tgbotapi
 	}
 
 	return true
-}
-
-type (
-	Repository interface {
-		GetOrder(ctx context.Context, id string) (Order, error)
-	}
-
-	Order struct {
-		ID        uuid.UUID
-		UpdatedAt pgtype.Timestamp
-		Sum       int64
-	}
-
-	CloudPaymentsService struct {
-		repo Repository
-	}
-)
-
-func NewCloudPaymentsService(repo Repository) *CloudPaymentsService {
-	return &CloudPaymentsService{
-		repo: repo,
-	}
-}
-
-func (s *CloudPaymentsService) HandleCloudPaymentsWebHook(ctx context.Context, data io.ReadCloser) (resp interface{}, err error) {
-	var checkRequest CloudPaymentsCheckRequest
-	err = json.NewDecoder(data).Decode(&checkRequest)
-	if err == nil {
-		InvoiceID := checkRequest.InvoiceID
-		order, err := s.repo.GetOrder(ctx, InvoiceID)
-		if err != nil {
-			return CloudPaymentsCheckResponceCode_wrongInvoiceID, errors.Wrap(err, "s.repo.GetOrder()")
-		}
-		return handleCloudPaymentsCheckWebHook(ctx, checkRequest, order)
-	}
-
-	return nil, errors.New("No handler for this request")
 }
 
 func handleCloudPaymentsCheckWebHook(_ context.Context, check CloudPaymentsCheckRequest, orderInfo Order) (resp interface{}, err error) {

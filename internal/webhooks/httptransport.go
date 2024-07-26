@@ -53,7 +53,7 @@ func MakeCloudPaymentsHandler(s *CloudPaymentsService, log *zap.Logger, login st
 	handler := kithttp.NewServer(ep, decodeCloudPaymentsRequest, encodeResponse, opts...)
 
 	r := chi.NewRouter()
-	r.Post("/cloud-payments/", handler.ServeHTTP)
+	r.Post("/", handler.ServeHTTP)
 	return r
 }
 

@@ -178,6 +178,18 @@ func main() {
 		log.With(zap.String("service", "webhooks_server")),
 		config.TelegramWebhooks.SecretToken)
 
+	webhooksRepo := webhooks.NewPg(db)
+	cloudPaymentsWebhookService := webhooks.NewCloudPaymentsService(
+		webhooksRepo,
+		log.With(zap.String("service", "webhooks_server")),
+	)
+	cloudPaymentsWebhookHandler := webhooks.MakeCloudPaymentsHandler(
+		cloudPaymentsWebhookService,
+		log.With(zap.String("service", "webhooks_server")),
+		"nouse",
+		"nouse",
+	)
+
 	////////////////////////////////////// RUN NOTIFICATION JOBS //////////////////////////////////////
 	if config.NewOrderNotifications.IsEnabled {
 		g.Add(notificationsService.RunNewOrderNotifier, func(err error) {
@@ -209,6 +221,7 @@ func main() {
 	r.Mount("/api/v1/public/orders", ordersHandler)
 	r.Mount("/api/v1/private/marketplaces", adminsHandler)
 	r.Mount("/api/v1/telegram/webhooks", webhooksHandler)
+	r.Mount("/api/v1/telegram/cloud-payment-webhooks", cloudPaymentsWebhookHandler)
 
 	g.Add(func() error {
 		log.Info("starting HTTP server", zap.String("port", config.HTTP.Port))
