@@ -127,7 +127,7 @@ func (s *Service) handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx context
 func (s *Service) handleUpdateTypeStartCommand(ctx context.Context, update tgbotapi.Update) error {
 	// Send a button with the link to the mini app
 
-	var greetingMessage = `
+	var greetingMessage = tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, `
 Добро пожаловать в Shoppigram!  
   
 С нами вы можете создать свой интернет-магазин в Telegram всего за несколько кликов. Никаких сложностей и технических навыков – всё максимально просто и интуитивно.  
@@ -136,24 +136,22 @@ func (s *Service) handleUpdateTypeStartCommand(ctx context.Context, update tgbot
 - Создать витрину товаров.  
 - Управлять ассортиментом.  
 - Обрабатывать заказы.  
-- Взаимодействовать с клиентами напрямую через Telegram.  
-  
+- Взаимодействовать с клиентами напрямую через Telegram.  `) + `
 📌 Как это может выглядеть:  
 [Магазин кроссовок](https://t.me/shoppigrambot/sneakerboss) 
   
 [Кофейня](https://t.me/ShoppigramBot/mycoffe)  
-Пример 3  
-  
-  
+` +
+		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, ` 
 🛠 [Связаться с поддержкой](https://t.me/ShoppigramSupport)  
 🌟 [Открыть бота](https://t.me/shoppigramBot/app)  
 Спасибо, что выбрали Shoppigram! Давайте вместе сделаем ваш бизнес ещё успешнее.
-`
+`)
 
 	// Send the message to the user
 	err := s.notifier.NotifyGreetings(ctx, NotifyGreetingsRequest{
 		UserExternalID:  update.Message.From.ID,
-		GreetingMessage: tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, greetingMessage),
+		GreetingMessage: greetingMessage,
 	})
 	if err != nil {
 		return errors.Wrap(err, "s.notifier.NotifyGreetings")
