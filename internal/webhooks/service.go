@@ -3,6 +3,7 @@ package webhooks
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -38,16 +39,16 @@ type (
 	}
 
 	CloudPaymentsCheckRequest struct {
-		InvoiceID       string
-		Amount          float64
-		Currency        string
-		PaymentAmount   string
-		PaymentCurrency string
-		DateTime        string
+		InvoiceID       string  `json:"InvoiceID"`
+		Amount          float64 `json:"Amount"`
+		Currency        string  `json:"Currency"`
+		PaymentAmount   string  `json:"PaymentAmount"`
+		PaymentCurrency string  `json:"PaymentCurrency"`
+		DateTime        string  `json:"DateTime"`
 	}
 
 	CloudPaymentsCheckResponce struct {
-		Code int `json:"code"`
+		Code int8 `json:"code"`
 	}
 
 	// Notifier is the service for notifications
@@ -158,7 +159,7 @@ func (s *Service) isUpdateTypeShoppigramBotAddedToChannelAsAdmin(update tgbotapi
 
 type (
 	Repository interface {
-		GetOrder(ctx context.Context, invoiceId string) (Order, error)
+		GetOrder(ctx context.Context, id string) (Order, error)
 	}
 
 	Order struct {
@@ -178,30 +179,31 @@ func NewCloudPaymentsService(repo Repository) *CloudPaymentsService {
 	}
 }
 
-func (s *CloudPaymentsService) HandleCloudPaymentsWebHook(ctx context.Context, request http.Request) error {
-	// Pass raw data here
-	// Check what type of request is this
-	// Pass data to handler
-	// Parse data into structure in handler
-
-	checkRequest, err := parseCloudPaymentsCheckRequest(request)
+func (s *CloudPaymentsService) HandleCloudPaymentsWebHook(ctx context.Context, data io.ReadCloser) (resp interface{}, err error) {
+	var checkRequest CloudPaymentsCheckRequest
+	err = json.NewDecoder(data).Decode(&checkRequest)
 	if err == nil {
 		InvoiceID := checkRequest.InvoiceID
-		order, err := s.repo.GetOrder(ctx, InvoiceID) // Change here!!!
+		order, err := s.repo.GetOrder(ctx, InvoiceID)
 		if err != nil {
-			return errors.Wrap(err, "s.repo.GetOrder()")
+			return CloudPaymentsCheckResponceCode_wrongInvoiceID, errors.Wrap(err, "s.repo.GetOrder()")
 		}
 		return handleCloudPaymentsCheckWebHook(ctx, checkRequest, order)
 	}
 
-	return errors.New("No handler for this request")
+	return nil, errors.New("No handler for this request")
 }
 
-func handleCloudPaymentsCheckWebHook(ctx context.Context, check CloudPaymentsCheckRequest, orderInfo Order) error {
+func handleCloudPaymentsCheckWebHook(_ context.Context, check CloudPaymentsCheckRequest, orderInfo Order) (resp interface{}, err error) {
 	if check.Amount != float64(orderInfo.Sum) {
-		return errors.New("Sum is incorrect") // All checks here
+		return CloudPaymentsCheckResponce{
+				Code: CloudPaymentsCheckResponceCode_wrongSum,
+			},
+			errors.New("Sum is incorrect")
 	}
-	return nil
+	return CloudPaymentsCheckResponce{
+		Code: CloudPaymentsCheckResponceCode_success,
+	}, nil
 }
 
 func parseCloudPaymentsCheckRequest(request http.Request) (CloudPaymentsCheckRequest, error) {

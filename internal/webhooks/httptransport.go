@@ -42,6 +42,21 @@ func MakeHandler(s *Service, log *zap.Logger, secretToken string) http.Handler {
 	return r
 }
 
+// MakeCloudPaymentsHandler returns a handler for the CloudPayments webhooks
+func MakeCloudPaymentsHandler(s *CloudPaymentsService, log *zap.Logger, login string, password string) http.Handler {
+	opts := []kithttp.ServerOption{
+		kithttp.ServerErrorEncoder(encodeError),
+		kithttp.ServerErrorHandler(serverErrorLogger{logger: log}),
+	}
+
+	ep := makeCloudPaymentEndpoint(s)
+	handler := kithttp.NewServer(ep, decodeCloudPaymentsRequest, encodeResponse, opts...)
+
+	r := chi.NewRouter()
+	r.Post("/cloud-payments/", handler.ServeHTTP)
+	return r
+}
+
 func makeWebhookAuthMiddleware(secretToken string) endpoint.Middleware {
 	return func(next endpoint.Endpoint) endpoint.Endpoint {
 		return func(ctx context.Context, request interface{}) (interface{}, error) {
@@ -73,19 +88,10 @@ func decodeTelegramWebhookRequest(_ context.Context, r *http.Request) (any, erro
 	return request, nil
 }
 
-func MakeCloudPaymentsHandler(s *CloudPaymentsService, log *zap.Logger, login string, password string) http.Handler {
-	opts := []kithttp.ServerOption{
-		kithttp.ServerErrorHandler(serverErrorLogger{logger: log}),
-	}
-
-	ep := makeCloudPaymentEndpoint(s)
-	handler := kithttp.NewServer(ep, decodeCloudPaymentsRequest, encodeResponse, opts...)
-
-	r := chi.NewRouter()
-	r.Post("/check/", handler.ServeHTTP)
-	return r
-}
-
 func decodeCloudPaymentsRequest(_ context.Context, r *http.Request) (any, error) {
-	return r, nil
+	rBody, err := r.GetBody()
+	if err != nil {
+		return nil, errors.Wrap(err, "r.GetBody")
+	}
+	return rBody, nil
 }

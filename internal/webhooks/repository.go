@@ -3,6 +3,7 @@ package webhooks
 import (
 	"context"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pkg/errors"
 	"github.com/shoppigram-com/marketplace-api/internal/webhooks/generated"
@@ -20,10 +21,14 @@ func NewPg(db *pgxpool.Pool) *Pg {
 	}
 }
 
-func (p *Pg) GetOrder(ctx context.Context, invoiceId string) (Order, error) {
-	order, err := p.gen.GetOrder(ctx, invoiceId)
+func (p *Pg) GetOrder(ctx context.Context, id string) (Order, error) {
+	idParsed, err := uuid.Parse(id)
 	if err != nil {
-		return Order{}, errors.Wrap(err, "p.gen.GetOrder(id). InvoiceId = "+invoiceId)
+		return Order{}, errors.Wrap(err, "uuid.Parse(id). id = "+id)
+	}
+	order, err := p.gen.GetOrder(ctx, idParsed)
+	if err != nil {
+		return Order{}, errors.Wrap(err, "p.gen.GetOrder(id). id = "+id)
 	}
 
 	return Order{
