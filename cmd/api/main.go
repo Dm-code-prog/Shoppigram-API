@@ -186,8 +186,8 @@ func main() {
 	cloudPaymentsWebhookHandler := webhooks.MakeCloudPaymentsHandlers(
 		cloudPaymentsWebhookService,
 		log.With(zap.String("service", "webhooks_server")),
-		"hello",
-		"there",
+		config.CloudPayments.Login,
+		config.CloudPayments.Password,
 	)
 
 	////////////////////////////////////// RUN NOTIFICATION JOBS //////////////////////////////////////

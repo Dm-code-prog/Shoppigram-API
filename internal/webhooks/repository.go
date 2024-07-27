@@ -32,7 +32,7 @@ func (p *Pg) GetOrder(ctx context.Context, id string) (Order, error) {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return Order{}, ErrorOrderDoesntExist
 		}
-		return Order{}, errors.Wrap(err, "PG error")
+		return Order{}, ErrorDatabaseError
 	}
 
 	return Order{

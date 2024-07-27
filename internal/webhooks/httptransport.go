@@ -103,21 +103,21 @@ func decodeCloudPaymentsCheckRequest(_ context.Context, r *http.Request) (any, e
 	// Check
 	var checkRequest CloudPaymentsCheckRequest
 	err := json.NewDecoder(r.Body).Decode(&checkRequest)
-	if err == nil {
-		return checkRequest, nil
+	if err != nil {
+		return nil, ErrorBadRequest
 	}
+	return checkRequest, nil
 
-	return nil, errors.New("Cant decode to any known request")
 }
 
 func enclodeCloudPaymentsCheckResponce(_ context.Context, w http.ResponseWriter, responce any) error {
 	castedResponce, ok := responce.(CloudPaymentsCheckResponce)
 	if !ok {
-		return errors.New("Can't cast the responce")
+		return ErrorWrongResponce
 	}
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(castedResponce); err != nil {
-		return errors.Wrap(err, "Can't encode the responce")
+		return ErrorWrongResponce
 	}
 
 	return nil

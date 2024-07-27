@@ -12,12 +12,12 @@ func makeTelegramWebhookEndpoint(s *Service) endpoint.Endpoint {
 	return func(ctx context.Context, request any) (any, error) {
 		data, ok := request.(tgbotapi.Update)
 		if !ok {
-			return nil, errors.New("invalid request")
+			return nil, ErrorBadRequest
 		}
 
 		err := s.HandleTelegramWebhook(ctx, data)
 		if err != nil {
-			return nil, errors.Wrap(err, "failed to handle Telegram webhook")
+			return nil, errors.Wrap(ErrorCantHandle, "s.HandleTelegramWebhook(ctx, data)")
 		}
 
 		return nil, nil
@@ -38,11 +38,11 @@ func makeCloudPaymentCheckEndpoint(s *CloudPaymentsService) endpoint.Endpoint {
 	return func(ctx context.Context, request any) (any, error) {
 		data, ok := request.(CloudPaymentsCheckRequest)
 		if !ok {
-			return nil, errors.New("Can't handle CloudPayment check request. Wrong request format")
+			return nil, ErrorBadRequest
 		}
 		resp, err := s.HandleCloudPaymentsCheckWebHook(ctx, data)
 		if err != nil {
-			return nil, errors.Wrap(err, "s.HandleCloudPaymentsCheckWebHook(ctx, data)")
+			return nil, errors.Wrap(ErrorCantHandle, "s.HandleCloudPaymentsCheckWebHook(ctx, data)")
 		}
 		return resp, nil
 	}
