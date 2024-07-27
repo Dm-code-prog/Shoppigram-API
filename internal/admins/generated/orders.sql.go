@@ -12,52 +12,22 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createP2POrder = `-- name: CreateP2POrder :one
-insert into orders (web_app_id, external_user_id, type, state)
-values ($1,
-        $2,
-        'p2p',
-        'confirmed'::order_state)
-returning id,readable_id
-`
-
-type CreateP2POrderParams struct {
-	WebAppID       pgtype.UUID
-	ExternalUserID pgtype.Int4
-}
-
-type CreateP2POrderRow struct {
-	ID         uuid.UUID
-	ReadableID pgtype.Int8
-}
-
-func (q *Queries) CreateP2POrder(ctx context.Context, arg CreateP2POrderParams) (CreateP2POrderRow, error) {
-	row := q.db.QueryRow(ctx, createP2POrder, arg.WebAppID, arg.ExternalUserID)
-	var i CreateP2POrderRow
-	err := row.Scan(&i.ID, &i.ReadableID)
-	return i, err
-}
-
 const getOrder = `-- name: GetOrder :many
 select p.id,
        p.name,
-       op.quantity,
        p.description,
        p.category,
        p.price,
        p.price_currency::text as price_currency,
-       wa.name                as web_app_name,
-       wa.short_name          as web_app_short_name,
-       o.readable_id,
-       tu.username            as seller_username
+       wa.name        as web_app_name,
+       wa.short_name  as web_app_short_name
 from orders o
-         join order_products op on o.id = op.order_id
-         join products p on op.product_id = p.id
-         join web_apps wa on o.web_app_id = wa.id
-         join telegram_users tu on wa.owner_external_id = tu.external_id
+	 join order_products op on o.id = op.order_id
+	 join products p on op.product_id = p.id
+     join web_apps wa on o.web_app_id = wa.id
 where o.id = $1
-  and (o.external_user_id = $2
-    or wa.owner_external_id = $2)
+	  and (o.external_user_id = $2
+	  or wa.owner_external_id = $2)
 `
 
 type GetOrderParams struct {
@@ -68,15 +38,12 @@ type GetOrderParams struct {
 type GetOrderRow struct {
 	ID              uuid.UUID
 	Name            string
-	Quantity        int32
 	Description     pgtype.Text
 	Category        pgtype.Text
 	Price           float64
 	PriceCurrency   string
 	WebAppName      string
 	WebAppShortName string
-	ReadableID      pgtype.Int8
-	SellerUsername  pgtype.Text
 }
 
 func (q *Queries) GetOrder(ctx context.Context, arg GetOrderParams) ([]GetOrderRow, error) {
@@ -91,15 +58,12 @@ func (q *Queries) GetOrder(ctx context.Context, arg GetOrderParams) ([]GetOrderR
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
-			&i.Quantity,
 			&i.Description,
 			&i.Category,
 			&i.Price,
 			&i.PriceCurrency,
 			&i.WebAppName,
 			&i.WebAppShortName,
-			&i.ReadableID,
-			&i.SellerUsername,
 		); err != nil {
 			return nil, err
 		}

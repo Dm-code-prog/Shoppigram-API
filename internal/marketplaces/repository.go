@@ -73,7 +73,7 @@ func (pg *Pg) CreateOrder(ctx context.Context, req SaveOrderRequest) (SaveOrderR
 	defer tx.Rollback(ctx)
 	qtx := pg.gen.WithTx(tx)
 
-	res, err := qtx.CreateOrder(ctx, generated.CreateOrderParams{
+	res, err := qtx.CreateP2POrder(ctx, generated.CreateP2POrderParams{
 		WebAppID: pgtype.UUID{
 			Bytes: req.WebAppID,
 			Valid: true,
@@ -118,4 +118,56 @@ func (pg *Pg) CreateOrder(ctx context.Context, req SaveOrderRequest) (SaveOrderR
 	}
 
 	return SaveOrderResponse{ReadableID: int(res.ReadableID.Int64)}, nil
+
+}
+
+// GetOrder gets a list of products in order
+func (p *Pg) GetOrder(ctx context.Context, orderId uuid.UUID, userId int64) (GetOrderResponse, error) {
+	rows, err := p.gen.GetOrder(ctx, generated.GetOrderParams{
+		ID:             orderId,
+		ExternalUserID: pgtype.Int4{Int32: int32(userId), Valid: userId != 0},
+	})
+
+	if err != nil {
+		return GetOrderResponse{}, errors.Wrap(err, "p.gen.GetOrder")
+	}
+
+	products := make([]Product, len(rows))
+
+	if len(rows) == 0 {
+		return GetOrderResponse{}, ErrorGetOrderNotPremited
+	}
+	WebAppName := rows[0].WebAppName
+	WebAppShortName := rows[0].WebAppShortName
+
+	var (
+		totalPrice     float64
+		readableID     int
+		sellerUsername string
+	)
+
+	for i, v := range rows {
+		products[i] = Product{
+			ID:            v.ID,
+			Name:          v.Name,
+			Description:   v.Description.String,
+			Category:      v.Category.String,
+			Price:         v.Price,
+			PriceCurrency: v.PriceCurrency,
+			Quantity:      v.Quantity,
+		}
+
+		totalPrice += v.Price * float64(v.Quantity)
+		readableID = int(v.ReadableID.Int64)
+		sellerUsername = v.SellerUsername.String
+	}
+
+	return GetOrderResponse{
+		Products:        products,
+		WebAppName:      WebAppName,
+		WebAppShortName: WebAppShortName,
+		TotalPrice:      totalPrice,
+		ReadableOrderID: readableID,
+		SellerUsername:  sellerUsername,
+	}, nil
 }

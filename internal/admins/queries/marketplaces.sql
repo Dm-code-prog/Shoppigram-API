@@ -39,3 +39,4 @@ where id = $2;
 select short_name
 from web_apps
 where id = @id::uuid;
+

@@ -114,6 +114,7 @@ func MakeHandler(bs Service, authMw endpoint.Middleware) http.Handler {
 
 	r.Post("/publish-to-channel/{web_app_id}", publishMarketplaceBannerToChannelHandler.ServeHTTP)
 	r.Get("/telegram-channels", getTelegramChannels.ServeHTTP)
+
 	return r
 }
 

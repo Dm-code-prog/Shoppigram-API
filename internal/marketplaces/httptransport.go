@@ -47,18 +47,23 @@ func MakeOrdersHandler(s Service, authMW endpoint.Middleware) http.Handler {
 	}
 	opts = append(opts, telegramusers.AuthServerBefore...)
 
-	ep := makeCreateOrderEndpoint(s)
-	ep = authMW(ep)
-
 	createOrderHandler := kithttp.NewServer(
-		ep,
+		authMW(makeCreateOrderEndpoint(s)),
 		decodeCreateOrderRequest,
+		encodeResponse,
+		opts...,
+	)
+
+	getOrdersHandler := kithttp.NewServer(
+		authMW(makeGetOrderEndpoint(s)),
+		decodeGetOrderRequest,
 		encodeResponse,
 		opts...,
 	)
 
 	r := chi.NewRouter()
 	r.Post("/{web_app_id}", createOrderHandler.ServeHTTP)
+	r.Get("/{order_id}", getOrdersHandler.ServeHTTP)
 	return r
 }
 
@@ -115,6 +120,22 @@ func decodeCreateOrderRequest(ctx context.Context, r *http.Request) (interface{}
 	return req, nil
 }
 
+func decodeGetOrderRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	var request GetOrderRequest
+	orderId := chi.URLParam(r, "order_id")
+	if orderId == "" {
+		return nil, ErrorBadRequest
+	}
+
+	asUUID, err := uuid.Parse(orderId)
+	if err != nil {
+		return nil, ErrorBadRequest
+	}
+	request.OrderId = asUUID
+
+	return request, nil
+}
+
 func encodeResponse(ctx context.Context, w http.ResponseWriter, response interface{}) error {
 	w.Header().Set("Content-Type", "application/json")
 	if response != nil {
@@ -124,6 +145,7 @@ func encodeResponse(ctx context.Context, w http.ResponseWriter, response interfa
 }
 
 func encodeError(_ context.Context, err error, w http.ResponseWriter) {
+
 	for _, e := range telegramusers.AuthenticationErrors {
 		if errors.Is(err, e) {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -147,11 +169,16 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 	case errors.Is(err, ErrorInvalidProductQuantity):
 		w.WriteHeader(http.StatusBadRequest)
 		err = ErrorInvalidProductQuantity
+	case errors.Is(err, ErrorGetOrderNotPremited):
+		w.WriteHeader(http.StatusForbidden)
+		err = ErrorGetOrderNotPremited
+	default:
+		w.WriteHeader(http.StatusInternalServerError)
+		err = ErrorInternal
 	}
 
-	w.WriteHeader(http.StatusInternalServerError)
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]interface{}{
-		"error": ErrorInternal.Error(),
+		"error": err.Error(),
 	})
 }
