@@ -35,5 +35,6 @@ func (p *Pg) GetOrder(ctx context.Context, id string) (Order, error) {
 		ID:        order.ID,
 		UpdatedAt: order.UpdatedAt,
 		Sum:       order.Sum,
+		Currency:  string(order.PriceCurrency),
 	}, nil
 }

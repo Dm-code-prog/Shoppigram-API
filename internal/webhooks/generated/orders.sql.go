@@ -13,7 +13,7 @@ import (
 )
 
 const getOrder = `-- name: GetOrder :one
-select o.id, o.updated_at, SUM(p.price*op.quantity)
+select o.id, o.updated_at, SUM(p.price*op.quantity), p.price_currency
 from orders o
 	 join order_products op on op.order_id = o.id
 	 join products p on p.id = op.product_id
@@ -22,14 +22,20 @@ group by o.id
 `
 
 type GetOrderRow struct {
-	ID        uuid.UUID
-	UpdatedAt pgtype.Timestamp
-	Sum       int64
+	ID            uuid.UUID
+	UpdatedAt     pgtype.Timestamp
+	Sum           int64
+	PriceCurrency ProductCurrency
 }
 
 func (q *Queries) GetOrder(ctx context.Context, id uuid.UUID) (GetOrderRow, error) {
 	row := q.db.QueryRow(ctx, getOrder, id)
 	var i GetOrderRow
-	err := row.Scan(&i.ID, &i.UpdatedAt, &i.Sum)
+	err := row.Scan(
+		&i.ID,
+		&i.UpdatedAt,
+		&i.Sum,
+		&i.PriceCurrency,
+	)
 	return i, err
 }

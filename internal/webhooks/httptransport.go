@@ -96,3 +96,11 @@ func decodeCloudPaymentsRequest(_ context.Context, r *http.Request) (any, error)
 	}
 	return rBody, nil
 }
+
+func enclodeCloudPaymentsResponce(_ context.Context, w http.ResponseWriter, responce any) error {
+	w.WriteHeader(http.StatusOK)
+
+	// w.Write()
+
+	return nil
+}

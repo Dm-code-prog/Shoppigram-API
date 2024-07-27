@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
@@ -64,6 +65,7 @@ type (
 		ID        uuid.UUID
 		UpdatedAt pgtype.Timestamp
 		Sum       int64
+		Currency  string
 	}
 
 	// Repository provides access to the webhooks storage
@@ -96,6 +98,14 @@ func New(channelStorage ChannelStorage, notifier Notifier, log *zap.Logger, shop
 	}
 }
 
+// NewCloudPaymentsService returns a new instance of CloudPaymentsService
+func NewCloudPaymentsService(repo Repository, log *zap.Logger) *CloudPaymentsService {
+	return &CloudPaymentsService{
+		repo: repo,
+		log:  log,
+	}
+}
+
 // HandleTelegramWebhook is the entry point for a webhook request from Telegram.
 //
 // It is supposed to determine the type of Update and call the correct handler for the update.
@@ -122,21 +132,18 @@ func (s *Service) HandleTelegramWebhook(ctx context.Context, update tgbotapi.Upd
 	return nil
 }
 
-func NewCloudPaymentsService(repo Repository, log *zap.Logger) *CloudPaymentsService {
-	return &CloudPaymentsService{
-		repo: repo,
-		log:  log,
-	}
-}
-
+// HandleCloudPaymentsWebHook is the entry point for a webhook request from CloudPayments
+//
+// It suppose to determine, what type of request was made, and generate a responce
 func (s *CloudPaymentsService) HandleCloudPaymentsWebHook(ctx context.Context, data io.ReadCloser) (resp interface{}, err error) {
+	// Check
 	var checkRequest CloudPaymentsCheckRequest
 	err = json.NewDecoder(data).Decode(&checkRequest)
 	if err == nil {
 		InvoiceID := checkRequest.InvoiceID
 		order, err := s.repo.GetOrder(ctx, InvoiceID)
 		if err != nil {
-			return CloudPaymentsCheckResponceCode_wrongInvoiceID, errors.Wrap(err, "s.repo.GetOrder()")
+			return CloudPaymentsCheckResponce{Code: CloudPaymentsCheckResponceCode_wrongInvoiceID}, nil
 		}
 		return handleCloudPaymentsCheckWebHook(ctx, checkRequest, order)
 	}
@@ -199,13 +206,17 @@ func (s *Service) isUpdateTypeShoppigramBotAddedToChannelAsAdmin(update tgbotapi
 }
 
 func handleCloudPaymentsCheckWebHook(_ context.Context, check CloudPaymentsCheckRequest, orderInfo Order) (resp interface{}, err error) {
-	if check.Amount != float64(orderInfo.Sum) {
+	if check.Amount != float64(orderInfo.Sum) || !isCurrenciesEqual(check.Currency, orderInfo.Currency) {
 		return CloudPaymentsCheckResponce{
 				Code: CloudPaymentsCheckResponceCode_wrongSum,
 			},
-			errors.New("Sum is incorrect")
+			nil
 	}
 	return CloudPaymentsCheckResponce{
 		Code: CloudPaymentsCheckResponceCode_success,
 	}, nil
+}
+
+func isCurrenciesEqual(cur1 string, cur2 string) bool {
+	return strings.ToLower(cur1) == strings.ToLower(cur2)
 }
