@@ -5,5 +5,5 @@ import (
 )
 
 var (
-	ErrorOrderDoesntExist = errors.New("Order does not exist")
+	ErrorOrderDoesntExist = errors.New("order does not exist")
 )

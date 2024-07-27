@@ -49,12 +49,19 @@ func MakeCloudPaymentsHandlers(s *CloudPaymentsService, log *zap.Logger, login s
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(encodeError),
 		kithttp.ServerErrorHandler(serverErrorLogger{logger: log}),
+		kithttp.ServerBefore(func(ctx context.Context, request *http.Request) context.Context {
+			return context.WithValue(ctx, kithttp.ContextKeyRequestAuthorization, request.Header.Get("Authorization"))
+		}),
 	}
 
-	checkEncpoint := makeCloudPaymentCheckEndpoint(s)
-	basicAuthMiddlwarre := kitauth.AuthMiddleware(login, password, "check")
+	checkEndpoint := makeCloudPaymentCheckEndpoint(s)
+	basicAuthMiddleware := kitauth.AuthMiddleware(login, password, "check")
 
-	checkHandler := kithttp.NewServer(basicAuthMiddlwarre(checkEncpoint), decodeCloudPaymentsCheckRequest, enclodeCloudPaymentsCheckResponce, opts...)
+	checkHandler := kithttp.NewServer(
+		basicAuthMiddleware(checkEndpoint),
+		decodeCloudPaymentsCheckRequest,
+		enclodeCloudPaymentsCheckResponce,
+		opts...)
 
 	router := chi.NewRouter()
 	router.Post("/check", checkHandler.ServeHTTP)
