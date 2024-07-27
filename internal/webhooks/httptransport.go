@@ -96,7 +96,7 @@ func decodeCloudPaymentsCheckRequest(_ context.Context, r *http.Request) (any, e
 	// Check
 	var checkRequest CloudPaymentsCheckRequest
 	err := json.NewDecoder(r.Body).Decode(&checkRequest)
-	if err != nil {
+	if err == nil {
 		return checkRequest, nil
 	}
 
