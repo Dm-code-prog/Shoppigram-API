@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pkg/errors"
 	"github.com/shoppigram-com/marketplace-api/internal/webhooks/generated"
@@ -28,7 +29,10 @@ func (p *Pg) GetOrder(ctx context.Context, id string) (Order, error) {
 	}
 	order, err := p.gen.GetOrder(ctx, idParsed)
 	if err != nil {
-		return Order{}, errors.Wrap(err, "p.gen.GetOrder(id). id = "+id)
+		if errors.Is(err, pgx.ErrNoRows) {
+			return Order{}, ErrorOrderDoesntExist
+		}
+		return Order{}, errors.Wrap(err, "PG error")
 	}
 
 	return Order{

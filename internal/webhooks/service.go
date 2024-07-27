@@ -3,7 +3,6 @@ package webhooks
 import (
 	"context"
 	"encoding/json"
-	"io"
 	"strings"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -135,20 +134,15 @@ func (s *Service) HandleTelegramWebhook(ctx context.Context, update tgbotapi.Upd
 // HandleCloudPaymentsWebHook is the entry point for a webhook request from CloudPayments
 //
 // It suppose to determine, what type of request was made, and generate a responce
-func (s *CloudPaymentsService) HandleCloudPaymentsWebHook(ctx context.Context, data io.ReadCloser) (resp interface{}, err error) {
-	// Check
-	var checkRequest CloudPaymentsCheckRequest
-	err = json.NewDecoder(data).Decode(&checkRequest)
-	if err == nil {
-		InvoiceID := checkRequest.InvoiceID
-		order, err := s.repo.GetOrder(ctx, InvoiceID)
-		if err != nil {
+func (s *CloudPaymentsService) HandleCloudPaymentsCheckWebHook(ctx context.Context, checkRequest CloudPaymentsCheckRequest) (resp CloudPaymentsCheckResponce, err error) {
+	order, err := s.repo.GetOrder(ctx, checkRequest.InvoiceID)
+	if err != nil {
+		if errors.Is(err, ErrorOrderDoesntExist) {
 			return CloudPaymentsCheckResponce{Code: CloudPaymentsCheckResponceCode_wrongInvoiceID}, nil
 		}
-		return handleCloudPaymentsCheckWebHook(ctx, checkRequest, order)
+		return CloudPaymentsCheckResponce{Code: CloudPaymentsCheckResponceCode_cantHandleThePayment}, errors.Wrap(err, "s.repo.GetOrder(ctx, checkRequest.InvoiceID)")
 	}
-
-	return nil, errors.New("No handler for this request")
+	return handleCloudPaymentsCheckWebHook(ctx, checkRequest, order)
 }
 
 func (s *Service) handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx context.Context, update tgbotapi.Update) error {
@@ -205,7 +199,7 @@ func (s *Service) isUpdateTypeShoppigramBotAddedToChannelAsAdmin(update tgbotapi
 	return true
 }
 
-func handleCloudPaymentsCheckWebHook(_ context.Context, check CloudPaymentsCheckRequest, orderInfo Order) (resp interface{}, err error) {
+func handleCloudPaymentsCheckWebHook(_ context.Context, check CloudPaymentsCheckRequest, orderInfo Order) (resp CloudPaymentsCheckResponce, err error) {
 	if check.Amount != float64(orderInfo.Sum) || !isCurrenciesEqual(check.Currency, orderInfo.Currency) {
 		return CloudPaymentsCheckResponce{
 				Code: CloudPaymentsCheckResponceCode_wrongSum,

@@ -2,7 +2,6 @@ package webhooks
 
 import (
 	"context"
-	"io"
 
 	"github.com/go-kit/kit/endpoint"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -35,20 +34,16 @@ const (
 	CloudPaymentsCheckResponceCode_transactionExpired   = 20
 )
 
-func makeCloudPaymentEndpoint(s *CloudPaymentsService) endpoint.Endpoint {
+func makeCloudPaymentCheckEndpoint(s *CloudPaymentsService) endpoint.Endpoint {
 	return func(ctx context.Context, request any) (any, error) {
-		data, ok := request.(io.ReadCloser)
+		data, ok := request.(CloudPaymentsCheckRequest)
 		if !ok {
-			return nil, errors.New("Flailed to cast request to io.ReadCloser")
+			return nil, errors.New("Can't handle CloudPayment check request. Wrong request format")
 		}
-		resp, err := s.HandleCloudPaymentsWebHook(ctx, data)
-		if resp != nil {
-			if err != nil {
-				return resp, errors.Wrap(err, "Failed to handle CloudPayments webhook")
-			}
-			return resp, nil
+		resp, err := s.HandleCloudPaymentsCheckWebHook(ctx, data)
+		if err != nil {
+			return nil, errors.Wrap(err, "s.HandleCloudPaymentsCheckWebHook(ctx, data)")
 		}
-
-		return nil, errors.New("Can't handle CloudPayment request Unknown request")
+		return resp, nil
 	}
 }

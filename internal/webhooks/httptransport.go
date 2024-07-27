@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	kitauth "github.com/go-kit/kit/auth/basic"
 	"github.com/go-kit/kit/endpoint"
 	kithttp "github.com/go-kit/kit/transport/http"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -43,19 +44,21 @@ func MakeHandler(s *Service, log *zap.Logger, secretToken string) http.Handler {
 	return r
 }
 
-// MakeCloudPaymentsHandler returns a handler for the CloudPayments webhooks
-func MakeCloudPaymentsHandler(s *CloudPaymentsService, log *zap.Logger, login string, password string) http.Handler {
+// MakeCloudPaymentsHandlers returns a handler for the CloudPayments webhooks
+func MakeCloudPaymentsHandlers(s *CloudPaymentsService, log *zap.Logger, login string, password string) http.Handler {
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(encodeError),
 		kithttp.ServerErrorHandler(serverErrorLogger{logger: log}),
 	}
 
-	ep := makeCloudPaymentEndpoint(s)
-	handler := kithttp.NewServer(ep, decodeCloudPaymentsRequest, encodeResponse, opts...)
+	checkEncpoint := makeCloudPaymentCheckEndpoint(s)
+	basicAuthMiddlwarre := kitauth.AuthMiddleware(login, password, "check")
 
-	r := chi.NewRouter()
-	r.Post("/", handler.ServeHTTP)
-	return r
+	checkHandler := kithttp.NewServer(basicAuthMiddlwarre(checkEncpoint), decodeCloudPaymentsCheckRequest, enclodeCloudPaymentsCheckResponce, opts...)
+
+	router := chi.NewRouter()
+	router.Post("/check", checkHandler.ServeHTTP)
+	return router
 }
 
 func makeWebhookAuthMiddleware(secretToken string) endpoint.Middleware {
@@ -89,18 +92,26 @@ func decodeTelegramWebhookRequest(_ context.Context, r *http.Request) (any, erro
 	return request, nil
 }
 
-func decodeCloudPaymentsRequest(_ context.Context, r *http.Request) (any, error) {
-	rBody := r.Body
-	if rBody == nil {
-		return nil, errors.New("Can't get request body")
+func decodeCloudPaymentsCheckRequest(_ context.Context, r *http.Request) (any, error) {
+	// Check
+	var checkRequest CloudPaymentsCheckRequest
+	err := json.NewDecoder(r.Body).Decode(&checkRequest)
+	if err != nil {
+		return checkRequest, nil
 	}
-	return rBody, nil
+
+	return nil, errors.New("Cant decode to any known request")
 }
 
-func enclodeCloudPaymentsResponce(_ context.Context, w http.ResponseWriter, responce any) error {
+func enclodeCloudPaymentsCheckResponce(_ context.Context, w http.ResponseWriter, responce any) error {
+	castedResponce, ok := responce.(CloudPaymentsCheckResponce)
+	if !ok {
+		return errors.New("Can't cast the responce")
+	}
 	w.WriteHeader(http.StatusOK)
-
-	// w.Write()
+	if err := json.NewEncoder(w).Encode(castedResponce); err != nil {
+		return errors.Wrap(err, "Can't encode the responce")
+	}
 
 	return nil
 }

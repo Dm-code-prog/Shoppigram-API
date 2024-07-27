@@ -183,7 +183,7 @@ func main() {
 		webhooksRepo,
 		log.With(zap.String("service", "webhooks_server")),
 	)
-	cloudPaymentsWebhookHandler := webhooks.MakeCloudPaymentsHandler(
+	cloudPaymentsWebhookHandler := webhooks.MakeCloudPaymentsHandlers(
 		cloudPaymentsWebhookService,
 		log.With(zap.String("service", "webhooks_server")),
 		"nouse",
@@ -221,7 +221,7 @@ func main() {
 	r.Mount("/api/v1/public/orders", ordersHandler)
 	r.Mount("/api/v1/private/marketplaces", adminsHandler)
 	r.Mount("/api/v1/telegram/webhooks", webhooksHandler)
-	r.Mount("/api/v1/telegram/cloud-payment-webhooks", cloudPaymentsWebhookHandler)
+	r.Mount("/api/v1/cloud-payment/webhooks", cloudPaymentsWebhookHandler)
 
 	g.Add(func() error {
 		log.Info("starting HTTP server", zap.String("port", config.HTTP.Port))
