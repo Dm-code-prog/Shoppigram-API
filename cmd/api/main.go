@@ -172,6 +172,7 @@ func main() {
 		&notificationsWebhooksAdapter{notifier: notificationsService},
 		log.With(zap.String("service", "webhooks")),
 		config.Bot.ID,
+		config.Bot.Name,
 	)
 	webhooksHandler := webhooks.MakeHandler(
 		webhookService,
