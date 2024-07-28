@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"strings"
+	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
@@ -82,8 +83,9 @@ type (
 
 	// CloudPaymentsService is the service for handling CloudPayments webhooks
 	CloudPaymentsService struct {
-		repo Repository
-		log  *zap.Logger
+		repo                          Repository
+		maxDurationForHandlingPayment time.Duration
+		log                           *zap.Logger
 	}
 )
 
@@ -98,10 +100,11 @@ func New(channelStorage ChannelStorage, notifier Notifier, log *zap.Logger, shop
 }
 
 // NewCloudPaymentsService returns a new instance of CloudPaymentsService
-func NewCloudPaymentsService(repo Repository, log *zap.Logger) *CloudPaymentsService {
+func NewCloudPaymentsService(repo Repository, log *zap.Logger, maxDurationForHandlingPayment time.Duration) *CloudPaymentsService {
 	return &CloudPaymentsService{
-		repo: repo,
-		log:  log,
+		repo:                          repo,
+		log:                           log,
+		maxDurationForHandlingPayment: maxDurationForHandlingPayment,
 	}
 }
 
@@ -142,7 +145,7 @@ func (s *CloudPaymentsService) HandleCloudPaymentsCheckWebHook(ctx context.Conte
 		}
 		return CloudPaymentsCheckResponce{Code: CloudPaymentsCheckResponceCode_cantHandleThePayment}, errors.Wrap(err, "s.repo.GetOrder(ctx, checkRequest.InvoiceID)")
 	}
-	return handleCloudPaymentsCheckWebHook(ctx, checkRequest, order)
+	return handleCloudPaymentsCheckWebHook(ctx, checkRequest, order, s.maxDurationForHandlingPayment)
 }
 
 func (s *Service) handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx context.Context, update tgbotapi.Update) error {
@@ -199,13 +202,27 @@ func (s *Service) isUpdateTypeShoppigramBotAddedToChannelAsAdmin(update tgbotapi
 	return true
 }
 
-func handleCloudPaymentsCheckWebHook(_ context.Context, check CloudPaymentsCheckRequest, orderInfo Order) (resp CloudPaymentsCheckResponce, err error) {
+func handleCloudPaymentsCheckWebHook(_ context.Context, check CloudPaymentsCheckRequest, orderInfo Order, paymentMaxDuration time.Duration) (resp CloudPaymentsCheckResponce, err error) {
 	if check.Amount != float64(orderInfo.Sum) || !isCurrenciesEqual(check.Currency, orderInfo.Currency) {
 		return CloudPaymentsCheckResponce{
 				Code: CloudPaymentsCheckResponceCode_wrongSum,
 			},
 			nil
 	}
+
+	orderUpdateTime := orderInfo.UpdatedAt.Time
+	paymentTime, err := time.Parse(time.DateTime, check.DateTime)
+	if err != nil {
+		return CloudPaymentsCheckResponce{
+			Code: CloudPaymentsCheckResponceCode_cantHandleThePayment,
+		}, errors.Wrap(ErrorWrongFormat, "time.Parse(time.DateTime, check.DateTime)")
+	}
+	if isPaymentExpired(orderUpdateTime, paymentTime, paymentMaxDuration) {
+		return CloudPaymentsCheckResponce{
+			Code: CloudPaymentsCheckResponceCode_transactionExpired,
+		}, nil
+	}
+
 	return CloudPaymentsCheckResponce{
 		Code: CloudPaymentsCheckResponceCode_success,
 	}, nil
@@ -213,4 +230,8 @@ func handleCloudPaymentsCheckWebHook(_ context.Context, check CloudPaymentsCheck
 
 func isCurrenciesEqual(cur1 string, cur2 string) bool {
 	return strings.ToLower(cur1) == strings.ToLower(cur2)
+}
+
+func isPaymentExpired(orderCreated time.Time, paymentWasMade time.Time, maxDuration time.Duration) bool {
+	return paymentWasMade.Sub(orderCreated) > maxDuration
 }

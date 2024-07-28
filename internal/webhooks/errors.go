@@ -10,4 +10,5 @@ var (
 	ErrorCantHandle       = errors.New("can not handle the request")
 	ErrorWrongResponce    = errors.New("can not create proper responce")
 	ErrorDatabaseError    = errors.New("database error")
+	ErrorWrongFormat      = errors.New("wrong data format")
 )

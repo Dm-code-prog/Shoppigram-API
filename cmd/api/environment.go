@@ -56,7 +56,8 @@ type Environment struct {
 	}
 
 	CloudPayments struct {
-		Login    string `env:"CLOUDPAYMENTS_LOGIN,required"`
-		Password string `env:"CLOUDPAYMENTS_PASSWORD,required"`
+		Login                  string `env:"CLOUDPAYMENTS_LOGIN,required"`
+		Password               string `env:"CLOUDPAYMENTS_PASSWORD,required"`
+		MaxTransactionDuration string `env:"CLOUDPAYMENTS_MAX_TRANSACTION_DURATION,required"`
 	}
 }

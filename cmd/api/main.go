@@ -179,9 +179,11 @@ func main() {
 		config.TelegramWebhooks.SecretToken)
 
 	webhooksRepo := webhooks.NewPg(db)
+	maxCloudPaymentsTransactionDuration, _ := time.ParseDuration(config.CloudPayments.MaxTransactionDuration)
 	cloudPaymentsWebhookService := webhooks.NewCloudPaymentsService(
 		webhooksRepo,
 		log.With(zap.String("service", "webhooks_server")),
+		maxCloudPaymentsTransactionDuration,
 	)
 	cloudPaymentsWebhookHandler := webhooks.MakeCloudPaymentsHandlers(
 		cloudPaymentsWebhookService,
