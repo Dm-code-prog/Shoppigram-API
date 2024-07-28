@@ -16,12 +16,14 @@ type Pg struct {
 	gen *generated.Queries
 }
 
+// NewPg takes the reference to pgxpool and returns the new instance of repository interface
 func NewPg(db *pgxpool.Pool) *Pg {
 	return &Pg{
 		gen: generated.New(db),
 	}
 }
 
+// GetOrder takes the id of an order and returns this order's data
 func (p *Pg) GetOrder(ctx context.Context, id string) (Order, error) {
 	idParsed, err := uuid.Parse(id)
 	if err != nil {
@@ -32,7 +34,7 @@ func (p *Pg) GetOrder(ctx context.Context, id string) (Order, error) {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return Order{}, ErrorOrderDoesntExist
 		}
-		return Order{}, ErrorDatabaseError
+		return Order{}, errors.Wrap(err, "p.gen.GetOrder(ctx, idParsed)")
 	}
 
 	return Order{

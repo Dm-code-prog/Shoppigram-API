@@ -141,9 +141,9 @@ func (s *CloudPaymentsService) HandleCloudPaymentsCheckWebHook(ctx context.Conte
 	order, err := s.repo.GetOrder(ctx, checkRequest.InvoiceID)
 	if err != nil {
 		if errors.Is(err, ErrorOrderDoesntExist) {
-			return CloudPaymentsCheckResponce{Code: CloudPaymentsCheckResponceCode_wrongInvoiceID}, nil
+			return CloudPaymentsCheckResponce{Code: cloudPaymentsCheckResponceCodeWrongInvoiceID}, nil
 		}
-		return CloudPaymentsCheckResponce{Code: CloudPaymentsCheckResponceCode_cantHandleThePayment}, errors.Wrap(err, "s.repo.GetOrder(ctx, checkRequest.InvoiceID)")
+		return CloudPaymentsCheckResponce{Code: cloudPaymentsCheckResponceCodeCantHandleThePayment}, errors.Wrap(err, "s.repo.GetOrder(ctx, checkRequest.InvoiceID)")
 	}
 	return handleCloudPaymentsCheckWebHook(ctx, checkRequest, order, s.maxDurationForHandlingPayment)
 }
@@ -205,7 +205,7 @@ func (s *Service) isUpdateTypeShoppigramBotAddedToChannelAsAdmin(update tgbotapi
 func handleCloudPaymentsCheckWebHook(_ context.Context, check CloudPaymentsCheckRequest, orderInfo Order, paymentMaxDuration time.Duration) (resp CloudPaymentsCheckResponce, err error) {
 	if check.Amount != float64(orderInfo.Sum) || !isCurrenciesEqual(check.Currency, orderInfo.Currency) {
 		return CloudPaymentsCheckResponce{
-				Code: CloudPaymentsCheckResponceCode_wrongSum,
+				Code: cloudPaymentsCheckResponceCodeWrongSum,
 			},
 			nil
 	}
@@ -214,17 +214,17 @@ func handleCloudPaymentsCheckWebHook(_ context.Context, check CloudPaymentsCheck
 	paymentTime, err := time.Parse(time.DateTime, check.DateTime)
 	if err != nil {
 		return CloudPaymentsCheckResponce{
-			Code: CloudPaymentsCheckResponceCode_cantHandleThePayment,
+			Code: cloudPaymentsCheckResponceCodeCantHandleThePayment,
 		}, errors.Wrap(ErrorWrongFormat, "time.Parse(time.DateTime, check.DateTime)")
 	}
 	if isPaymentExpired(orderUpdateTime, paymentTime, paymentMaxDuration) {
 		return CloudPaymentsCheckResponce{
-			Code: CloudPaymentsCheckResponceCode_transactionExpired,
+			Code: cloudPaymentsCheckResponceCodeTransactionExpired,
 		}, nil
 	}
 
 	return CloudPaymentsCheckResponce{
-		Code: CloudPaymentsCheckResponceCode_success,
+		Code: cloudPaymentsCheckResponceCodeSuccess,
 	}, nil
 }
 

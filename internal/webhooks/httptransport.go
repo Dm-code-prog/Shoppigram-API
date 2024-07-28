@@ -60,7 +60,7 @@ func MakeCloudPaymentsHandlers(s *CloudPaymentsService, log *zap.Logger, login s
 	checkHandler := kithttp.NewServer(
 		basicAuthMiddleware(checkEndpoint),
 		decodeCloudPaymentsCheckRequest,
-		enclodeCloudPaymentsCheckResponce,
+		encodeCloudPaymentsCheckResponse,
 		opts...)
 
 	router := chi.NewRouter()
@@ -100,7 +100,6 @@ func decodeTelegramWebhookRequest(_ context.Context, r *http.Request) (any, erro
 }
 
 func decodeCloudPaymentsCheckRequest(_ context.Context, r *http.Request) (any, error) {
-	// Check
 	var checkRequest CloudPaymentsCheckRequest
 	err := json.NewDecoder(r.Body).Decode(&checkRequest)
 	if err != nil {
@@ -110,14 +109,14 @@ func decodeCloudPaymentsCheckRequest(_ context.Context, r *http.Request) (any, e
 
 }
 
-func enclodeCloudPaymentsCheckResponce(_ context.Context, w http.ResponseWriter, responce any) error {
-	castedResponce, ok := responce.(CloudPaymentsCheckResponce)
+func encodeCloudPaymentsCheckResponse(_ context.Context, w http.ResponseWriter, response any) error {
+	castedResponse, ok := response.(CloudPaymentsCheckResponce)
 	if !ok {
-		return ErrorWrongResponce
+		return ErrorWrongResponse
 	}
 	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(castedResponce); err != nil {
-		return ErrorWrongResponce
+	if err := json.NewEncoder(w).Encode(castedResponse); err != nil {
+		return ErrorInternalServerError
 	}
 
 	return nil

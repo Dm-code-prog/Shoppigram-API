@@ -24,14 +24,14 @@ func makeTelegramWebhookEndpoint(s *Service) endpoint.Endpoint {
 	}
 }
 
-// Cloud Paymet Check Responces
+// Cloud Payments Check Responses
 const (
-	CloudPaymentsCheckResponceCode_success              = 0
-	CloudPaymentsCheckResponceCode_wrongInvoiceID       = 10
-	CloudPaymentsCheckResponceCode_accountIncorrect     = 11
-	CloudPaymentsCheckResponceCode_wrongSum             = 12
-	CloudPaymentsCheckResponceCode_cantHandleThePayment = 13
-	CloudPaymentsCheckResponceCode_transactionExpired   = 20
+	cloudPaymentsCheckResponceCodeSuccess              = 0
+	cloudPaymentsCheckResponceCodeWrongInvoiceID       = 10
+	cloudPaymentsCheckResponceCodeAccountIncorrect     = 11
+	cloudPaymentsCheckResponceCodeWrongSum             = 12
+	cloudPaymentsCheckResponceCodeCantHandleThePayment = 13
+	cloudPaymentsCheckResponceCodeTransactionExpired   = 20
 )
 
 func makeCloudPaymentCheckEndpoint(s *CloudPaymentsService) endpoint.Endpoint {
