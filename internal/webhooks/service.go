@@ -60,7 +60,7 @@ type (
 		NotifyChannelIntegrationSuccess(ctx context.Context, request NotifyChannelIntegrationSuccessRequest) error
 	}
 
-	// Order represents order record in datapase
+	// Order represents order record in database
 	Order struct {
 		ID        uuid.UUID
 		UpdatedAt pgtype.Timestamp
