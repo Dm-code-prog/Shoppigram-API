@@ -36,11 +36,12 @@ func (p *Pg) GetOrder(ctx context.Context, id string) (Order, error) {
 		}
 		return Order{}, errors.Wrap(err, "p.gen.GetOrder(ctx, idParsed)")
 	}
+	parsedTime := order.UpdatedAt.Time
 
 	return Order{
 		ID:        order.ID,
-		UpdatedAt: order.UpdatedAt,
-		Sum:       order.Sum,
+		UpdatedAt: parsedTime,
+		Sum:       order.OrderSum,
 		Currency:  order.PriceCurrency,
 	}, nil
 }

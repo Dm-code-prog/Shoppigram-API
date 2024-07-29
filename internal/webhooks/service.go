@@ -8,7 +8,6 @@ import (
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
@@ -63,8 +62,8 @@ type (
 	// Order represents order record in database
 	Order struct {
 		ID        uuid.UUID
-		UpdatedAt pgtype.Timestamp
-		Sum       int64
+		UpdatedAt time.Time
+		Sum       float64
 		Currency  string
 	}
 
@@ -203,29 +202,29 @@ func (s *Service) isUpdateTypeShoppigramBotAddedToChannelAsAdmin(update tgbotapi
 }
 
 func handleCloudPaymentsCheckWebHook(_ context.Context, check CloudPaymentsCheckRequest, orderInfo Order, paymentMaxDuration time.Duration) (resp CloudPaymentsCheckResponce, err error) {
-	if check.Amount != float64(orderInfo.Sum) || !isCurrenciesEqual(check.Currency, orderInfo.Currency) {
-		return CloudPaymentsCheckResponce{
-				Code: cloudPaymentsCheckResponceCodeWrongSum,
-			},
-			nil
-	}
-
-	orderUpdateTime := orderInfo.UpdatedAt.Time
-	paymentTime, err := time.Parse(time.DateTime, check.DateTime)
-	if err != nil {
-		return CloudPaymentsCheckResponce{
-			Code: cloudPaymentsCheckResponceCodeCantHandleThePayment,
-		}, errors.Wrap(ErrorWrongFormat, "time.Parse(time.DateTime, check.DateTime)")
-	}
-	if isPaymentExpired(orderUpdateTime, paymentTime, paymentMaxDuration) {
-		return CloudPaymentsCheckResponce{
-			Code: cloudPaymentsCheckResponceCodeTransactionExpired,
-		}, nil
-	}
 
 	return CloudPaymentsCheckResponce{
-		Code: cloudPaymentsCheckResponceCodeSuccess,
+		Code: int8(checkPayment(check, orderInfo, paymentMaxDuration)),
 	}, nil
+}
+
+func checkPayment(check CloudPaymentsCheckRequest, orderInfo Order, paymentMaxDuration time.Duration) int {
+	if check.InvoiceID != orderInfo.ID.String() {
+		return cloudPaymentsCheckResponceCodeWrongInvoiceID
+	}
+
+	if check.Amount != float64(orderInfo.Sum) || !isCurrenciesEqual(check.Currency, orderInfo.Currency) {
+		return cloudPaymentsCheckResponceCodeWrongSum
+	}
+	orderUpdateTime := orderInfo.UpdatedAt
+	paymentTime, err := time.Parse(time.DateTime, check.DateTime)
+	if err != nil {
+		return cloudPaymentsCheckResponceCodeCantHandleThePayment
+	}
+	if isPaymentExpired(orderUpdateTime, paymentTime, paymentMaxDuration) {
+		return cloudPaymentsCheckResponceCodeTransactionExpired
+	}
+	return cloudPaymentsCheckResponceCodeSuccess
 }
 
 func isCurrenciesEqual(cur1 string, cur2 string) bool {

@@ -17,7 +17,7 @@ func makeTelegramWebhookEndpoint(s *Service) endpoint.Endpoint {
 
 		err := s.HandleTelegramWebhook(ctx, data)
 		if err != nil {
-			return nil, errors.Wrap(ErrorCantHandle, "s.HandleTelegramWebhook(ctx, data)")
+			return nil, errors.Wrap(ErrorBadRequest, "s.HandleTelegramWebhook(ctx, data)")
 		}
 
 		return nil, nil
@@ -42,7 +42,7 @@ func makeCloudPaymentCheckEndpoint(s *CloudPaymentsService) endpoint.Endpoint {
 		}
 		resp, err := s.HandleCloudPaymentsCheckWebHook(ctx, data)
 		if err != nil {
-			return nil, errors.Wrap(ErrorCantHandle, "s.HandleCloudPaymentsCheckWebHook(ctx, data)")
+			return nil, errors.Wrap(ErrorBadRequest, "s.HandleCloudPaymentsCheckWebHook(ctx, data)")
 		}
 		return resp, nil
 	}
