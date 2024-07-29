@@ -6,6 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"fmt"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
@@ -52,11 +54,19 @@ type (
 		Code int8 `json:"code"`
 	}
 
+	// NotifyGreetingsRequest contains the initial greeting message
+	// of the bot
+	NotifyGreetingsRequest struct {
+		UserExternalID  int64
+		GreetingMessage string
+	}
+
 	// Notifier is the service for notifications
 	// The interface requires a method for notifying a user about a successful
 	// channel integration with Shoppigram
 	Notifier interface {
 		NotifyChannelIntegrationSuccess(ctx context.Context, request NotifyChannelIntegrationSuccessRequest) error
+		NotifyGreetings(ctx context.Context, request NotifyGreetingsRequest) error
 	}
 
 	// Order represents order record in database
@@ -74,10 +84,11 @@ type (
 
 	// Service is the service for handling Telegram webhooks
 	Service struct {
-		channelStorage  ChannelStorage
-		notifier        Notifier
-		log             *zap.Logger
-		shoppigramBotID int64
+		channelStorage    ChannelStorage
+		notifier          Notifier
+		log               *zap.Logger
+		shoppigramBotID   int64
+		shoppigramBotName string
 	}
 
 	// CloudPaymentsService is the service for handling CloudPayments webhooks
@@ -89,12 +100,13 @@ type (
 )
 
 // New returns a new instance of the Service
-func New(channelStorage ChannelStorage, notifier Notifier, log *zap.Logger, shoppigramBotID int64) *Service {
+func New(channelStorage ChannelStorage, notifier Notifier, log *zap.Logger, shoppigramBotID int64, shoppigramBotName string) *Service {
 	return &Service{
-		channelStorage:  channelStorage,
-		notifier:        notifier,
-		log:             log,
-		shoppigramBotID: shoppigramBotID,
+		channelStorage:    channelStorage,
+		notifier:          notifier,
+		log:               log,
+		shoppigramBotID:   shoppigramBotID,
+		shoppigramBotName: shoppigramBotName,
 	}
 }
 
@@ -119,6 +131,8 @@ func (s *Service) HandleTelegramWebhook(ctx context.Context, update tgbotapi.Upd
 	switch {
 	case s.isUpdateTypeShoppigramBotAddedToChannelAsAdmin(update):
 		return s.handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx, update)
+	case s.isUpdateTypeStartCommand(update):
+		return s.handleUpdateTypeStartCommand(ctx, update)
 	default:
 		b, err := json.MarshalIndent(update, "", "  ")
 		if err != nil {
@@ -176,29 +190,44 @@ func (s *Service) handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx context
 	return nil
 }
 
-func (s *Service) isUpdateTypeShoppigramBotAddedToChannelAsAdmin(update tgbotapi.Update) bool {
-	if update.MyChatMember == nil {
-		return false
-	}
-	event := update.MyChatMember
+func (s *Service) handleUpdateTypeStartCommand(ctx context.Context, update tgbotapi.Update) error {
+	// Send a button with the link to the mini app
 
-	if event.Chat.Type != "channel" {
-		return false
+	var greetingMessage = tgbotapi.EscapeText(
+		tgbotapi.ModeMarkdownV2, `
+Добро пожаловать в Shoppigram!  
+  
+С нами вы можете создать свой интернет-магазин в Telegram всего за несколько кликов. Никаких сложностей и технических навыков – всё максимально просто и интуитивно.  
+  
+✨ Что вы можете сделать с Shoppigram:  
+- Создать витрину товаров.  
+- Управлять ассортиментом.  
+- Обрабатывать заказы.  
+- Взаимодействовать с клиентами напрямую через Telegram.  `) +
+		fmt.Sprintf(`
+📌 Как это может выглядеть:  
+[Магазин кроссовок](https://t.me/%s/sneakerboss) 
+  
+[Кофейня](https://t.me/%s/mycoffe)  
+
+🛠 [Связаться с поддержкой](https://t.me/ShoppigramSupport)  
+🌟 [Открыть бота](https://t.me/%s/app)
+
+`, s.shoppigramBotName, s.shoppigramBotName, s.shoppigramBotName) +
+		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, `
+Спасибо, что выбрали Shoppigram! Давайте вместе сделаем ваш бизнес ещё успешнее.
+`)
+
+	// Send the message to the user
+	err := s.notifier.NotifyGreetings(ctx, NotifyGreetingsRequest{
+		UserExternalID:  update.Message.From.ID,
+		GreetingMessage: greetingMessage,
+	})
+	if err != nil {
+		return errors.Wrap(err, "s.notifier.NotifyGreetings")
 	}
 
-	if event.NewChatMember.Status != "administrator" {
-		return false
-	}
-
-	if event.NewChatMember.User.ID != s.shoppigramBotID {
-		return false
-	}
-
-	if !event.NewChatMember.CanPostMessages {
-		return false
-	}
-
-	return true
+	return nil
 }
 
 func handleCloudPaymentsCheckWebHook(_ context.Context, check CloudPaymentsCheckRequest, orderInfo Order, paymentMaxDuration time.Duration) (resp CloudPaymentsCheckResponce, err error) {

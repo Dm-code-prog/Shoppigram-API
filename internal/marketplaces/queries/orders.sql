@@ -1,7 +1,9 @@
--- name: CreateOrder :one
-insert into orders (web_app_id, external_user_id)
+-- name: CreateP2POrder :one
+insert into orders (web_app_id, external_user_id, type, state)
 values ($1,
-        $2)
+        $2,
+        'p2p',
+        'confirmed'::order_state)
 returning id,readable_id;
 
 -- name: SetOrderProducts :batchexec

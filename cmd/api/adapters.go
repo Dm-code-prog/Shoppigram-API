@@ -42,3 +42,7 @@ type notificationsWebhooksAdapter struct {
 func (a *notificationsWebhooksAdapter) NotifyChannelIntegrationSuccess(ctx context.Context, req webhooks.NotifyChannelIntegrationSuccessRequest) error {
 	return a.notifier.NotifyChannelIntegrationSuccess(ctx, notifications.NotifyChannelIntegrationSuccessRequest(req))
 }
+
+func (a *notificationsWebhooksAdapter) NotifyGreetings(ctx context.Context, req webhooks.NotifyGreetingsRequest) error {
+	return a.notifier.NotifyGreetings(ctx, notifications.NotifyGreetingsRequest(req))
+}
