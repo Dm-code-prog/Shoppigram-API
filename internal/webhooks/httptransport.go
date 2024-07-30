@@ -3,14 +3,16 @@ package webhooks
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+
 	"github.com/go-chi/chi/v5"
+	kitauth "github.com/go-kit/kit/auth/basic"
 	"github.com/go-kit/kit/endpoint"
 	kithttp "github.com/go-kit/kit/transport/http"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
 	"github.com/shoppigram-com/marketplace-api/internal/logging"
 	"go.uber.org/zap"
-	"net/http"
 )
 
 type serverErrorLogger struct {
@@ -42,6 +44,30 @@ func MakeHandler(s *Service, log *zap.Logger, secretToken string) http.Handler {
 	return r
 }
 
+// MakeCloudPaymentsHandlers returns a handler for the CloudPayments webhooks
+func MakeCloudPaymentsHandlers(s *CloudPaymentsService, log *zap.Logger, login string, password string) http.Handler {
+	opts := []kithttp.ServerOption{
+		kithttp.ServerErrorEncoder(encodeError),
+		kithttp.ServerErrorHandler(serverErrorLogger{logger: log}),
+		kithttp.ServerBefore(func(ctx context.Context, request *http.Request) context.Context {
+			return context.WithValue(ctx, kithttp.ContextKeyRequestAuthorization, request.Header.Get("Authorization"))
+		}),
+	}
+
+	checkEndpoint := makeCloudPaymentCheckEndpoint(s)
+	basicAuthMiddleware := kitauth.AuthMiddleware(login, password, "check")
+
+	checkHandler := kithttp.NewServer(
+		basicAuthMiddleware(checkEndpoint),
+		decodeCloudPaymentsCheckRequest,
+		encodeCloudPaymentsCheckResponse,
+		opts...)
+
+	router := chi.NewRouter()
+	router.Post("/check", checkHandler.ServeHTTP)
+	return router
+}
+
 func makeWebhookAuthMiddleware(secretToken string) endpoint.Middleware {
 	return func(next endpoint.Endpoint) endpoint.Endpoint {
 		return func(ctx context.Context, request interface{}) (interface{}, error) {
@@ -52,7 +78,6 @@ func makeWebhookAuthMiddleware(secretToken string) endpoint.Middleware {
 			return next(ctx, request)
 		}
 	}
-
 }
 
 func encodeError(_ context.Context, err error, w http.ResponseWriter) {
@@ -72,4 +97,27 @@ func decodeTelegramWebhookRequest(_ context.Context, r *http.Request) (any, erro
 	}
 
 	return request, nil
+}
+
+func decodeCloudPaymentsCheckRequest(_ context.Context, r *http.Request) (any, error) {
+	var checkRequest CloudPaymentsCheckRequest
+	err := json.NewDecoder(r.Body).Decode(&checkRequest)
+	if err != nil {
+		return nil, ErrorBadRequest
+	}
+	return checkRequest, nil
+
+}
+
+func encodeCloudPaymentsCheckResponse(_ context.Context, w http.ResponseWriter, response any) error {
+	castedResponse, ok := response.(CloudPaymentsCheckResponse)
+	if !ok {
+		return ErrorInternalServerError
+	}
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(castedResponse); err != nil {
+		return ErrorInternalServerError
+	}
+
+	return nil
 }

@@ -1,0 +1,15 @@
+POST http://localhost:8080/api/v1/cloud-payment/webhooks/check
+Authorization: Basic aGVsbG86dGhlcmU=
+Content-Type: application/json
+
+{
+  "InvoiceId": "05b42581-0773-46ad-99ff-5c96ca4ed1f2",
+  "Amount": 169998,
+  "Currency": "RUB",
+  "PaymentAmount": "10",
+  "PaymentCurrency": "RUB",
+  "DateTime": "2024-10-12"
+}
+
+###
+

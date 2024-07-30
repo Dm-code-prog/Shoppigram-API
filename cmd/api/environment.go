@@ -54,4 +54,10 @@ type Environment struct {
 	TelegramWebhooks struct {
 		SecretToken string `env:"TELEGRAM_WEBHOOK_SECRET,required"`
 	}
+
+	CloudPayments struct {
+		Login                  string `env:"CLOUDPAYMENTS_LOGIN,required"`
+		Password               string `env:"CLOUDPAYMENTS_PASSWORD,required"`
+		MaxTransactionDuration string `env:"CLOUDPAYMENTS_MAX_TRANSACTION_DURATION,required"`
+	}
 }
