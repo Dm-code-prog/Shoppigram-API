@@ -4,3 +4,7 @@ export
 endif
 run	:
 	go run cmd/api/main.go cmd/api/environment.go cmd/api/adapters.go
+
+
+test:
+	go test ./... -race

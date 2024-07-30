@@ -39,7 +39,7 @@ type (
 		ChannelName       string
 	}
 
-	// CloudPaymentsCheckResponce represents needed fields from check request from CloudPayments
+	// CloudPaymentsCheckRequest represents needed fields from check request from CloudPayments
 	CloudPaymentsCheckRequest struct {
 		InvoiceID       string  `json:"InvoiceID"`
 		Amount          float64 `json:"Amount"`
@@ -49,8 +49,8 @@ type (
 		DateTime        string  `json:"DateTime"`
 	}
 
-	// CloudPaymentsCheckResponce represents check response for CloudPayments
-	CloudPaymentsCheckResponce struct {
+	// CloudPaymentsCheckResponse represents check response for CloudPayments
+	CloudPaymentsCheckResponse struct {
 		Code int8 `json:"code"`
 	}
 
@@ -147,16 +147,16 @@ func (s *Service) HandleTelegramWebhook(ctx context.Context, update tgbotapi.Upd
 	return nil
 }
 
-// HandleCloudPaymentsWebHook is the entry point for a webhook request from CloudPayments
+// HandleCloudPaymentsCheckWebHook is the entry point for a webhook request from CloudPayments
 //
-// It suppose to determine, what type of request was made, and generate a responce
-func (s *CloudPaymentsService) HandleCloudPaymentsCheckWebHook(ctx context.Context, checkRequest CloudPaymentsCheckRequest) (resp CloudPaymentsCheckResponce, err error) {
+// It suppose to determine, what type of request was made, and generate a response
+func (s *CloudPaymentsService) HandleCloudPaymentsCheckWebHook(ctx context.Context, checkRequest CloudPaymentsCheckRequest) (resp CloudPaymentsCheckResponse, err error) {
 	order, err := s.repo.GetOrder(ctx, checkRequest.InvoiceID)
 	if err != nil {
 		if errors.Is(err, ErrorOrderDoesntExist) {
-			return CloudPaymentsCheckResponce{Code: cloudPaymentsCheckResponceCodeWrongInvoiceID}, nil
+			return CloudPaymentsCheckResponse{Code: cloudPaymentsCheckResponseCodeWrongInvoiceID}, nil
 		}
-		return CloudPaymentsCheckResponce{Code: cloudPaymentsCheckResponceCodeCantHandleThePayment}, errors.Wrap(err, "s.repo.GetOrder(ctx, checkRequest.InvoiceID)")
+		return CloudPaymentsCheckResponse{Code: cloudPaymentsCheckResponseCodeCantHandleThePayment}, errors.Wrap(err, "s.repo.GetOrder")
 	}
 	return handleCloudPaymentsCheckWebHook(ctx, checkRequest, order, s.maxDurationForHandlingPayment)
 }
@@ -230,30 +230,29 @@ func (s *Service) handleUpdateTypeStartCommand(ctx context.Context, update tgbot
 	return nil
 }
 
-func handleCloudPaymentsCheckWebHook(_ context.Context, check CloudPaymentsCheckRequest, orderInfo Order, paymentMaxDuration time.Duration) (resp CloudPaymentsCheckResponce, err error) {
-
-	return CloudPaymentsCheckResponce{
+func handleCloudPaymentsCheckWebHook(_ context.Context, check CloudPaymentsCheckRequest, orderInfo Order, paymentMaxDuration time.Duration) (resp CloudPaymentsCheckResponse, err error) {
+	return CloudPaymentsCheckResponse{
 		Code: int8(checkPayment(check, orderInfo, paymentMaxDuration)),
 	}, nil
 }
 
 func checkPayment(check CloudPaymentsCheckRequest, orderInfo Order, paymentMaxDuration time.Duration) int {
 	if check.InvoiceID != orderInfo.ID.String() {
-		return cloudPaymentsCheckResponceCodeWrongInvoiceID
+		return cloudPaymentsCheckResponseCodeWrongInvoiceID
 	}
 
-	if check.Amount != float64(orderInfo.Sum) || !isCurrenciesEqual(check.Currency, orderInfo.Currency) {
-		return cloudPaymentsCheckResponceCodeWrongSum
+	if check.Amount != orderInfo.Sum || !isCurrenciesEqual(check.Currency, orderInfo.Currency) {
+		return cloudPaymentsCheckResponseCodeWrongSum
 	}
 	orderUpdateTime := orderInfo.UpdatedAt
 	paymentTime, err := time.Parse(time.DateTime, check.DateTime)
 	if err != nil {
-		return cloudPaymentsCheckResponceCodeCantHandleThePayment
+		return cloudPaymentsCheckResponseCodeCantHandleThePayment
 	}
 	if isPaymentExpired(orderUpdateTime, paymentTime, paymentMaxDuration) {
-		return cloudPaymentsCheckResponceCodeTransactionExpired
+		return cloudPaymentsCheckResponseCodeTransactionExpired
 	}
-	return cloudPaymentsCheckResponceCodeSuccess
+	return cloudPaymentsCheckResponseCodeSuccess
 }
 
 func isCurrenciesEqual(cur1 string, cur2 string) bool {

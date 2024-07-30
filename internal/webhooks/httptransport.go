@@ -110,7 +110,7 @@ func decodeCloudPaymentsCheckRequest(_ context.Context, r *http.Request) (any, e
 }
 
 func encodeCloudPaymentsCheckResponse(_ context.Context, w http.ResponseWriter, response any) error {
-	castedResponse, ok := response.(CloudPaymentsCheckResponce)
+	castedResponse, ok := response.(CloudPaymentsCheckResponse)
 	if !ok {
 		return ErrorInternalServerError
 	}

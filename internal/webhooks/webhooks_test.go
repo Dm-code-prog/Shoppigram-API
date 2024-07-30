@@ -17,7 +17,7 @@ var (
 	duration, _        = time.ParseDuration("24h")
 	orderUpdateTime, _ = time.Parse(time.DateTime, "2024-07-29 12:35:00")
 
-	CloudPaymentscheckPaymentTests = map[string]struct {
+	CloudPaymentsCheckPaymentTests = map[string]struct {
 		in  inData
 		out int
 	}{
@@ -39,7 +39,7 @@ var (
 				},
 				paymentMaxDuration: duration,
 			},
-			cloudPaymentsCheckResponceCodeSuccess,
+			cloudPaymentsCheckResponseCodeSuccess,
 		},
 
 		"wrong InvoiceID": {
@@ -60,7 +60,7 @@ var (
 				},
 				paymentMaxDuration: duration,
 			},
-			cloudPaymentsCheckResponceCodeWrongInvoiceID,
+			cloudPaymentsCheckResponseCodeWrongInvoiceID,
 		},
 
 		"wrong payment amount": {
@@ -81,7 +81,7 @@ var (
 				},
 				paymentMaxDuration: duration,
 			},
-			cloudPaymentsCheckResponceCodeWrongSum,
+			cloudPaymentsCheckResponseCodeWrongSum,
 		},
 
 		"wrong currency": {
@@ -102,7 +102,7 @@ var (
 				},
 				paymentMaxDuration: duration,
 			},
-			cloudPaymentsCheckResponceCodeWrongSum,
+			cloudPaymentsCheckResponseCodeWrongSum,
 		},
 
 		"payment expired": {
@@ -123,15 +123,28 @@ var (
 				},
 				paymentMaxDuration: duration,
 			},
-			cloudPaymentsCheckResponceCodeTransactionExpired,
+			cloudPaymentsCheckResponseCodeTransactionExpired,
+		},
+		"empty request": {
+			inData{
+				check: CloudPaymentsCheckRequest{},
+				orderInfo: Order{
+					ID:        uuid.MustParse("05b42581-0773-46ad-99ff-5c96ca4ed1f2"),
+					Sum:       1000,
+					Currency:  "rub",
+					UpdatedAt: orderUpdateTime,
+				},
+				paymentMaxDuration: duration,
+			},
+			cloudPaymentsCheckResponseCodeWrongInvoiceID,
 		},
 	}
 )
 
 func TestCloudPaymentCheckPayment(t *testing.T) {
-	t.Parallel()
-	for name, test := range CloudPaymentscheckPaymentTests {
+	for name, test := range CloudPaymentsCheckPaymentTests {
 		t.Run(name, func(t *testing.T) {
+			t.Parallel()
 			out := checkPayment(test.in.check, test.in.orderInfo, test.in.paymentMaxDuration)
 			if out != test.out {
 				t.Errorf("got %d, want %d", out, test.out)

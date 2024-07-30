@@ -26,12 +26,12 @@ func makeTelegramWebhookEndpoint(s *Service) endpoint.Endpoint {
 
 // Cloud Payments Check Responses
 const (
-	cloudPaymentsCheckResponceCodeSuccess              = 0
-	cloudPaymentsCheckResponceCodeWrongInvoiceID       = 10
-	cloudPaymentsCheckResponceCodeAccountIncorrect     = 11
-	cloudPaymentsCheckResponceCodeWrongSum             = 12
-	cloudPaymentsCheckResponceCodeCantHandleThePayment = 13
-	cloudPaymentsCheckResponceCodeTransactionExpired   = 20
+	cloudPaymentsCheckResponseCodeSuccess              = 0
+	cloudPaymentsCheckResponseCodeWrongInvoiceID       = 10
+	cloudPaymentsCheckResponseCodeAccountIncorrect     = 11
+	cloudPaymentsCheckResponseCodeWrongSum             = 12
+	cloudPaymentsCheckResponseCodeCantHandleThePayment = 13
+	cloudPaymentsCheckResponseCodeTransactionExpired   = 20
 )
 
 func makeCloudPaymentCheckEndpoint(s *CloudPaymentsService) endpoint.Endpoint {
@@ -42,7 +42,7 @@ func makeCloudPaymentCheckEndpoint(s *CloudPaymentsService) endpoint.Endpoint {
 		}
 		resp, err := s.HandleCloudPaymentsCheckWebHook(ctx, data)
 		if err != nil {
-			return nil, errors.Wrap(ErrorBadRequest, "s.HandleCloudPaymentsCheckWebHook(ctx, data)")
+			return nil, errors.Wrap(err, "s.HandleCloudPaymentsCheckWebHook")
 		}
 		return resp, nil
 	}
