@@ -77,7 +77,7 @@ func MakeCloudPaymentsHandlers(s *CloudPaymentsService, log *zap.Logger, login s
 
 func makeTelegramWebhookAuthMiddleware(secretToken string) endpoint.Middleware {
 	return func(next endpoint.Endpoint) endpoint.Endpoint {
-		return func(ctx context.Context, request interface{}) (interface{}, error) {
+		return func(ctx context.Context, request any) (any, error) {
 			xTelegramBotApiSecretToken := ctx.Value("X-Telegram-Bot-Api-Secret-Token").(string)
 			if xTelegramBotApiSecretToken != secretToken {
 				return nil, errors.New("invalid secret token")
