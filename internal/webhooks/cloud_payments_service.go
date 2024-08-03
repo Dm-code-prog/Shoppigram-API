@@ -109,11 +109,13 @@ type (
 
 	// SavePaymentExtraInfoParams represents the parameters for saving extra info about the payment
 	SavePaymentExtraInfoParams struct {
-		OrderID            uuid.UUID
+		InvoiceID          uuid.UUID
 		Provider           string
 		OrderStateSnapshot string
 		EventType          string
+		Error              string
 		ExtraInfo          []byte
+		Response           []byte
 	}
 
 	// Repository provides access to the webhooks storage
@@ -159,7 +161,45 @@ func NewCloudPayments(repo Repository, log *zap.Logger, maxDurationForHandlingPa
 // HandleCloudPaymentsCheckWebHook is the entry point for a webhook request from CloudPayments
 //
 // It suppose to determine, what type of request was made, and generate a response
-func (s *CloudPaymentsService) HandleCloudPaymentsCheckWebHook(ctx context.Context, checkRequest CloudPaymentsCheckRequest) (resp CloudPaymentsResponse, err error) {
+func (s *CloudPaymentsService) HandleCloudPaymentsCheckWebHook(ctx context.Context, checkRequest CloudPaymentsCheckRequest) (resp CloudPaymentsResponse, mainErr error) {
+	res, mainErr := s.handleCloudPaymentsCheckWebHook(ctx, checkRequest)
+	var errorText string
+	if mainErr != nil {
+		errorText = mainErr.Error()
+	}
+
+	extraInfoJSON, err := json.Marshal(checkRequest)
+	if err != nil {
+		return CloudPaymentsResponse{}, err
+	}
+
+	responseJSON, err := json.Marshal(res)
+	if err != nil {
+		return CloudPaymentsResponse{}, err
+	}
+
+	invoiceID, err := uuid.Parse(*checkRequest.InvoiceId)
+	if err != nil {
+		return CloudPaymentsResponse{}, err
+	}
+
+	// save the extra info
+	err = s.repo.SavePaymentExtraInfo(ctx, SavePaymentExtraInfoParams{
+		InvoiceID: invoiceID,
+		Provider:  providerCloudPayments,
+		EventType: eventTypeCheck,
+		ExtraInfo: extraInfoJSON,
+		Response:  responseJSON,
+		Error:     errorText,
+	})
+	if err != nil {
+		return CloudPaymentsResponse{}, err
+	}
+
+	return res, mainErr
+}
+
+func (s *CloudPaymentsService) handleCloudPaymentsCheckWebHook(ctx context.Context, checkRequest CloudPaymentsCheckRequest) (resp CloudPaymentsResponse, err error) {
 	var invoiceID string
 	if checkRequest.InvoiceId != nil {
 		invoiceID = *checkRequest.InvoiceId
@@ -180,32 +220,7 @@ func (s *CloudPaymentsService) HandleCloudPaymentsCheckWebHook(ctx context.Conte
 		return CloudPaymentsResponse{Code: cloudPaymentsCheckResponseCodeCantHandleThePayment}, errors.Wrap(err, "s.repo.GetOrder")
 	}
 
-	extraInfoJSON, err := json.Marshal(checkRequest)
-	if err != nil {
-		return CloudPaymentsResponse{
-			Code: cloudPaymentsCheckResponseCodeCantHandleThePayment,
-		}, nil
-	}
-
-	// save the extra info
-	err = s.repo.SavePaymentExtraInfo(ctx, SavePaymentExtraInfoParams{
-		OrderID:            order.ID,
-		Provider:           providerCloudPayments,
-		OrderStateSnapshot: order.State,
-		EventType:          eventTypeCheck,
-		ExtraInfo:          extraInfoJSON,
-	})
-	if err != nil {
-		return CloudPaymentsResponse{
-			Code: cloudPaymentsCheckResponseCodeCantHandleThePayment,
-		}, errors.Wrap(err, "s.repo.SavePaymentExtraInfo")
-	}
-
 	code := int8(checkPayment(checkRequest, order, s.maxDurationForHandlingPayment))
-	if code != cloudPaymentsResponseCodeSuccess {
-		s.log.Info("checkPayment failed", zap.String("invoiceID", invoiceID), zap.Int8("code", code))
-	}
-
 	return CloudPaymentsResponse{
 		Code: code,
 	}, nil
@@ -213,6 +228,44 @@ func (s *CloudPaymentsService) HandleCloudPaymentsCheckWebHook(ctx context.Conte
 
 // HandleCloudPaymentsPayWebHook is the entry point for a webhook request from CloudPayments
 func (s *CloudPaymentsService) HandleCloudPaymentsPayWebHook(ctx context.Context, payRequest CloudPaymentsPayRequest) (resp CloudPaymentsResponse, err error) {
+	res, mainErr := s.handleCloudPaymentsPayWebHook(ctx, payRequest)
+	var errorText string
+	if mainErr != nil {
+		errorText = mainErr.Error()
+	}
+
+	extraInfoJSON, err := json.Marshal(payRequest)
+	if err != nil {
+		return CloudPaymentsResponse{}, err
+	}
+
+	responseJSON, err := json.Marshal(res)
+	if err != nil {
+		return CloudPaymentsResponse{}, err
+	}
+
+	invoiceID, err := uuid.Parse(*payRequest.InvoiceId)
+	if err != nil {
+		return CloudPaymentsResponse{}, err
+	}
+
+	// save the extra info
+	err = s.repo.SavePaymentExtraInfo(ctx, SavePaymentExtraInfoParams{
+		InvoiceID: invoiceID,
+		Provider:  providerCloudPayments,
+		EventType: eventTypePay,
+		ExtraInfo: extraInfoJSON,
+		Response:  responseJSON,
+		Error:     errorText,
+	})
+	if err != nil {
+		return CloudPaymentsResponse{}, err
+	}
+
+	return res, err
+}
+
+func (s *CloudPaymentsService) handleCloudPaymentsPayWebHook(ctx context.Context, payRequest CloudPaymentsPayRequest) (resp CloudPaymentsResponse, err error) {
 	var invoiceID string
 	if payRequest.InvoiceId != nil {
 		invoiceID = *payRequest.InvoiceId
@@ -229,26 +282,7 @@ func (s *CloudPaymentsService) HandleCloudPaymentsPayWebHook(ctx context.Context
 	if err != nil {
 		return CloudPaymentsResponse{}, errors.Wrap(err, "s.repo.SetOrderStateConfirmed")
 	}
-
-	extraInfoJSON, err := json.Marshal(payRequest)
-	if err != nil {
-		return CloudPaymentsResponse{}, errors.Wrap(err, "json.Marshal")
-	}
-
-	// save the extra info
-	err = s.repo.SavePaymentExtraInfo(ctx, SavePaymentExtraInfoParams{
-		OrderID:            id,
-		Provider:           providerCloudPayments,
-		OrderStateSnapshot: orderStateConfirmed,
-		EventType:          eventTypePay,
-		ExtraInfo:          extraInfoJSON,
-	})
-	if err != nil {
-		return CloudPaymentsResponse{}, errors.Wrap(err, "s.repo.SavePaymentExtraInfo")
-	}
-
 	return CloudPaymentsResponse{Code: cloudPaymentsResponseCodeSuccess}, nil
-
 }
 
 func checkPayment(check CloudPaymentsCheckRequest, orderInfo Order, paymentMaxDuration time.Duration) int {

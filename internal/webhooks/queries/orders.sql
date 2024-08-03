@@ -18,9 +18,10 @@ where id = $1
 
 
 -- name: SavePaymentExtraInfo :exec
-insert into payments_extra_info (order_id, provider, order_state_snapshot, event_type, extra_info)
-values (@order_id,
+insert into payments_extra_info (invoice_id, provider, event_type, extra_info, response, error)
+values (@invoice_id,
         @provider,
-        @order_state_snapshot,
         @event_type,
-        @extra_info);
+        @extra_info,
+        @response,
+        @error);

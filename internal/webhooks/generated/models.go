@@ -242,14 +242,15 @@ type OrderProduct struct {
 }
 
 type PaymentsExtraInfo struct {
-	ID                 uuid.UUID
-	CreatedAt          pgtype.Timestamp
-	UpdatedAt          pgtype.Timestamp
-	OrderID            pgtype.UUID
-	Provider           PaymentProviders
-	OrderStateSnapshot OrderState
-	EventType          PaymentsEventType
-	ExtraInfo          []byte
+	ID        uuid.UUID
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
+	InvoiceID pgtype.UUID
+	Provider  PaymentProviders
+	EventType PaymentsEventType
+	ExtraInfo []byte
+	Response  []byte
+	Error     pgtype.Text
 }
 
 type Product struct {

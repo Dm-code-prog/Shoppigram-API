@@ -47,29 +47,32 @@ func (q *Queries) GetOrder(ctx context.Context, id uuid.UUID) (GetOrderRow, erro
 }
 
 const savePaymentExtraInfo = `-- name: SavePaymentExtraInfo :exec
-insert into payments_extra_info (order_id, provider, order_state_snapshot, event_type, extra_info)
+insert into payments_extra_info (invoice_id, provider, event_type, extra_info, response, error)
 values ($1,
         $2,
         $3,
         $4,
-        $5)
+        $5,
+        $6)
 `
 
 type SavePaymentExtraInfoParams struct {
-	OrderID            pgtype.UUID
-	Provider           PaymentProviders
-	OrderStateSnapshot OrderState
-	EventType          PaymentsEventType
-	ExtraInfo          []byte
+	InvoiceID pgtype.UUID
+	Provider  PaymentProviders
+	EventType PaymentsEventType
+	ExtraInfo []byte
+	Response  []byte
+	Error     pgtype.Text
 }
 
 func (q *Queries) SavePaymentExtraInfo(ctx context.Context, arg SavePaymentExtraInfoParams) error {
 	_, err := q.db.Exec(ctx, savePaymentExtraInfo,
-		arg.OrderID,
+		arg.InvoiceID,
 		arg.Provider,
-		arg.OrderStateSnapshot,
 		arg.EventType,
 		arg.ExtraInfo,
+		arg.Response,
+		arg.Error,
 	)
 	return err
 }

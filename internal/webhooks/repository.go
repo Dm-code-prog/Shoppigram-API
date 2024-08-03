@@ -55,11 +55,12 @@ func (p *Pg) SetOrderStateConfirmed(ctx context.Context, id uuid.UUID) error {
 // SavePaymentExtraInfo saves the extra info about a payment
 func (p *Pg) SavePaymentExtraInfo(ctx context.Context, params SavePaymentExtraInfoParams) error {
 	err := p.gen.SavePaymentExtraInfo(ctx, generated.SavePaymentExtraInfoParams{
-		OrderID:            pgtype.UUID{Bytes: params.OrderID, Valid: true},
-		Provider:           generated.PaymentProviders(params.Provider),
-		OrderStateSnapshot: generated.OrderState(params.OrderStateSnapshot),
-		EventType:          generated.PaymentsEventType(params.EventType),
-		ExtraInfo:          params.ExtraInfo,
+		InvoiceID: pgtype.UUID{Bytes: params.InvoiceID, Valid: true},
+		Provider:  generated.PaymentProviders(params.Provider),
+		EventType: generated.PaymentsEventType(params.EventType),
+		ExtraInfo: params.ExtraInfo,
+		Response:  params.Response,
+		Error:     params.Error,
 	})
 	if err != nil {
 		return errors.Wrap(err, "p.gen.SavePaymentExtraInfo(ctx, params)")
