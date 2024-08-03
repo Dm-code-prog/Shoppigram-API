@@ -13,6 +13,7 @@ require (
 	github.com/jackc/pgerrcode v0.0.0-20240316143900-6e2875d9b438
 	github.com/jackc/pgx/v5 v5.5.5
 	github.com/oklog/run v1.1.0
+	github.com/opentracing/opentracing-go v1.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/telegram-mini-apps/init-data-golang v1.1.5
 	go.uber.org/zap v1.27.0
