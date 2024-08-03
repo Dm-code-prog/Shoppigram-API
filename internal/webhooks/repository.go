@@ -60,7 +60,7 @@ func (p *Pg) SavePaymentExtraInfo(ctx context.Context, params SavePaymentExtraIn
 		EventType: generated.PaymentsEventType(params.EventType),
 		ExtraInfo: params.ExtraInfo,
 		Response:  params.Response,
-		Error:     params.Error,
+		Error:     pgtype.Text{String: params.Error, Valid: true},
 	})
 	if err != nil {
 		return errors.Wrap(err, "p.gen.SavePaymentExtraInfo(ctx, params)")
