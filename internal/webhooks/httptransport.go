@@ -37,7 +37,7 @@ func MakeTelegramHandler(s *TelegramService, log *zap.Logger, secretToken string
 	authMw := makeTelegramWebhookAuthMiddleware(secretToken)
 
 	ep := authMw(makeTelegramWebhookEndpoint(s))
-	handler := kithttp.NewServer(ep, decodeTelegramWebhookRequest, encodeResponse, opts...)
+	handler := kithttp.NewServer(ep, decodeTelegramWebhookRequest, encodeTelegramResponse, opts...)
 
 	r := chi.NewRouter()
 	r.Post("/", handler.ServeHTTP)
@@ -92,7 +92,7 @@ func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 	_, _ = w.Write([]byte(ErrorInternalServerError.Error()))
 }
 
-func encodeResponse(_ context.Context, w http.ResponseWriter, response any) error {
+func encodeTelegramResponse(_ context.Context, w http.ResponseWriter, response any) error {
 	w.WriteHeader(http.StatusOK)
 	return nil
 }
