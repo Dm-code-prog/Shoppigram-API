@@ -108,15 +108,15 @@ func decodeTelegramWebhookRequest(_ context.Context, r *http.Request) (any, erro
 }
 
 func decodeCloudPaymentsCheckRequest(_ context.Context, r *http.Request) (any, error) {
+	// get the text we were unable to decode and log it
+	// this will help us debug the issue
+	var body []byte
+	r.Body.Read(body)
+	fmt.Println("[DEBUG} unable to decode the Cloud Payments Check request, the body is: " + string(body))
+
 	var checkRequest CloudPaymentsCheckRequest
 	err := json.NewDecoder(r.Body).Decode(&checkRequest)
 	if err != nil {
-		// get the text we were unable to decode and log it
-		// this will help us debug the issue
-		var body []byte
-		r.Body.Read(body)
-		fmt.Println("[DEBUG} unable to decode the Cloud Payments Check request, the body is: " + string(body))
-
 		return nil, err
 	}
 	return checkRequest, nil
