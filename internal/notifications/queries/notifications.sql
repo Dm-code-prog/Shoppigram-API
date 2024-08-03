@@ -19,7 +19,7 @@ select chat_id
 from new_web_apps_notifications_list;
 
 -- name: GetNotificationsForNewOrdersAfterCursor :many
-with orders_batch as (select id as order_id, created_at, readable_id, web_app_id, external_user_id
+with orders_batch as (select id as order_id, created_at, readable_id, web_app_id, external_user_id, state
                       from orders o
                       where (o.updated_at, o.id) > (@updated_at::timestamp, @id::uuid)
                         and o.state = 'confirmed'
@@ -35,13 +35,15 @@ select ob.order_id,
        p.price_currency,
        op.quantity,
        u.username,
-       u.external_id as external_user_id
+       u.external_id as external_user_id,
+       ob.state
 from orders_batch ob
          join order_products op
               on ob.order_id = op.order_id
          join products p on p.id = op.product_id
          join telegram_users u on external_user_id = u.external_id
          join web_apps wa on ob.web_app_id = wa.id
+where ob.state = 'confirmed'
 order by ob.created_at, ob.order_id;
 
 -- name: GetNotificationsForNewMarketplacesAfterCursor :many
