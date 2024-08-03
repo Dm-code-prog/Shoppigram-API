@@ -3,6 +3,7 @@ package webhooks
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -110,6 +111,12 @@ func decodeCloudPaymentsCheckRequest(_ context.Context, r *http.Request) (any, e
 	var checkRequest CloudPaymentsCheckRequest
 	err := json.NewDecoder(r.Body).Decode(&checkRequest)
 	if err != nil {
+		// get the text we were unable to decode and log it
+		// this will help us debug the issue
+		var body []byte
+		r.Body.Read(body)
+		fmt.Println("[DEBUG} unable to decode the Cloud Payments Check request, the body is: " + string(body))
+
 		return nil, err
 	}
 	return checkRequest, nil
@@ -133,6 +140,11 @@ func decodeCloudPaymentsPayRequest(_ context.Context, r *http.Request) (any, err
 	var payRequest CloudPaymentsPayRequest
 	err := json.NewDecoder(r.Body).Decode(&payRequest)
 	if err != nil {
+		// get the text we were unable to decode and log it
+		// this will help us debug the issue
+		var body []byte
+		r.Body.Read(body)
+		fmt.Println("[DEBUG} unable to decode the Cloud Payments Check request, the body is: " + string(body))
 		return nil, err
 	}
 	return payRequest, nil
