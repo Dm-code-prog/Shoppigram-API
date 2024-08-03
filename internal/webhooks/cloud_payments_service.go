@@ -95,7 +95,7 @@ type (
 
 	// CloudPaymentsResponse represents check response for CloudPayments
 	CloudPaymentsResponse struct {
-		Code int8 `json:"code,omitempty"`
+		Code int8 `json:"code"`
 	}
 
 	// Order represents order record in database
@@ -161,7 +161,7 @@ func NewCloudPayments(repo Repository, log *zap.Logger, maxDurationForHandlingPa
 // HandleCloudPaymentsCheckWebHook is the entry point for a webhook request from CloudPayments
 //
 // It suppose to determine, what type of request was made, and generate a response
-func (s *CloudPaymentsService) HandleCloudPaymentsCheckWebHook(ctx context.Context, checkRequest CloudPaymentsCheckRequest) (resp CloudPaymentsResponse, mainErr error) {
+func (s *CloudPaymentsService) HandleCloudPaymentsCheckWebHook(ctx context.Context, checkRequest CloudPaymentsCheckRequest) (CloudPaymentsResponse, error) {
 	res, mainErr := s.handleCloudPaymentsCheckWebHook(ctx, checkRequest)
 	var errorText string
 	if mainErr != nil {
