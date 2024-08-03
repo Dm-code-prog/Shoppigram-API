@@ -152,7 +152,7 @@ func (pg *Pg) CreateOrder(ctx context.Context, req SaveOrderRequest) (SaveOrderR
 		return SaveOrderResponse{}, errors.Wrap(err, "tx.Commit")
 	}
 
-	return SaveOrderResponse{ReadableID: readableID}, nil
+	return SaveOrderResponse{ReadableID: readableID, ID: id}, nil
 }
 
 // GetOrder gets a list of products in order

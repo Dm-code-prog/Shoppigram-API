@@ -63,7 +63,8 @@ type (
 
 	// CreateOrderResponse returns the ID of the newly created order
 	CreateOrderResponse struct {
-		ReadableID int `json:"readable_id"`
+		ID         uuid.UUID `json:"id"`
+		ReadableID int       `json:"readable_id"`
 	}
 
 	// SaveOrderRequest is a request to save order info
@@ -80,6 +81,7 @@ type (
 	//
 	// It contains the readable order ID
 	SaveOrderResponse struct {
+		ID         uuid.UUID
 		ReadableID int
 	}
 
