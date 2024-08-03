@@ -89,7 +89,7 @@ func makeTelegramWebhookAuthMiddleware(secretToken string) endpoint.Middleware {
 
 func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 	w.WriteHeader(http.StatusInternalServerError)
-	_, _ = w.Write([]byte(err.Error()))
+	_, _ = w.Write([]byte(ErrorInternalServerError.Error()))
 }
 
 func encodeResponse(_ context.Context, w http.ResponseWriter, response any) error {
