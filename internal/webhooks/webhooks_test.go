@@ -24,7 +24,10 @@ var (
 		"valid payment": {
 			inData{
 				check: CloudPaymentsCheckRequest{
-					InvoiceID:       "05b42581-0773-46ad-99ff-5c96ca4ed1f2",
+					InvoiceId: func() *string {
+						id := "05b42581-0773-46ad-99ff-5c96ca4ed1f2"
+						return &id
+					}(),
 					Amount:          1000.00,
 					Currency:        "RUB",
 					PaymentAmount:   "1000.00",
@@ -39,13 +42,16 @@ var (
 				},
 				paymentMaxDuration: duration,
 			},
-			cloudPaymentsCheckResponseCodeSuccess,
+			cloudPaymentsResponseCodeSuccess,
 		},
 
 		"wrong InvoiceID": {
 			inData{
 				check: CloudPaymentsCheckRequest{
-					InvoiceID:       "15b42581-0773-46ad-99ff-5c96ca4ed1f2",
+					InvoiceId: func() *string {
+						id := "15b42581-0773-46ad-99ff-5c96ca4ed1f2"
+						return &id
+					}(),
 					Amount:          1000.00,
 					Currency:        "RUB",
 					PaymentAmount:   "1000.00",
@@ -66,7 +72,10 @@ var (
 		"wrong payment amount": {
 			inData{
 				check: CloudPaymentsCheckRequest{
-					InvoiceID:       "05b42581-0773-46ad-99ff-5c96ca4ed1f2",
+					InvoiceId: func() *string {
+						id := "05b42581-0773-46ad-99ff-5c96ca4ed1f2"
+						return &id
+					}(),
 					Amount:          500.00,
 					Currency:        "RUB",
 					PaymentAmount:   "500.00",
@@ -87,7 +96,10 @@ var (
 		"wrong currency": {
 			inData{
 				check: CloudPaymentsCheckRequest{
-					InvoiceID:       "05b42581-0773-46ad-99ff-5c96ca4ed1f2",
+					InvoiceId: func() *string {
+						id := "05b42581-0773-46ad-99ff-5c96ca4ed1f2"
+						return &id
+					}(),
 					Amount:          1000.00,
 					Currency:        "USD",
 					PaymentAmount:   "1000.00",
@@ -108,7 +120,10 @@ var (
 		"payment expired": {
 			inData{
 				check: CloudPaymentsCheckRequest{
-					InvoiceID:       "05b42581-0773-46ad-99ff-5c96ca4ed1f2",
+					InvoiceId: func() *string {
+						id := "05b42581-0773-46ad-99ff-5c96ca4ed1f2"
+						return &id
+					}(),
 					Amount:          1000.00,
 					Currency:        "RUB",
 					PaymentAmount:   "1000.00",

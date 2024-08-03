@@ -56,6 +56,8 @@ type (
 	// the order and user information
 	CreateOrderRequest struct {
 		WebAppID uuid.UUID
+		// p2p or online for now
+		Type     string        `json:"type"`
 		Products []ProductItem `json:"products"`
 	}
 
@@ -67,8 +69,10 @@ type (
 	// SaveOrderRequest is a request to save order info
 	// to the storage
 	SaveOrderRequest struct {
-		WebAppID       uuid.UUID
-		Products       []ProductItem
+		WebAppID uuid.UUID
+		Products []ProductItem
+		// p2p or online for now
+		Type           string
 		ExternalUserID int
 	}
 
@@ -121,6 +125,9 @@ type (
 
 const (
 	getProductsCacheKeyBase = "products.GetProducts:"
+
+	orderTypeP2P    = "p2p"
+	orderTypeOnline = "online"
 )
 
 // New creates a new product service
@@ -163,10 +170,16 @@ func (s *DefaultService) CreateOrder(ctx context.Context, req CreateOrderRequest
 		return CreateOrderResponse{}, errors.Wrap(err, "telegramusers.GetUserFromContext")
 	}
 
+	// for backward compatibility
+	if req.Type == "" {
+		req.Type = orderTypeP2P
+	}
+
 	res, err := s.repo.CreateOrder(ctx, SaveOrderRequest{
 		WebAppID:       req.WebAppID,
 		Products:       req.Products,
 		ExternalUserID: int(u.ExternalId),
+		Type:           req.Type,
 	})
 	if err != nil {
 		return CreateOrderResponse{}, errors.Wrap(err, "s.repo.CreateOrder")

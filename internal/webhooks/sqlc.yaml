@@ -4,7 +4,9 @@ sql:
     queries:
       - ./queries/orders.sql
     schema:
-      - ../shared_sql/20240411-aggregate.sql
+      - ../shared_sql/2024-04-11-aggregate.sql
+      - ../shared_sql/2024-07-26.sql
+      - ./schemas/2024-08-03.sql
     gen:
       go:
         package: generated

@@ -23,8 +23,8 @@ func (s serverErrorLogger) Handle(ctx context.Context, err error) {
 	s.logger.Error("server error", logging.SilentError(err))
 }
 
-// MakeHandler returns a handler for the Telegram webhooks service.
-func MakeHandler(s *Service, log *zap.Logger, secretToken string) http.Handler {
+// MakeTelegramHandler returns a handler for the Telegram webhooks service.
+func MakeTelegramHandler(s *TelegramService, log *zap.Logger, secretToken string) http.Handler {
 	opts := []kithttp.ServerOption{
 		kithttp.ServerErrorEncoder(encodeError),
 		kithttp.ServerBefore(func(ctx context.Context, request *http.Request) context.Context {
@@ -34,10 +34,10 @@ func MakeHandler(s *Service, log *zap.Logger, secretToken string) http.Handler {
 		kithttp.ServerErrorHandler(serverErrorLogger{logger: log}),
 	}
 
-	authMw := makeWebhookAuthMiddleware(secretToken)
+	authMw := makeTelegramWebhookAuthMiddleware(secretToken)
 
 	ep := authMw(makeTelegramWebhookEndpoint(s))
-	handler := kithttp.NewServer(ep, decodeTelegramWebhookRequest, encodeResponse, opts...)
+	handler := kithttp.NewServer(ep, decodeTelegramWebhookRequest, encodeTelegramResponse, opts...)
 
 	r := chi.NewRouter()
 	r.Post("/", handler.ServeHTTP)
@@ -63,14 +63,21 @@ func MakeCloudPaymentsHandlers(s *CloudPaymentsService, log *zap.Logger, login s
 		encodeCloudPaymentsCheckResponse,
 		opts...)
 
+	payHandler := kithttp.NewServer(
+		basicAuthMiddleware(makeCloudPaymentPayEndpoint(s)),
+		decodeCloudPaymentsPayRequest,
+		encodeCloudPaymentsPayResponse,
+		opts...)
+
 	router := chi.NewRouter()
 	router.Post("/check", checkHandler.ServeHTTP)
+	router.Post("/pay", payHandler.ServeHTTP)
 	return router
 }
 
-func makeWebhookAuthMiddleware(secretToken string) endpoint.Middleware {
+func makeTelegramWebhookAuthMiddleware(secretToken string) endpoint.Middleware {
 	return func(next endpoint.Endpoint) endpoint.Endpoint {
-		return func(ctx context.Context, request interface{}) (interface{}, error) {
+		return func(ctx context.Context, request any) (any, error) {
 			xTelegramBotApiSecretToken := ctx.Value("X-Telegram-Bot-Api-Secret-Token").(string)
 			if xTelegramBotApiSecretToken != secretToken {
 				return nil, errors.New("invalid secret token")
@@ -82,10 +89,10 @@ func makeWebhookAuthMiddleware(secretToken string) endpoint.Middleware {
 
 func encodeError(_ context.Context, err error, w http.ResponseWriter) {
 	w.WriteHeader(http.StatusInternalServerError)
-	w.Write([]byte(err.Error()))
+	_, _ = w.Write([]byte(ErrorInternalServerError.Error()))
 }
 
-func encodeResponse(_ context.Context, w http.ResponseWriter, response any) error {
+func encodeTelegramResponse(_ context.Context, w http.ResponseWriter, response any) error {
 	w.WriteHeader(http.StatusOK)
 	return nil
 }
@@ -110,7 +117,29 @@ func decodeCloudPaymentsCheckRequest(_ context.Context, r *http.Request) (any, e
 }
 
 func encodeCloudPaymentsCheckResponse(_ context.Context, w http.ResponseWriter, response any) error {
-	castedResponse, ok := response.(CloudPaymentsCheckResponse)
+	castedResponse, ok := response.(CloudPaymentsResponse)
+	if !ok {
+		return ErrorInternalServerError
+	}
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(castedResponse); err != nil {
+		return ErrorInternalServerError
+	}
+
+	return nil
+}
+
+func decodeCloudPaymentsPayRequest(_ context.Context, r *http.Request) (any, error) {
+	var payRequest CloudPaymentsPayRequest
+	err := json.NewDecoder(r.Body).Decode(&payRequest)
+	if err != nil {
+		return nil, ErrorBadRequest
+	}
+	return payRequest, nil
+}
+
+func encodeCloudPaymentsPayResponse(_ context.Context, w http.ResponseWriter, response any) error {
+	castedResponse, ok := response.(CloudPaymentsResponse)
 	if !ok {
 		return ErrorInternalServerError
 	}

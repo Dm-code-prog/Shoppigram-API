@@ -6,6 +6,14 @@ values ($1,
         'confirmed'::order_state)
 returning id,readable_id;
 
+-- name: CreateOnlineOrder :one
+insert into orders (web_app_id, external_user_id, type, state)
+values ($1,
+        $2,
+        'online',
+        'created'::order_state)
+returning id,readable_id;
+
 -- name: SetOrderProducts :batchexec
 insert into order_products (order_id, product_id, quantity)
 values ($1,
