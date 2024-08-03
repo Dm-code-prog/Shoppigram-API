@@ -110,7 +110,7 @@ func decodeCloudPaymentsCheckRequest(_ context.Context, r *http.Request) (any, e
 	var checkRequest CloudPaymentsCheckRequest
 	err := json.NewDecoder(r.Body).Decode(&checkRequest)
 	if err != nil {
-		return nil, ErrorBadRequest
+		return nil, err
 	}
 	return checkRequest, nil
 
@@ -133,7 +133,7 @@ func decodeCloudPaymentsPayRequest(_ context.Context, r *http.Request) (any, err
 	var payRequest CloudPaymentsPayRequest
 	err := json.NewDecoder(r.Body).Decode(&payRequest)
 	if err != nil {
-		return nil, ErrorBadRequest
+		return nil, err
 	}
 	return payRequest, nil
 }
