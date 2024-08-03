@@ -15,82 +15,82 @@ type (
 	// CloudPaymentsCheckRequest represents needed fields from check request from CloudPayments
 	// https://developers.cloudpayments.ru/#check
 	CloudPaymentsCheckRequest struct {
-		TransactionId     int64   `json:"TransactionId"`               // Номер транзакции в системе
-		Amount            float64 `json:"Amount"`                      // Сумма оплаты из параметров платежа
-		Currency          string  `json:"Currency"`                    // Валюта: RUB/USD/EUR/GBP из параметров платежа (см. справочник)
-		PaymentAmount     string  `json:"PaymentAmount"`               // Сумма списания
-		PaymentCurrency   string  `json:"PaymentCurrency"`             // Валюта списания
-		DateTime          string  `json:"DateTime"`                    // Дата/время создания платежа во временной зоне UTC
-		CardId            *string `json:"CardId,omitempty"`            // Уникальный идентификатор карты в системе CloudPayments
-		CardFirstSix      string  `json:"CardFirstSix"`                // Первые 6 цифр номера карты
-		CardLastFour      string  `json:"CardLastFour"`                // Последние 4 цифры номера карты
-		CardType          string  `json:"CardType"`                    // Платежная система карты: Visa, Mastercard, Maestro или "МИР"
-		CardExpDate       string  `json:"CardExpDate"`                 // Срок действия карты в формате MM/YY
-		TestMode          bool    `json:"TestMode"`                    // Признак тестового режима (Bit - 1 или 0)
-		Status            string  `json:"Status"`                      // Статус платежа в случае успешного завершения
-		OperationType     string  `json:"OperationType"`               // Тип операции: Payment/Refund/CardPayout
-		InvoiceId         *string `json:"InvoiceId,omitempty"`         // Номер заказа из параметров платежа
-		AccountId         *string `json:"AccountId,omitempty"`         // Идентификатор пользователя из параметров платежа
-		SubscriptionId    *string `json:"SubscriptionId,omitempty"`    // Идентификатор подписки (для рекуррентных платежей)
-		TokenRecipient    *string `json:"TokenRecipient,omitempty"`    // Токен получателя платежа
-		Name              *string `json:"Name,omitempty"`              // Имя держателя карты
-		Email             *string `json:"Email,omitempty"`             // E-mail адрес плательщика
-		IpAddress         *string `json:"IpAddress,omitempty"`         // IP-адрес плательщика
-		IpCountry         *string `json:"IpCountry,omitempty"`         // Двухбуквенный код страны нахождения плательщика по ISO3166-1
-		IpCity            *string `json:"IpCity,omitempty"`            // Город нахождения плательщика
-		IpRegion          *string `json:"IpRegion,omitempty"`          // Регион нахождения плательщика
-		IpDistrict        *string `json:"IpDistrict,omitempty"`        // Округ нахождения плательщика
-		IpLatitude        *string `json:"IpLatitude,omitempty"`        // Широта нахождения плательщика
-		IpLongitude       *string `json:"IpLongitude,omitempty"`       // Долгота нахождения плательщика
-		Issuer            *string `json:"Issuer,omitempty"`            // Название банка-эмитента карты
-		IssuerBankCountry *string `json:"IssuerBankCountry,omitempty"` // Двухбуквенный код страны эмитента карты по ISO3166-1
-		Description       *string `json:"Description,omitempty"`       // Назначение оплаты из параметров платежа
-		CardProduct       *string `json:"CardProduct,omitempty"`       // Тип карточного продукта
-		PaymentMethod     *string `json:"PaymentMethod,omitempty"`     // Метод оплаты ApplePay, GooglePay, Яндекс Пэй или T-Pay
-		Data              *string `json:"Data,omitempty"`              // Произвольный набор параметров, переданных в транзакцию
+		TransactionId     int64   // Номер транзакции в системе
+		Amount            float64 // Сумма оплаты из параметров платежа
+		Currency          string  // Валюта: RUB/USD/EUR/GBP из параметров платежа (см. справочник)
+		PaymentAmount     string  // Сумма списания
+		PaymentCurrency   string  // Валюта списания
+		DateTime          string  // Дата/время создания платежа во временной зоне UTC
+		CardId            *string // Уникальный идентификатор карты в системе CloudPayments
+		CardFirstSix      string  // Первые 6 цифр номера карты
+		CardLastFour      string  // Последние 4 цифры номера карты
+		CardType          string  // Платежная система карты: Visa, Mastercard, Maestro или "МИР"
+		CardExpDate       string  // Срок действия карты в формате MM/YY
+		TestMode          bool    // Признак тестового режима (Bit - 1 или 0)
+		Status            string  // Статус платежа в случае успешного завершения
+		OperationType     string  // Тип операции: Payment/Refund/CardPayout
+		InvoiceId         *string // Номер заказа из параметров платежа
+		AccountId         *string // Идентификатор пользователя из параметров платежа
+		SubscriptionId    *string // Идентификатор подписки (для рекуррентных платежей)
+		TokenRecipient    *string // Токен получателя платежа
+		Name              *string // Имя держателя карты
+		Email             *string // E-mail адрес плательщика
+		IpAddress         *string // IP-адрес плательщика
+		IpCountry         *string // Двухбуквенный код страны нахождения плательщика по ISO3166-1
+		IpCity            *string // Город нахождения плательщика
+		IpRegion          *string // Регион нахождения плательщика
+		IpDistrict        *string // Округ нахождения плательщика
+		IpLatitude        *string // Широта нахождения плательщика
+		IpLongitude       *string // Долгота нахождения плательщика
+		Issuer            *string // Название банка-эмитента карты
+		IssuerBankCountry *string // Двухбуквенный код страны эмитента карты по ISO3166-1
+		Description       *string // Назначение оплаты из параметров платежа
+		CardProduct       *string // Тип карточного продукта
+		PaymentMethod     *string // Метод оплаты ApplePay, GooglePay, Яндекс Пэй или T-Pay
+		Data              *string // Произвольный набор параметров, переданных в транзакцию
 	}
 
 	// CloudPaymentsPayRequest represents the fields from the "Pay" webhook from CloudPayments
 	// https://developers.cloudpayments.ru/#pay
 	CloudPaymentsPayRequest struct {
-		TransactionId                         int64    `json:"TransactionId"`                                   // Номер транзакции в системе
-		Amount                                float64  `json:"Amount"`                                          // Сумма оплаты из параметров платежа
-		Currency                              string   `json:"Currency"`                                        // Валюта: RUB/USD/EUR/GBP из параметров платежа
-		PaymentAmount                         string   `json:"PaymentAmount"`                                   // Сумма списания
-		PaymentCurrency                       string   `json:"PaymentCurrency"`                                 // Валюта списания
-		DateTime                              string   `json:"DateTime"`                                        // Дата/время создания платежа во временной зоне UTC
-		CardId                                *string  `json:"CardId,omitempty"`                                // Уникальный идентификатор карты в системе CloudPayments
-		CardFirstSix                          string   `json:"CardFirstSix"`                                    // Первые 6 цифр номера карты
-		CardLastFour                          string   `json:"CardLastFour"`                                    // Последние 4 цифры номера карты
-		CardType                              string   `json:"CardType"`                                        // Платежная система карты: Visa, Mastercard, Maestro или "МИР"
-		CardExpDate                           string   `json:"CardExpDate"`                                     // Срок действия карты в формате MM/YY
-		TestMode                              bool     `json:"TestMode"`                                        // Признак тестового режима (Bit - 1 или 0)
-		Status                                string   `json:"Status"`                                          // Статус платежа после авторизации
-		OperationType                         string   `json:"OperationType"`                                   // Тип операции: Payment/CardPayout
-		GatewayName                           string   `json:"GatewayName"`                                     // Идентификатор банка-эквайера
-		InvoiceId                             *string  `json:"InvoiceId,omitempty"`                             // Номер заказа из параметров платежа
-		AccountId                             *string  `json:"AccountId,omitempty"`                             // Идентификатор пользователя из параметров платежа
-		SubscriptionId                        *string  `json:"SubscriptionId,omitempty"`                        // Идентификатор подписки (для рекуррентных платежей)
-		Name                                  *string  `json:"Name,omitempty"`                                  // Имя держателя карты
-		Email                                 *string  `json:"Email,omitempty"`                                 // E-mail адрес плательщика
-		IpAddress                             *string  `json:"IpAddress,omitempty"`                             // IP-адрес плательщика
-		IpCountry                             *string  `json:"IpCountry,omitempty"`                             // Двухбуквенный код страны нахождения плательщика по ISO3166-1
-		IpCity                                *string  `json:"IpCity,omitempty"`                                // Город нахождения плательщика
-		IpRegion                              *string  `json:"IpRegion,omitempty"`                              // Регион нахождения плательщика
-		IpDistrict                            *string  `json:"IpDistrict,omitempty"`                            // Округ нахождения плательщика
-		IpLatitude                            *string  `json:"IpLatitude,omitempty"`                            // Широта нахождения плательщика
-		IpLongitude                           *string  `json:"IpLongitude,omitempty"`                           // Долгота нахождения плательщика
-		Issuer                                *string  `json:"Issuer,omitempty"`                                // Название банка-эмитента карты
-		IssuerBankCountry                     *string  `json:"IssuerBankCountry,omitempty"`                     // Двухбуквенный код страны эмитента карты по ISO3166-1
-		Description                           *string  `json:"Description,omitempty"`                           // Назначение оплаты из параметров платежа
-		AuthCode                              *string  `json:"AuthCode,omitempty"`                              // Код авторизации
-		Data                                  *string  `json:"Data,omitempty"`                                  // Произвольный набор параметров, переданных в транзакцию
-		Token                                 *string  `json:"Token,omitempty"`                                 // Токен карты для повторных платежей без ввода реквизитов
-		TotalFee                              *float64 `json:"TotalFee,omitempty"`                              // Значение общей комиссии
-		CardProduct                           *string  `json:"CardProduct,omitempty"`                           // Тип карточного продукта
-		PaymentMethod                         *string  `json:"PaymentMethod,omitempty"`                         // Метод оплаты ApplePay, GooglePay, Яндекс Пэй или T-Pay
-		FallBackScenarioDeclinedTransactionId *int64   `json:"FallBackScenarioDeclinedTransactionId,omitempty"` // Номер первой неуспешной транзакции
-		Rrn                                   *string  `json:"Rrn,omitempty"`                                   // Уникальный номер банковской транзакции, который назначается обслуживающим банком
+		TransactionId                         int64    // Номер транзакции в системе
+		Amount                                float64  // Сумма оплаты из параметров платежа
+		Currency                              string   // Валюта: RUB/USD/EUR/GBP из параметров платежа
+		PaymentAmount                         string   // Сумма списания
+		PaymentCurrency                       string   // Валюта списания
+		DateTime                              string   // Дата/время создания платежа во временной зоне UTC
+		CardId                                *string  // Уникальный идентификатор карты в системе CloudPayments
+		CardFirstSix                          string   // Первые 6 цифр номера карты
+		CardLastFour                          string   // Последние 4 цифры номера карты
+		CardType                              string   // Платежная система карты: Visa, Mastercard, Maestro или "МИР"
+		CardExpDate                           string   // Срок действия карты в формате MM/YY
+		TestMode                              bool     // Признак тестового режима (Bit - 1 или 0)
+		Status                                string   // Статус платежа после авторизации
+		OperationType                         string   // Тип операции: Payment/CardPayout
+		GatewayName                           string   // Идентификатор банка-эквайера
+		InvoiceId                             *string  // Номер заказа из параметров платежа
+		AccountId                             *string  // Идентификатор пользователя из параметров платежа
+		SubscriptionId                        *string  // Идентификатор подписки (для рекуррентных платежей)
+		Name                                  *string  // Имя держателя карты
+		Email                                 *string  // E-mail адрес плательщика
+		IpAddress                             *string  // IP-адрес плательщика
+		IpCountry                             *string  // Двухбуквенный код страны нахождения плательщика по ISO3166-1
+		IpCity                                *string  // Город нахождения плательщика
+		IpRegion                              *string  // Регион нахождения плательщика
+		IpDistrict                            *string  // Округ нахождения плательщика
+		IpLatitude                            *string  // Широта нахождения плательщика
+		IpLongitude                           *string  // Долгота нахождения плательщика
+		Issuer                                *string  // Название банка-эмитента карты
+		IssuerBankCountry                     *string  // Двухбуквенный код страны эмитента карты по ISO3166-1
+		Description                           *string  // Назначение оплаты из параметров платежа
+		AuthCode                              *string  // Код авторизации
+		Data                                  *string  // Произвольный набор параметров, переданных в транзакцию
+		Token                                 *string  // Токен карты для повторных платежей без ввода реквизитов
+		TotalFee                              *float64 // Значение общей комиссии
+		CardProduct                           *string  // Тип карточного продукта
+		PaymentMethod                         *string  // Метод оплаты ApplePay, GooglePay, Яндекс Пэй или T-Pay
+		FallBackScenarioDeclinedTransactionId *int64   // Номер первой неуспешной транзакции
+		Rrn                                   *string  // Уникальный номер банковской транзакции, который назначается обслуживающим банком
 	}
 
 	// CloudPaymentsResponse represents check response for CloudPayments
