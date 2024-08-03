@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -110,8 +111,7 @@ func decodeTelegramWebhookRequest(_ context.Context, r *http.Request) (any, erro
 func decodeCloudPaymentsCheckRequest(_ context.Context, r *http.Request) (any, error) {
 	// get the text we were unable to decode and log it
 	// this will help us debug the issue
-	var body []byte
-	r.Body.Read(body)
+	body, _ := io.ReadAll(r.Body)
 	fmt.Println("[DEBUG} unable to decode the Cloud Payments Check request, the body is: " + string(body))
 
 	var checkRequest CloudPaymentsCheckRequest
