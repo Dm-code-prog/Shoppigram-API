@@ -8,7 +8,7 @@ import (
 	"github.com/pkg/errors"
 )
 
-func makeTelegramWebhookEndpoint(s *Service) endpoint.Endpoint {
+func makeTelegramWebhookEndpoint(s *TelegramService) endpoint.Endpoint {
 	return func(ctx context.Context, request any) (any, error) {
 		data, ok := request.(tgbotapi.Update)
 		if !ok {
@@ -24,16 +24,6 @@ func makeTelegramWebhookEndpoint(s *Service) endpoint.Endpoint {
 	}
 }
 
-// Cloud Payments Check Responses
-const (
-	cloudPaymentsCheckResponseCodeSuccess              = 0
-	cloudPaymentsCheckResponseCodeWrongInvoiceID       = 10
-	cloudPaymentsCheckResponseCodeAccountIncorrect     = 11
-	cloudPaymentsCheckResponseCodeWrongSum             = 12
-	cloudPaymentsCheckResponseCodeCantHandleThePayment = 13
-	cloudPaymentsCheckResponseCodeTransactionExpired   = 20
-)
-
 func makeCloudPaymentCheckEndpoint(s *CloudPaymentsService) endpoint.Endpoint {
 	return func(ctx context.Context, request any) (any, error) {
 		data, ok := request.(CloudPaymentsCheckRequest)
@@ -43,6 +33,20 @@ func makeCloudPaymentCheckEndpoint(s *CloudPaymentsService) endpoint.Endpoint {
 		resp, err := s.HandleCloudPaymentsCheckWebHook(ctx, data)
 		if err != nil {
 			return nil, errors.Wrap(err, "s.HandleCloudPaymentsCheckWebHook")
+		}
+		return resp, nil
+	}
+}
+
+func makeCloudPaymentPayEndpoint(s *CloudPaymentsService) endpoint.Endpoint {
+	return func(ctx context.Context, request any) (any, error) {
+		data, ok := request.(CloudPaymentsPayRequest)
+		if !ok {
+			return nil, ErrorBadRequest
+		}
+		resp, err := s.HandleCloudPaymentsPayWebHook(ctx, data)
+		if err != nil {
+			return nil, errors.Wrap(err, "s.HandleCloudPaymentsPayWebHook")
 		}
 		return resp, nil
 	}

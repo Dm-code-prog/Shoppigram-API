@@ -13,10 +13,14 @@ import (
 )
 
 const getOrder = `-- name: GetOrder :one
-select o.id, o.updated_at, sum(op.quantity::float * p.price)::float as order_sum, MAX(p.price_currency)::text as price_currency
+select o.id,
+       o.updated_at,
+       sum(op.quantity::float * p.price)::float as order_sum,
+       MAX(p.price_currency)::text              as price_currency,
+       o.state
 from orders o
-	 join order_products op on op.order_id = o.id
-	 join products p on p.id = op.product_id
+         join order_products op on op.order_id = o.id
+         join products p on p.id = op.product_id
 where o.id = $1
 group by o.id
 `
@@ -26,6 +30,7 @@ type GetOrderRow struct {
 	UpdatedAt     pgtype.Timestamp
 	OrderSum      float64
 	PriceCurrency string
+	State         OrderState
 }
 
 func (q *Queries) GetOrder(ctx context.Context, id uuid.UUID) (GetOrderRow, error) {
@@ -36,6 +41,47 @@ func (q *Queries) GetOrder(ctx context.Context, id uuid.UUID) (GetOrderRow, erro
 		&i.UpdatedAt,
 		&i.OrderSum,
 		&i.PriceCurrency,
+		&i.State,
 	)
 	return i, err
+}
+
+const savePaymentExtraInfo = `-- name: SavePaymentExtraInfo :exec
+insert into payments_extra_info (order_id, provider, order_state_snapshot, event_type, extra_info)
+values ($1,
+        $2,
+        $3,
+        $4,
+        $5)
+`
+
+type SavePaymentExtraInfoParams struct {
+	OrderID            pgtype.UUID
+	Provider           PaymentProviders
+	OrderStateSnapshot OrderState
+	EventType          PaymentsEventType
+	ExtraInfo          []byte
+}
+
+func (q *Queries) SavePaymentExtraInfo(ctx context.Context, arg SavePaymentExtraInfoParams) error {
+	_, err := q.db.Exec(ctx, savePaymentExtraInfo,
+		arg.OrderID,
+		arg.Provider,
+		arg.OrderStateSnapshot,
+		arg.EventType,
+		arg.ExtraInfo,
+	)
+	return err
+}
+
+const setOrderStateConfirmed = `-- name: SetOrderStateConfirmed :exec
+update orders
+set state = 'confirmed'::order_state
+where id = $1
+  and type = 'online'::order_type
+`
+
+func (q *Queries) SetOrderStateConfirmed(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, setOrderStateConfirmed, id)
+	return err
 }

@@ -12,6 +12,175 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type OrderState string
+
+const (
+	OrderStateCreated   OrderState = "created"
+	OrderStateConfirmed OrderState = "confirmed"
+	OrderStateDone      OrderState = "done"
+	OrderStateRejected  OrderState = "rejected"
+)
+
+func (e *OrderState) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = OrderState(s)
+	case string:
+		*e = OrderState(s)
+	default:
+		return fmt.Errorf("unsupported scan type for OrderState: %T", src)
+	}
+	return nil
+}
+
+type NullOrderState struct {
+	OrderState OrderState
+	Valid      bool // Valid is true if OrderState is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullOrderState) Scan(value interface{}) error {
+	if value == nil {
+		ns.OrderState, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.OrderState.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullOrderState) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.OrderState), nil
+}
+
+type OrderType string
+
+const (
+	OrderTypeP2p    OrderType = "p2p"
+	OrderTypeOnline OrderType = "online"
+)
+
+func (e *OrderType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = OrderType(s)
+	case string:
+		*e = OrderType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for OrderType: %T", src)
+	}
+	return nil
+}
+
+type NullOrderType struct {
+	OrderType OrderType
+	Valid     bool // Valid is true if OrderType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullOrderType) Scan(value interface{}) error {
+	if value == nil {
+		ns.OrderType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.OrderType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullOrderType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.OrderType), nil
+}
+
+type PaymentProviders string
+
+const (
+	PaymentProvidersCloudPayments PaymentProviders = "cloud_payments"
+)
+
+func (e *PaymentProviders) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = PaymentProviders(s)
+	case string:
+		*e = PaymentProviders(s)
+	default:
+		return fmt.Errorf("unsupported scan type for PaymentProviders: %T", src)
+	}
+	return nil
+}
+
+type NullPaymentProviders struct {
+	PaymentProviders PaymentProviders
+	Valid            bool // Valid is true if PaymentProviders is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullPaymentProviders) Scan(value interface{}) error {
+	if value == nil {
+		ns.PaymentProviders, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.PaymentProviders.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullPaymentProviders) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.PaymentProviders), nil
+}
+
+type PaymentsEventType string
+
+const (
+	PaymentsEventTypeCheck PaymentsEventType = "check"
+	PaymentsEventTypePay   PaymentsEventType = "pay"
+)
+
+func (e *PaymentsEventType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = PaymentsEventType(s)
+	case string:
+		*e = PaymentsEventType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for PaymentsEventType: %T", src)
+	}
+	return nil
+}
+
+type NullPaymentsEventType struct {
+	PaymentsEventType PaymentsEventType
+	Valid             bool // Valid is true if PaymentsEventType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullPaymentsEventType) Scan(value interface{}) error {
+	if value == nil {
+		ns.PaymentsEventType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.PaymentsEventType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullPaymentsEventType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.PaymentsEventType), nil
+}
+
 type ProductCurrency string
 
 const (
@@ -62,12 +231,25 @@ type Order struct {
 	ExternalUserID pgtype.Int4
 	CreatedAt      pgtype.Timestamp
 	UpdatedAt      pgtype.Timestamp
+	Type           OrderType
+	State          OrderState
 }
 
 type OrderProduct struct {
 	OrderID   pgtype.UUID
 	ProductID pgtype.UUID
 	Quantity  int32
+}
+
+type PaymentsExtraInfo struct {
+	ID                 uuid.UUID
+	CreatedAt          pgtype.Timestamp
+	UpdatedAt          pgtype.Timestamp
+	OrderID            pgtype.UUID
+	Provider           PaymentProviders
+	OrderStateSnapshot OrderState
+	EventType          PaymentsEventType
+	ExtraInfo          []byte
 }
 
 type Product struct {

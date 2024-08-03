@@ -167,21 +167,21 @@ func main() {
 	adminsHandler := admins.MakeHandler(adminsService, authMw)
 
 	////////////////////////////////////// WEBHOOKS //////////////////////////////////////
-	webhookService := webhooks.New(
+	webhookService := webhooks.NewTelegram(
 		&adminWebhooksAdapter{admin: adminsService},
 		&notificationsWebhooksAdapter{notifier: notificationsService},
 		log.With(zap.String("service", "webhooks")),
 		config.Bot.ID,
 		config.Bot.Name,
 	)
-	webhooksHandler := webhooks.MakeHandler(
+	webhooksHandler := webhooks.MakeTelegramHandler(
 		webhookService,
 		log.With(zap.String("service", "webhooks_server")),
 		config.TelegramWebhooks.SecretToken)
 
 	webhooksRepo := webhooks.NewPg(db)
 	maxCloudPaymentsTransactionDuration, _ := time.ParseDuration(config.CloudPayments.MaxTransactionDuration)
-	cloudPaymentsWebhookService := webhooks.NewCloudPaymentsService(
+	cloudPaymentsWebhookService := webhooks.NewCloudPayments(
 		webhooksRepo,
 		log.With(zap.String("service", "webhooks_server")),
 		maxCloudPaymentsTransactionDuration,

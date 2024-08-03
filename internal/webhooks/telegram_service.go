@@ -3,13 +3,9 @@ package webhooks
 import (
 	"context"
 	"encoding/json"
-	"strings"
-	"time"
-
 	"fmt"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
-	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 )
@@ -39,19 +35,13 @@ type (
 		ChannelName       string
 	}
 
-	// CloudPaymentsCheckRequest represents needed fields from check request from CloudPayments
-	CloudPaymentsCheckRequest struct {
-		InvoiceID       string  `json:"InvoiceID"`
-		Amount          float64 `json:"Amount"`
-		Currency        string  `json:"Currency"`
-		PaymentAmount   string  `json:"PaymentAmount"`
-		PaymentCurrency string  `json:"PaymentCurrency"`
-		DateTime        string  `json:"DateTime"`
-	}
-
-	// CloudPaymentsCheckResponse represents check response for CloudPayments
-	CloudPaymentsCheckResponse struct {
-		Code int8 `json:"code"`
+	// TelegramService is the service for handling Telegram webhooks
+	TelegramService struct {
+		channelStorage    ChannelStorage
+		notifier          Notifier
+		log               *zap.Logger
+		shoppigramBotID   int64
+		shoppigramBotName string
 	}
 
 	// NotifyGreetingsRequest contains the initial greeting message
@@ -68,54 +58,16 @@ type (
 		NotifyChannelIntegrationSuccess(ctx context.Context, request NotifyChannelIntegrationSuccessRequest) error
 		NotifyGreetings(ctx context.Context, request NotifyGreetingsRequest) error
 	}
-
-	// Order represents order record in database
-	Order struct {
-		ID        uuid.UUID
-		UpdatedAt time.Time
-		Sum       float64
-		Currency  string
-	}
-
-	// Repository provides access to the webhooks storage
-	Repository interface {
-		GetOrder(ctx context.Context, id string) (Order, error)
-	}
-
-	// Service is the service for handling Telegram webhooks
-	Service struct {
-		channelStorage    ChannelStorage
-		notifier          Notifier
-		log               *zap.Logger
-		shoppigramBotID   int64
-		shoppigramBotName string
-	}
-
-	// CloudPaymentsService is the service for handling CloudPayments webhooks
-	CloudPaymentsService struct {
-		repo                          Repository
-		maxDurationForHandlingPayment time.Duration
-		log                           *zap.Logger
-	}
 )
 
-// New returns a new instance of the Service
-func New(channelStorage ChannelStorage, notifier Notifier, log *zap.Logger, shoppigramBotID int64, shoppigramBotName string) *Service {
-	return &Service{
+// NewTelegram returns a new instance of the TelegramService
+func NewTelegram(channelStorage ChannelStorage, notifier Notifier, log *zap.Logger, shoppigramBotID int64, shoppigramBotName string) *TelegramService {
+	return &TelegramService{
 		channelStorage:    channelStorage,
 		notifier:          notifier,
 		log:               log,
 		shoppigramBotID:   shoppigramBotID,
 		shoppigramBotName: shoppigramBotName,
-	}
-}
-
-// NewCloudPaymentsService returns a new instance of CloudPaymentsService
-func NewCloudPaymentsService(repo Repository, log *zap.Logger, maxDurationForHandlingPayment time.Duration) *CloudPaymentsService {
-	return &CloudPaymentsService{
-		repo:                          repo,
-		log:                           log,
-		maxDurationForHandlingPayment: maxDurationForHandlingPayment,
 	}
 }
 
@@ -127,7 +79,7 @@ func NewCloudPaymentsService(repo Repository, log *zap.Logger, maxDurationForHan
 // We differentiate the updates based on the optional fields of the Update struct. At most one optional field is present
 // at any given update. However, we can have more than one handler for a given Telegram update type.
 // In this case, each handler provides a function that determines if it can handle the update.
-func (s *Service) HandleTelegramWebhook(ctx context.Context, update tgbotapi.Update) error {
+func (s *TelegramService) HandleTelegramWebhook(ctx context.Context, update tgbotapi.Update) error {
 	switch {
 	case s.isUpdateTypeShoppigramBotAddedToChannelAsAdmin(update):
 		return s.handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx, update)
@@ -147,21 +99,7 @@ func (s *Service) HandleTelegramWebhook(ctx context.Context, update tgbotapi.Upd
 	return nil
 }
 
-// HandleCloudPaymentsCheckWebHook is the entry point for a webhook request from CloudPayments
-//
-// It suppose to determine, what type of request was made, and generate a response
-func (s *CloudPaymentsService) HandleCloudPaymentsCheckWebHook(ctx context.Context, checkRequest CloudPaymentsCheckRequest) (resp CloudPaymentsCheckResponse, err error) {
-	order, err := s.repo.GetOrder(ctx, checkRequest.InvoiceID)
-	if err != nil {
-		if errors.Is(err, ErrorOrderDoesntExist) {
-			return CloudPaymentsCheckResponse{Code: cloudPaymentsCheckResponseCodeWrongInvoiceID}, nil
-		}
-		return CloudPaymentsCheckResponse{Code: cloudPaymentsCheckResponseCodeCantHandleThePayment}, errors.Wrap(err, "s.repo.GetOrder")
-	}
-	return handleCloudPaymentsCheckWebHook(ctx, checkRequest, order, s.maxDurationForHandlingPayment)
-}
-
-func (s *Service) handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx context.Context, update tgbotapi.Update) error {
+func (s *TelegramService) handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx context.Context, update tgbotapi.Update) error {
 	event := update.MyChatMember
 
 	err := s.channelStorage.CreateOrUpdateTelegramChannel(ctx, CreateOrUpdateTelegramChannelRequest{
@@ -190,7 +128,7 @@ func (s *Service) handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx context
 	return nil
 }
 
-func (s *Service) handleUpdateTypeStartCommand(ctx context.Context, update tgbotapi.Update) error {
+func (s *TelegramService) handleUpdateTypeStartCommand(ctx context.Context, update tgbotapi.Update) error {
 	// Send a button with the link to the mini app
 
 	var greetingMessage = tgbotapi.EscapeText(
@@ -228,37 +166,4 @@ func (s *Service) handleUpdateTypeStartCommand(ctx context.Context, update tgbot
 	}
 
 	return nil
-}
-
-func handleCloudPaymentsCheckWebHook(_ context.Context, check CloudPaymentsCheckRequest, orderInfo Order, paymentMaxDuration time.Duration) (resp CloudPaymentsCheckResponse, err error) {
-	return CloudPaymentsCheckResponse{
-		Code: int8(checkPayment(check, orderInfo, paymentMaxDuration)),
-	}, nil
-}
-
-func checkPayment(check CloudPaymentsCheckRequest, orderInfo Order, paymentMaxDuration time.Duration) int {
-	if check.InvoiceID != orderInfo.ID.String() {
-		return cloudPaymentsCheckResponseCodeWrongInvoiceID
-	}
-
-	if check.Amount != orderInfo.Sum || !isCurrenciesEqual(check.Currency, orderInfo.Currency) {
-		return cloudPaymentsCheckResponseCodeWrongSum
-	}
-	orderUpdateTime := orderInfo.UpdatedAt
-	paymentTime, err := time.Parse(time.DateTime, check.DateTime)
-	if err != nil {
-		return cloudPaymentsCheckResponseCodeCantHandleThePayment
-	}
-	if isPaymentExpired(orderUpdateTime, paymentTime, paymentMaxDuration) {
-		return cloudPaymentsCheckResponseCodeTransactionExpired
-	}
-	return cloudPaymentsCheckResponseCodeSuccess
-}
-
-func isCurrenciesEqual(cur1 string, cur2 string) bool {
-	return strings.ToLower(cur1) == strings.ToLower(cur2)
-}
-
-func isPaymentExpired(orderCreated time.Time, paymentWasMade time.Time, maxDuration time.Duration) bool {
-	return paymentWasMade.Sub(orderCreated) > maxDuration
 }
