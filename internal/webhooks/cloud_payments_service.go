@@ -201,8 +201,13 @@ func (s *CloudPaymentsService) HandleCloudPaymentsCheckWebHook(ctx context.Conte
 		}, errors.Wrap(err, "s.repo.SavePaymentExtraInfo")
 	}
 
+	code := int8(checkPayment(checkRequest, order, s.maxDurationForHandlingPayment))
+	if code != cloudPaymentsResponseCodeSuccess {
+		s.log.Info("checkPayment failed", zap.String("invoiceID", invoiceID), zap.Int8("code", code))
+	}
+
 	return CloudPaymentsResponse{
-		Code: int8(checkPayment(checkRequest, order, s.maxDurationForHandlingPayment)),
+		Code: code,
 	}, nil
 }
 
