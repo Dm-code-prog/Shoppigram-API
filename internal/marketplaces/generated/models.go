@@ -96,13 +96,14 @@ type TelegramUser struct {
 }
 
 type WebApp struct {
-	ID              uuid.UUID
-	Name            string
-	OwnerExternalID pgtype.Int4
-	LogoUrl         pgtype.Text
-	IsVerified      pgtype.Bool
-	ShortName       string
-	VerifiedAt      pgtype.Timestamp
-	CreatedAt       pgtype.Timestamp
-	IsDeleted       pgtype.Bool
+	ID                    uuid.UUID
+	Name                  string
+	OwnerExternalID       pgtype.Int4
+	LogoUrl               pgtype.Text
+	IsVerified            pgtype.Bool
+	ShortName             string
+	VerifiedAt            pgtype.Timestamp
+	CreatedAt             pgtype.Timestamp
+	IsDeleted             pgtype.Bool
+	OnlinePaymentsEnabled bool
 }

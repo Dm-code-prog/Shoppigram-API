@@ -32,11 +32,12 @@ type (
 
 	// GetProductsResponse defines the response body for the GetProducts endpoint
 	GetProductsResponse struct {
-		WebAppID         uuid.UUID `json:"web_app_id,omitempty"`
-		WebAppName       string    `json:"web_app_name,omitempty"`
-		WebAppShortName  string    `json:"web_app_short_name,omitempty"`
-		WebAppIsVerified bool      `json:"web_app_is_verified,omitempty"`
-		Products         []Product `json:"products,omitempty"`
+		WebAppID              uuid.UUID `json:"web_app_id,omitempty"`
+		WebAppName            string    `json:"web_app_name,omitempty"`
+		WebAppShortName       string    `json:"web_app_short_name,omitempty"`
+		WebAppIsVerified      bool      `json:"web_app_is_verified,omitempty"`
+		OnlinePaymentsEnabled bool      `json:"online_payments_enabled"`
+		Products              []Product `json:"products,omitempty"`
 	}
 
 	// InvalidateProductsCacheRequest defines the request for the InvalidateProductsCache endpoint

@@ -40,6 +40,7 @@ func (pg *Pg) GetProducts(ctx context.Context, request GetProductsRequest) (GetP
 	var name string
 	var shortName string
 	var isVerified bool
+	var onlinePaymentsEnabled bool
 	var products []Product
 	for _, p := range prod {
 		products = append(products, Product{
@@ -54,14 +55,16 @@ func (pg *Pg) GetProducts(ctx context.Context, request GetProductsRequest) (GetP
 		name = p.WebAppName
 		shortName = p.WebAppShortName
 		isVerified = p.WebAppIsVerified.Bool
+		onlinePaymentsEnabled = p.OnlinePaymentsEnabled
 	}
 
 	return GetProductsResponse{
-		WebAppID:         id,
-		WebAppName:       name,
-		WebAppShortName:  shortName,
-		WebAppIsVerified: isVerified,
-		Products:         products,
+		WebAppID:              id,
+		WebAppName:            name,
+		WebAppShortName:       shortName,
+		WebAppIsVerified:      isVerified,
+		Products:              products,
+		OnlinePaymentsEnabled: onlinePaymentsEnabled,
 	}, nil
 }
 
