@@ -18,11 +18,12 @@ select p.id,
        p.description,
        p.category,
        p.price,
-       p.price_currency::text as price_currency,
-       wa.id          as web_app_id,
-       wa.name        as web_app_name,
-       wa.short_name  as web_app_short_name,
-       wa.is_verified as web_app_is_verified
+       p.price_currency::text     as price_currency,
+       wa.id                      as web_app_id,
+       wa.name                    as web_app_name,
+       wa.short_name              as web_app_short_name,
+       wa.is_verified             as web_app_is_verified,
+       wa.online_payments_enabled as online_payments_enabled
 from web_apps wa
          join products p on wa.id = p.web_app_id
 where wa.id = $1
@@ -30,16 +31,17 @@ where wa.id = $1
 `
 
 type GetProductsRow struct {
-	ID               uuid.UUID
-	Name             string
-	Description      pgtype.Text
-	Category         pgtype.Text
-	Price            float64
-	PriceCurrency    string
-	WebAppID         uuid.UUID
-	WebAppName       string
-	WebAppShortName  string
-	WebAppIsVerified pgtype.Bool
+	ID                    uuid.UUID
+	Name                  string
+	Description           pgtype.Text
+	Category              pgtype.Text
+	Price                 float64
+	PriceCurrency         string
+	WebAppID              uuid.UUID
+	WebAppName            string
+	WebAppShortName       string
+	WebAppIsVerified      pgtype.Bool
+	OnlinePaymentsEnabled bool
 }
 
 func (q *Queries) GetProducts(ctx context.Context, id uuid.UUID) ([]GetProductsRow, error) {
@@ -62,6 +64,7 @@ func (q *Queries) GetProducts(ctx context.Context, id uuid.UUID) ([]GetProductsR
 			&i.WebAppName,
 			&i.WebAppShortName,
 			&i.WebAppIsVerified,
+			&i.OnlinePaymentsEnabled,
 		); err != nil {
 			return nil, err
 		}
