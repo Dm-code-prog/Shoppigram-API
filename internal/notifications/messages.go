@@ -94,21 +94,23 @@ func (o *NewOrderNotification) BuildMessageCustomer() (string, error) {
 	for _, p := range o.Products {
 		subtotal += p.Price * float64(p.Quantity)
 		currency = p.PriceCurrency
-		productList.WriteString(fmt.Sprintf(`\- %dx %s по цене %s %s
-`, p.Quantity, tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, p.Name), tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, formatFloat(p.Price)), formatCurrency(p.PriceCurrency)))
+		productList.WriteString(fmt.Sprintf(`- %dx %s по цене %s %s
+`, p.Quantity, p.Name, formatFloat(p.Price), formatCurrency(p.PriceCurrency)))
 	}
 
-	newOrderMessageTemplate, err := templates.ReadFile("templates/new_order_message.customer.md")
+	newOrderMessageTemplate, err := templates.ReadFile("templates/customer/new_order_message.customer.md")
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
 
-	return fmt.Sprintf(
-		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, string(newOrderMessageTemplate)),
-		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, o.WebAppName),
-		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, formatFloat(subtotal))+" "+formatCurrency(currency),
+	finalMessage := fmt.Sprintf(
+		string(newOrderMessageTemplate),
+		o.WebAppName,
+		formatFloat(subtotal)+" "+formatCurrency(currency),
 		strings.TrimRight(productList.String(), "; "),
-	), nil
+	)
+
+	return tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, finalMessage), nil
 }
 
 // BuildMessageShoppigram creates a notification message for a new marketplace
