@@ -14,7 +14,7 @@ import (
 	"go.uber.org/zap"
 )
 
-//go:embed templates/*.md
+//go:embed templates/*/*.md
 var templates embed.FS
 
 type (
@@ -335,6 +335,39 @@ func (s *Service) Shutdown() error {
 	return nil
 }
 
+func addTelegramButtonToMessage(msg *tgbotapi.MessageConfig, text string, link string) {
+	button := tgbotapi.NewInlineKeyboardButtonURL(text, link)
+
+	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+		tgbotapi.NewInlineKeyboardRow(
+			button,
+		))
+
+}
+
+type pageDataParam struct {
+	key   string
+	value any
+}
+
+func (s *Service) getTelegramLink(path string, pageData ...pageDataParam) (string, error) {
+
+	pageDataParams := make(map[string]any)
+	for _, v := range pageData {
+		pageDataParams[v.key] = v.value
+	}
+
+	tmaLink, err := TMALinkingScheme{
+		PageName: "/app/" + path,
+		PageData: pageDataParams,
+	}.ToBase64String()
+	if err != nil {
+		return "", errors.Wrap(err, "TMALinkingScheme.ToBase64String()")
+	}
+	fullLink := "https://t.me/" + s.botName + "/app?startapp=" + tmaLink
+	return fullLink, nil
+}
+
 // sendNewOrderNotifications sends batch of notifications for new orders
 func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotification) error {
 	for _, notification := range orderNotifications {
@@ -348,7 +381,18 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 		}
 
 		for _, v := range nl {
-			err = s.sendMessageToChat(v, adminMsgTxt)
+			s.log.Info(adminMsgTxt)
+			msg := tgbotapi.NewMessage(v, adminMsgTxt)
+			msg.ParseMode = tgbotapi.ModeMarkdownV2
+
+			tgLinkPath := notification.WebAppID.String() + "/order/" + "notification.ID.String()"
+			tgLink, err := s.getTelegramLink(tgLinkPath)
+			if err != nil {
+				return errors.Wrap(err, "getTelegramLink()")
+			}
+			addTelegramButtonToMessage(&msg, "Управление заказом", tgLink)
+
+			_, err = s.bot.Send(msg)
 			if err != nil {
 				if strings.Contains(err.Error(), "chat not found") {
 					s.log.With(
@@ -360,42 +404,43 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 				return errors.Wrap(err, "s.sendMessageToChat")
 			}
 		}
+		/*
+			customerMsgTxt, err := notification.BuildMessageCustomer()
 
-		customerMsgTxt, err := notification.BuildMessageCustomer()
-
-		if err != nil {
-			return errors.Wrap(err, "a.BuildMessageCustomer")
-		}
-
-		msg := tgbotapi.NewMessage(notification.ExternalUserID, customerMsgTxt)
-		msg.ParseMode = tgbotapi.ModeMarkdownV2
-
-		tmaLink, err := TMALinkingScheme{
-			PageName: "/app/" + notification.WebAppID.String() + "/order/" + notification.ID.String(),
-			PageData: map[string]any{},
-		}.ToBase64String()
-
-		button := tgbotapi.NewInlineKeyboardButtonURL("Посмотреть заказ", "https://t.me/"+s.botName+"/app?startapp="+tmaLink)
-		if err != nil {
-			return errors.Wrap(err, "tgbotapi.NewInlineKeyboardButtonURL")
-		}
-
-		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-			tgbotapi.NewInlineKeyboardRow(
-				button,
-			))
-
-		_, err = s.bot.Send(msg)
-		if err != nil {
-			if strings.Contains(err.Error(), "chat not found") {
-				s.log.With(
-					zap.String("method", "bot.Send"),
-					zap.String("user_id", strconv.FormatInt(notification.ExternalUserID, 10)),
-				).Warn("chat not found")
-				continue
+			if err != nil {
+				return errors.Wrap(err, "a.BuildMessageCustomer")
 			}
-			return errors.Wrap(err, "s.sendMessageToChat")
-		}
+
+			msg := tgbotapi.NewMessage(notification.ExternalUserID, customerMsgTxt)
+			msg.ParseMode = tgbotapi.ModeMarkdownV2
+
+			tmaLink, err := TMALinkingScheme{
+				PageName: "/app/" + notification.WebAppID.String() + "/order/" + notification.ID.String(),
+				PageData: map[string]any{},
+			}.ToBase64String()
+			if err != nil {
+				return errors.Wrap(err, "TMALinkingScheme.ToBase64String()")
+			}
+
+			button := tgbotapi.NewInlineKeyboardButtonURL("Посмотреть заказ", "https://t.me/"+s.botName+"/app?startapp="+tmaLink)
+
+			msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+				tgbotapi.NewInlineKeyboardRow(
+					button,
+				))
+
+			_, err = s.bot.Send(msg)
+			if err != nil {
+				if strings.Contains(err.Error(), "chat not found") {
+					s.log.With(
+						zap.String("method", "bot.Send"),
+						zap.String("user_id", strconv.FormatInt(notification.ExternalUserID, 10)),
+					).Warn("chat not found")
+					continue
+				}
+				return errors.Wrap(err, "s.sendMessageToChat")
+			}
+		*/
 	}
 
 	return nil

@@ -28,6 +28,7 @@ with orders_batch as (select id as order_id, created_at, readable_id, web_app_id
 select ob.order_id,
        ob.readable_id,
        ob.created_at,
+	   ob.state::text,
        p.web_app_id,
        wa.name       as web_app_name,
        p.name,

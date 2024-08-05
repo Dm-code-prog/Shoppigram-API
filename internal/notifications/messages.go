@@ -20,6 +20,7 @@ type (
 		WebAppID        uuid.UUID
 		WebAppName      string
 		Products        []Product
+		status          string
 		ExternalUserID  int64
 	}
 
@@ -55,30 +56,34 @@ var botName = os.Getenv("BOT_NAME")
 
 // BuildMessageAdmin creates a notification message for a new order for an admin
 func (o *NewOrderNotification) BuildMessageAdmin() (string, error) {
-	var subtotal float64
-	var productList strings.Builder
-	var currency string
+	var (
+		subtotal    float64
+		productList strings.Builder
+		currency    string
+	)
 	for _, p := range o.Products {
 		subtotal += p.Price * float64(p.Quantity)
 		currency = p.PriceCurrency
-		productList.WriteString(fmt.Sprintf(`\- %dx %s по цене %s %s
-`, p.Quantity, tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, p.Name), tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, formatFloat(p.Price)), formatCurrency(p.PriceCurrency)))
+		productList.WriteString(fmt.Sprintf(`- %dx %s по цене %s %s
+`, p.Quantity, p.Name, formatFloat(p.Price), formatCurrency(p.PriceCurrency)))
 	}
 
-	newOrderMessageTemplate, err := templates.ReadFile("templates/new_order_message.admin.md")
+	newOrderMessageTemplate, err := templates.ReadFile("templates/admin/new_order_message.admin.md")
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
-
-	return fmt.Sprintf(
-		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, string(newOrderMessageTemplate)),
-		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, o.WebAppName),
-		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, o.UserNickname),
+	finalMessage := fmt.Sprintf(
+		string(newOrderMessageTemplate),
+		o.WebAppName,
+		o.UserNickname,
 		o.ReadableOrderID,
+		formatFloat(subtotal)+" "+formatCurrency(currency),
+		"status",
 		formatRussianTime(o.CreatedAt),
-		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, formatFloat(subtotal))+" "+formatCurrency(currency),
+		"no comment",
 		strings.TrimRight(productList.String(), "; "),
-	), nil
+	)
+	return tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, finalMessage), nil
 }
 
 // BuildMessageCustomer creates a notification message for a new order for a customer
