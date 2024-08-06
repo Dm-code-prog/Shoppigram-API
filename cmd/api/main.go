@@ -167,17 +167,31 @@ func main() {
 	adminsHandler := admins.MakeHandler(adminsService, authMw)
 
 	////////////////////////////////////// WEBHOOKS //////////////////////////////////////
-	webhookService := webhooks.New(
+	webhookService := webhooks.NewTelegram(
 		&adminWebhooksAdapter{admin: adminsService},
 		&notificationsWebhooksAdapter{notifier: notificationsService},
 		log.With(zap.String("service", "webhooks")),
 		config.Bot.ID,
 		config.Bot.Name,
 	)
-	webhooksHandler := webhooks.MakeHandler(
+	webhooksHandler := webhooks.MakeTelegramHandler(
 		webhookService,
 		log.With(zap.String("service", "webhooks_server")),
 		config.TelegramWebhooks.SecretToken)
+
+	webhooksRepo := webhooks.NewPg(db)
+	maxCloudPaymentsTransactionDuration, _ := time.ParseDuration(config.CloudPayments.MaxTransactionDuration)
+	cloudPaymentsWebhookService := webhooks.NewCloudPayments(
+		webhooksRepo,
+		log.With(zap.String("service", "webhooks_server")),
+		maxCloudPaymentsTransactionDuration,
+	)
+	cloudPaymentsWebhookHandler := webhooks.MakeCloudPaymentsHandlers(
+		cloudPaymentsWebhookService,
+		log.With(zap.String("service", "webhooks_server")),
+		config.CloudPayments.Login,
+		config.CloudPayments.Password,
+	)
 
 	////////////////////////////////////// RUN NOTIFICATION JOBS //////////////////////////////////////
 	if config.NewOrderNotifications.IsEnabled {
@@ -210,6 +224,7 @@ func main() {
 	r.Mount("/api/v1/public/orders", ordersHandler)
 	r.Mount("/api/v1/private/marketplaces", adminsHandler)
 	r.Mount("/api/v1/telegram/webhooks", webhooksHandler)
+	r.Mount("/api/v1/cloud-payments/webhooks", cloudPaymentsWebhookHandler)
 
 	g.Add(func() error {
 		log.Info("starting HTTP server", zap.String("port", config.HTTP.Port))

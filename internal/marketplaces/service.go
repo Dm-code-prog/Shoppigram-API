@@ -32,11 +32,12 @@ type (
 
 	// GetProductsResponse defines the response body for the GetProducts endpoint
 	GetProductsResponse struct {
-		WebAppID         uuid.UUID `json:"web_app_id,omitempty"`
-		WebAppName       string    `json:"web_app_name,omitempty"`
-		WebAppShortName  string    `json:"web_app_short_name,omitempty"`
-		WebAppIsVerified bool      `json:"web_app_is_verified,omitempty"`
-		Products         []Product `json:"products,omitempty"`
+		WebAppID              uuid.UUID `json:"web_app_id,omitempty"`
+		WebAppName            string    `json:"web_app_name,omitempty"`
+		WebAppShortName       string    `json:"web_app_short_name,omitempty"`
+		WebAppIsVerified      bool      `json:"web_app_is_verified,omitempty"`
+		OnlinePaymentsEnabled bool      `json:"online_payments_enabled"`
+		Products              []Product `json:"products,omitempty"`
 	}
 
 	// InvalidateProductsCacheRequest defines the request for the InvalidateProductsCache endpoint
@@ -56,19 +57,24 @@ type (
 	// the order and user information
 	CreateOrderRequest struct {
 		WebAppID uuid.UUID
+		// p2p or online for now
+		Type     string        `json:"type"`
 		Products []ProductItem `json:"products"`
 	}
 
 	// CreateOrderResponse returns the ID of the newly created order
 	CreateOrderResponse struct {
-		ReadableID int `json:"readable_id"`
+		ID         uuid.UUID `json:"id"`
+		ReadableID int       `json:"readable_id"`
 	}
 
 	// SaveOrderRequest is a request to save order info
 	// to the storage
 	SaveOrderRequest struct {
-		WebAppID       uuid.UUID
-		Products       []ProductItem
+		WebAppID uuid.UUID
+		Products []ProductItem
+		// p2p or online for now
+		Type           string
 		ExternalUserID int
 	}
 
@@ -76,6 +82,7 @@ type (
 	//
 	// It contains the readable order ID
 	SaveOrderResponse struct {
+		ID         uuid.UUID
 		ReadableID int
 	}
 
@@ -121,6 +128,9 @@ type (
 
 const (
 	getProductsCacheKeyBase = "products.GetProducts:"
+
+	orderTypeP2P    = "p2p"
+	orderTypeOnline = "online"
 )
 
 // New creates a new product service
@@ -163,10 +173,16 @@ func (s *DefaultService) CreateOrder(ctx context.Context, req CreateOrderRequest
 		return CreateOrderResponse{}, errors.Wrap(err, "telegramusers.GetUserFromContext")
 	}
 
+	// for backward compatibility
+	if req.Type == "" {
+		req.Type = orderTypeP2P
+	}
+
 	res, err := s.repo.CreateOrder(ctx, SaveOrderRequest{
 		WebAppID:       req.WebAppID,
 		Products:       req.Products,
 		ExternalUserID: int(u.ExternalId),
+		Type:           req.Type,
 	})
 	if err != nil {
 		return CreateOrderResponse{}, errors.Wrap(err, "s.repo.CreateOrder")

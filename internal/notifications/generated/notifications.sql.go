@@ -120,34 +120,37 @@ func (q *Queries) GetNotificationsForNewMarketplacesAfterCursor(ctx context.Cont
 }
 
 const getNotificationsForNewOrdersAfterCursor = `-- name: GetNotificationsForNewOrdersAfterCursor :many
-with orders_batch as (select id as order_id, created_at, readable_id, web_app_id, external_user_id
+with orders_batch as (select id as order_id, created_at, readable_id, web_app_id, external_user_id, state
                       from orders o
-                      where (o.created_at, o.id) > ($2::timestamp, $3::uuid)
+                      where (o.updated_at, o.id) > ($2::timestamp, $3::uuid)
+                        and o.state = 'confirmed'
                       order by o.created_at, o.id
                       limit $1)
 select ob.order_id,
        ob.readable_id,
        ob.created_at,
        p.web_app_id,
-       wa.name as web_app_name,
+       wa.name       as web_app_name,
        p.name,
        p.price,
        p.price_currency,
        op.quantity,
        u.username,
-	   u.external_id as external_user_id
+       u.external_id as external_user_id,
+       ob.state
 from orders_batch ob
          join order_products op
               on ob.order_id = op.order_id
          join products p on p.id = op.product_id
          join telegram_users u on external_user_id = u.external_id
          join web_apps wa on ob.web_app_id = wa.id
+where ob.state = 'confirmed'
 order by ob.created_at, ob.order_id
 `
 
 type GetNotificationsForNewOrdersAfterCursorParams struct {
 	Limit     int32
-	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
 	ID        uuid.UUID
 }
 
@@ -163,10 +166,11 @@ type GetNotificationsForNewOrdersAfterCursorRow struct {
 	Quantity       int32
 	Username       pgtype.Text
 	ExternalUserID int32
+	State          OrderState
 }
 
 func (q *Queries) GetNotificationsForNewOrdersAfterCursor(ctx context.Context, arg GetNotificationsForNewOrdersAfterCursorParams) ([]GetNotificationsForNewOrdersAfterCursorRow, error) {
-	rows, err := q.db.Query(ctx, getNotificationsForNewOrdersAfterCursor, arg.Limit, arg.CreatedAt, arg.ID)
+	rows, err := q.db.Query(ctx, getNotificationsForNewOrdersAfterCursor, arg.Limit, arg.UpdatedAt, arg.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -186,6 +190,7 @@ func (q *Queries) GetNotificationsForNewOrdersAfterCursor(ctx context.Context, a
 			&i.Quantity,
 			&i.Username,
 			&i.ExternalUserID,
+			&i.State,
 		); err != nil {
 			return nil, err
 		}

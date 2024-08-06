@@ -6,6 +6,7 @@ sql:
     schema:
       - ./schemas/20240429.sql
       - ../shared_sql/2024-04-11-aggregate.sql
+      - ../shared_sql/2024-07-26.sql
     gen:
       go:
         package: generated

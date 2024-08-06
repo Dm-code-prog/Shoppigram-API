@@ -5,6 +5,7 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/opentracing/opentracing-go/log"
 	"strings"
 
 	"github.com/google/uuid"
@@ -26,19 +27,20 @@ func NewPg(pool *pgxpool.Pool) *Pg {
 }
 
 // GetProducts returns a list of products
-func (p *Pg) GetProducts(ctx context.Context, request GetProductsRequest) (GetProductsResponse, error) {
-	prod, err := p.gen.GetProducts(ctx, request.WebAppID)
+func (pg *Pg) GetProducts(ctx context.Context, request GetProductsRequest) (GetProductsResponse, error) {
+	prod, err := pg.gen.GetProducts(ctx, request.WebAppID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return GetProductsResponse{}, nil
 		}
-		return GetProductsResponse{}, errors.Wrap(err, "p.gen.GetProducts")
+		return GetProductsResponse{}, errors.Wrap(err, "pg.gen.GetProducts")
 	}
 
 	var id uuid.UUID
 	var name string
 	var shortName string
 	var isVerified bool
+	var onlinePaymentsEnabled bool
 	var products []Product
 	for _, p := range prod {
 		products = append(products, Product{
@@ -53,14 +55,16 @@ func (p *Pg) GetProducts(ctx context.Context, request GetProductsRequest) (GetPr
 		name = p.WebAppName
 		shortName = p.WebAppShortName
 		isVerified = p.WebAppIsVerified.Bool
+		onlinePaymentsEnabled = p.OnlinePaymentsEnabled
 	}
 
 	return GetProductsResponse{
-		WebAppID:         id,
-		WebAppName:       name,
-		WebAppShortName:  shortName,
-		WebAppIsVerified: isVerified,
-		Products:         products,
+		WebAppID:              id,
+		WebAppName:            name,
+		WebAppShortName:       shortName,
+		WebAppIsVerified:      isVerified,
+		Products:              products,
+		OnlinePaymentsEnabled: onlinePaymentsEnabled,
 	}, nil
 }
 
@@ -70,27 +74,61 @@ func (pg *Pg) CreateOrder(ctx context.Context, req SaveOrderRequest) (SaveOrderR
 	if err != nil {
 		return SaveOrderResponse{}, errors.Wrap(err, "pg.pool.Begin")
 	}
-	defer tx.Rollback(ctx)
+	defer func(tx pgx.Tx, ctx context.Context) {
+		err := tx.Rollback(ctx)
+		if err != nil {
+			log.Error(err)
+		}
+	}(tx, ctx)
 	qtx := pg.gen.WithTx(tx)
 
-	res, err := qtx.CreateP2POrder(ctx, generated.CreateP2POrderParams{
-		WebAppID: pgtype.UUID{
-			Bytes: req.WebAppID,
-			Valid: true,
-		},
-		ExternalUserID: pgtype.Int4{
-			Int32: int32(req.ExternalUserID),
-			Valid: true,
-		},
-	})
-	if err != nil {
-		return SaveOrderResponse{}, errors.Wrap(err, "qtx.CreateOrder")
+	var (
+		id         uuid.UUID
+		readableID int
+	)
+	if req.Type == orderTypeOnline {
+		res, err := qtx.CreateOnlineOrder(ctx, generated.CreateOnlineOrderParams{
+			WebAppID: pgtype.UUID{
+				Bytes: req.WebAppID,
+				Valid: true,
+			},
+			ExternalUserID: pgtype.Int4{
+				Int32: int32(req.ExternalUserID),
+				Valid: true,
+			},
+		})
+
+		if err != nil {
+			return SaveOrderResponse{}, errors.Wrap(err, "qtx.CreateOnlineOrder")
+		}
+
+		id = res.ID
+		readableID = int(res.ReadableID.Int64)
+	} else if req.Type == orderTypeP2P {
+		res, err := qtx.CreateP2POrder(ctx, generated.CreateP2POrderParams{
+			WebAppID: pgtype.UUID{
+				Bytes: req.WebAppID,
+				Valid: true,
+			},
+			ExternalUserID: pgtype.Int4{
+				Int32: int32(req.ExternalUserID),
+				Valid: true,
+			},
+		})
+		if err != nil {
+			return SaveOrderResponse{}, errors.Wrap(err, "qtx.CreateOrder")
+		}
+
+		id = res.ID
+		readableID = int(res.ReadableID.Int64)
+	} else {
+		return SaveOrderResponse{}, ErrorInvalidOrderType
 	}
 
 	var orderProducts []generated.SetOrderProductsParams
 	for _, product := range req.Products {
 		orderProducts = append(orderProducts, generated.SetOrderProductsParams{
-			OrderID:   pgtype.UUID{Bytes: res.ID, Valid: true},
+			OrderID:   pgtype.UUID{Bytes: id, Valid: true},
 			ProductID: pgtype.UUID{Bytes: product.ID, Valid: true},
 			Quantity:  product.Quantity,
 		})
@@ -117,19 +155,18 @@ func (pg *Pg) CreateOrder(ctx context.Context, req SaveOrderRequest) (SaveOrderR
 		return SaveOrderResponse{}, errors.Wrap(err, "tx.Commit")
 	}
 
-	return SaveOrderResponse{ReadableID: int(res.ReadableID.Int64)}, nil
-
+	return SaveOrderResponse{ReadableID: readableID, ID: id}, nil
 }
 
 // GetOrder gets a list of products in order
-func (p *Pg) GetOrder(ctx context.Context, orderId uuid.UUID, userId int64) (GetOrderResponse, error) {
-	rows, err := p.gen.GetOrder(ctx, generated.GetOrderParams{
+func (pg *Pg) GetOrder(ctx context.Context, orderId uuid.UUID, userId int64) (GetOrderResponse, error) {
+	rows, err := pg.gen.GetOrder(ctx, generated.GetOrderParams{
 		ID:             orderId,
 		ExternalUserID: pgtype.Int4{Int32: int32(userId), Valid: userId != 0},
 	})
 
 	if err != nil {
-		return GetOrderResponse{}, errors.Wrap(err, "p.gen.GetOrder")
+		return GetOrderResponse{}, errors.Wrap(err, "pg.gen.GetOrder")
 	}
 
 	products := make([]Product, len(rows))

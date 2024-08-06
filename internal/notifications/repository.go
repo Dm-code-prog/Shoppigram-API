@@ -98,7 +98,7 @@ func (p *Pg) GetNotificationsForNewOrdersAfterCursor(ctx context.Context, cur Cu
 	rows, err := p.gen.GetNotificationsForNewOrdersAfterCursor(
 		ctx,
 		generated.GetNotificationsForNewOrdersAfterCursorParams{
-			CreatedAt: pgtype.Timestamp{
+			UpdatedAt: pgtype.Timestamp{
 				Time:  cur.CursorDate,
 				Valid: true,
 			},

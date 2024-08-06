@@ -98,6 +98,89 @@ func (ns NullOrderType) Value() (driver.Value, error) {
 	return string(ns.OrderType), nil
 }
 
+type PaymentProviders string
+
+const (
+	PaymentProvidersCloudPayments PaymentProviders = "cloud_payments"
+)
+
+func (e *PaymentProviders) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = PaymentProviders(s)
+	case string:
+		*e = PaymentProviders(s)
+	default:
+		return fmt.Errorf("unsupported scan type for PaymentProviders: %T", src)
+	}
+	return nil
+}
+
+type NullPaymentProviders struct {
+	PaymentProviders PaymentProviders
+	Valid            bool // Valid is true if PaymentProviders is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullPaymentProviders) Scan(value interface{}) error {
+	if value == nil {
+		ns.PaymentProviders, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.PaymentProviders.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullPaymentProviders) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.PaymentProviders), nil
+}
+
+type PaymentsEventType string
+
+const (
+	PaymentsEventTypeCheck PaymentsEventType = "check"
+	PaymentsEventTypePay   PaymentsEventType = "pay"
+)
+
+func (e *PaymentsEventType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = PaymentsEventType(s)
+	case string:
+		*e = PaymentsEventType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for PaymentsEventType: %T", src)
+	}
+	return nil
+}
+
+type NullPaymentsEventType struct {
+	PaymentsEventType PaymentsEventType
+	Valid             bool // Valid is true if PaymentsEventType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullPaymentsEventType) Scan(value interface{}) error {
+	if value == nil {
+		ns.PaymentsEventType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.PaymentsEventType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullPaymentsEventType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.PaymentsEventType), nil
+}
+
 type ProductCurrency string
 
 const (
@@ -141,22 +224,6 @@ func (ns NullProductCurrency) Value() (driver.Value, error) {
 	return string(ns.ProductCurrency), nil
 }
 
-type NewOrderNotificationsList struct {
-	WebAppID      pgtype.UUID
-	AdminUsername pgtype.Text
-	AdminChatID   int64
-}
-
-type NewWebAppsNotificationsList struct {
-	ChatID int64
-}
-
-type NotifierCursor struct {
-	CursorDate      pgtype.Timestamp
-	LastProcessedID pgtype.UUID
-	Name            pgtype.Text
-}
-
 type Order struct {
 	ID             uuid.UUID
 	ReadableID     pgtype.Int8
@@ -172,6 +239,18 @@ type OrderProduct struct {
 	OrderID   pgtype.UUID
 	ProductID pgtype.UUID
 	Quantity  int32
+}
+
+type PaymentsExtraInfo struct {
+	ID        uuid.UUID
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
+	InvoiceID pgtype.UUID
+	Provider  PaymentProviders
+	EventType PaymentsEventType
+	ExtraInfo []byte
+	Response  []byte
+	Error     pgtype.Text
 }
 
 type Product struct {

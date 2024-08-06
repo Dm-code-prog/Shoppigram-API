@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
@@ -34,6 +35,15 @@ type (
 		ChannelName       string
 	}
 
+	// TelegramService is the service for handling Telegram webhooks
+	TelegramService struct {
+		channelStorage    ChannelStorage
+		notifier          Notifier
+		log               *zap.Logger
+		shoppigramBotID   int64
+		shoppigramBotName string
+	}
+
 	// NotifyGreetingsRequest contains the initial greeting message
 	// of the bot
 	NotifyGreetingsRequest struct {
@@ -48,20 +58,11 @@ type (
 		NotifyChannelIntegrationSuccess(ctx context.Context, request NotifyChannelIntegrationSuccessRequest) error
 		NotifyGreetings(ctx context.Context, request NotifyGreetingsRequest) error
 	}
-
-	// Service is the service for handling Telegram webhooks
-	Service struct {
-		channelStorage    ChannelStorage
-		notifier          Notifier
-		log               *zap.Logger
-		shoppigramBotID   int64
-		shoppigramBotName string
-	}
 )
 
-// New returns a new instance of the Service
-func New(channelStorage ChannelStorage, notifier Notifier, log *zap.Logger, shoppigramBotID int64, shoppigramBotName string) *Service {
-	return &Service{
+// NewTelegram returns a new instance of the TelegramService
+func NewTelegram(channelStorage ChannelStorage, notifier Notifier, log *zap.Logger, shoppigramBotID int64, shoppigramBotName string) *TelegramService {
+	return &TelegramService{
 		channelStorage:    channelStorage,
 		notifier:          notifier,
 		log:               log,
@@ -78,7 +79,7 @@ func New(channelStorage ChannelStorage, notifier Notifier, log *zap.Logger, shop
 // We differentiate the updates based on the optional fields of the Update struct. At most one optional field is present
 // at any given update. However, we can have more than one handler for a given Telegram update type.
 // In this case, each handler provides a function that determines if it can handle the update.
-func (s *Service) HandleTelegramWebhook(ctx context.Context, update tgbotapi.Update) error {
+func (s *TelegramService) HandleTelegramWebhook(ctx context.Context, update tgbotapi.Update) error {
 	switch {
 	case s.isUpdateTypeShoppigramBotAddedToChannelAsAdmin(update):
 		return s.handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx, update)
@@ -98,7 +99,7 @@ func (s *Service) HandleTelegramWebhook(ctx context.Context, update tgbotapi.Upd
 	return nil
 }
 
-func (s *Service) handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx context.Context, update tgbotapi.Update) error {
+func (s *TelegramService) handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx context.Context, update tgbotapi.Update) error {
 	event := update.MyChatMember
 
 	err := s.channelStorage.CreateOrUpdateTelegramChannel(ctx, CreateOrUpdateTelegramChannelRequest{
@@ -127,7 +128,7 @@ func (s *Service) handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx context
 	return nil
 }
 
-func (s *Service) handleUpdateTypeStartCommand(ctx context.Context, update tgbotapi.Update) error {
+func (s *TelegramService) handleUpdateTypeStartCommand(ctx context.Context, update tgbotapi.Update) error {
 	// Send a button with the link to the mini app
 
 	var greetingMessage = tgbotapi.EscapeText(
