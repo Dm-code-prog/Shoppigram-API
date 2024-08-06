@@ -32,6 +32,7 @@ type (
 		CreatedAt       time.Time
 		OwnerUsername   string
 		OwnerExternalID int64
+		ImageBaseUrl    string
 	}
 
 	// VerifiedMarketplaceNotification defines the structure of verified marketplace notification
@@ -115,31 +116,36 @@ func (o *NewOrderNotification) BuildMessageCustomer() (string, error) {
 
 // BuildMessageShoppigram creates a notification message for a new marketplace
 func (m *NewMarketplaceNotification) BuildMessageShoppigram() (string, error) {
-	newMarketplaceMessageTemplate, err := templates.ReadFile("templates/marketplace_needs_verification.shoppigram.md")
+	newMarketplaceMessageTemplate, err := templates.ReadFile("templates/shoppigram/marketplace_needs_verification.shoppigram.md")
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
 
-	return fmt.Sprintf(
-		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, string(newMarketplaceMessageTemplate)),
-		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, m.OwnerUsername),
-		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, m.Name),
-		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, m.ShortName),
-		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, marketplaceURL+m.ID.String()),
-	), nil
+	finalMessage := fmt.Sprintf(
+		string(newMarketplaceMessageTemplate),
+		m.OwnerUsername,
+		m.Name,
+		m.ShortName,
+		m.ImageBaseUrl+"/"+m.ShortName+"/logo",
+		marketplaceURL+m.ID.String(),
+	)
+
+	return tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, finalMessage), nil
 }
 
 // BuildMessageAdmin creates a notification message for a marketplace on verification
 func (m *NewMarketplaceNotification) BuildMessageAdmin() (string, error) {
-	marketplaceVerificationMessageTemplate, err := templates.ReadFile("templates/marketplace_sent_for_verification.admin.md")
+	marketplaceVerificationMessageTemplate, err := templates.ReadFile("templates/admin/marketplace_sent_for_verification.admin.md")
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
 
-	return fmt.Sprintf(
-		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, string(marketplaceVerificationMessageTemplate)),
-		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, m.Name),
-	), nil
+	finalMessage := fmt.Sprintf(
+		string(marketplaceVerificationMessageTemplate),
+		m.Name,
+	)
+
+	return tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, finalMessage), nil
 }
 
 // BuildMessage creates a notification message for a verified marketplace

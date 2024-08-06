@@ -92,6 +92,7 @@ type (
 		verifiedMarketplaceProcessingTimer time.Duration
 		bot                                *tgbotapi.BotAPI
 		botName                            string
+		bucketUrl                          string
 	}
 )
 
@@ -103,7 +104,7 @@ const (
 )
 
 // New creates a new user service
-func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration, newMarketplaceProcessingTimer time.Duration, verifiedMarketplaceProcessingTimer time.Duration, botToken string, botName string) *Service {
+func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration, newMarketplaceProcessingTimer time.Duration, verifiedMarketplaceProcessingTimer time.Duration, botToken string, botName string, bucketUrl string) *Service {
 	if log == nil {
 		log, _ = zap.NewProduction()
 		log.Warn("log *zap.Logger is nil, using zap.NewProduction")
@@ -140,6 +141,7 @@ func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration
 		verifiedMarketplaceProcessingTimer: verifiedMarketplaceProcessingTimer,
 		bot:                                bot,
 		botName:                            botName,
+		bucketUrl:                          bucketUrl,
 	}
 }
 
@@ -147,7 +149,6 @@ func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration
 // and sends notifications to the owners of marketplaces
 func (s *Service) RunNewOrderNotifier() error {
 	ticker := time.NewTicker(s.newOrderProcessingTimer)
-
 	for {
 		select {
 		case <-ticker.C:
@@ -456,27 +457,24 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 		return errors.Wrap(err, "s.repo.GetReviewersNotificationList")
 	}
 	for _, n := range marketplaceNotifications {
+		n.ImageBaseUrl = s.bucketUrl
 		onVerificationMsgTxt, err := n.BuildMessageAdmin()
 		if err != nil {
 			return errors.Wrap(err, "a.BuildMessageShoppigram")
 		}
+		s.log.Info(onVerificationMsgTxt)
+
 		msg := tgbotapi.NewMessage(n.OwnerExternalID, onVerificationMsgTxt)
 		msg.ParseMode = tgbotapi.ModeMarkdownV2
 
-		tmaLink, err := TMALinkingScheme{
-			PageName: "/admin/marketplaces/" + n.ID.String(),
-			PageData: map[string]any{},
-		}.ToBase64String()
+		tgLinkPath := "/admin/marketplaces/" + n.ID.String()
 
-		button := tgbotapi.NewInlineKeyboardButtonURL("Перейти к магазину", "https://t.me/"+s.botName+"/app?startapp="+tmaLink)
+		tgLink, err := s.getTelegramLink(tgLinkPath)
 		if err != nil {
-			return errors.Wrap(err, "tgbotapi.NewInlineKeyboardButtonURL")
+			return errors.Wrap(err, "getTelegramLink()")
 		}
 
-		msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-			tgbotapi.NewInlineKeyboardRow(
-				button,
-			))
+		addTelegramButtonToMessage(&msg, "Перейти к магазину", tgLink)
 
 		_, err = s.bot.Send(msg)
 		if err != nil {
