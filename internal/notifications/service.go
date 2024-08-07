@@ -101,7 +101,7 @@ const (
 	newOrderNotifierName            = "new_order_notifications"
 	newMarketplaceNotifierName      = "new_marketplace_notifications"
 	verifiedMarketplaceNotifierName = "verified_marketplace_notifications"
-	marketplaceURL                  = "https://web-app.shoppigram.com/app/"
+	marketplaceBaseURL              = "https://web-app.shoppigram.com/app/"
 )
 
 // New creates a new user service
@@ -343,7 +343,7 @@ type telegramButtonData struct {
 }
 
 func addTelegramButtonsToMessage(msg *tgbotapi.MessageConfig, messageData ...telegramButtonData) {
-	rows := make([][]tgbotapi.InlineKeyboardButton, len(messageData))
+	var rows [][]tgbotapi.InlineKeyboardButton
 
 	for _, v := range messageData {
 		button := tgbotapi.NewInlineKeyboardButtonURL(v.text, v.link)
@@ -352,7 +352,7 @@ func addTelegramButtonsToMessage(msg *tgbotapi.MessageConfig, messageData ...tel
 	}
 
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-		rows[0],
+		rows...,
 	)
 }
 

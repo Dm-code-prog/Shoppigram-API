@@ -127,7 +127,7 @@ func (m *NewMarketplaceNotification) BuildMessageShoppigram() (string, error) {
 		m.Name,
 		m.ShortName,
 		m.ImageBaseUrl+"/"+m.ShortName+"/logo",
-		marketplaceURL+m.ID.String(),
+		marketplaceBaseURL+m.ID.String(),
 	)
 
 	return tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, finalMessage), nil
