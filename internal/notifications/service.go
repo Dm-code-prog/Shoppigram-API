@@ -343,13 +343,16 @@ type telegramButtonData struct {
 }
 
 func addTelegramButtonsToMessage(msg *tgbotapi.MessageConfig, messageData ...telegramButtonData) {
-	buttons := make([]tgbotapi.InlineKeyboardButton, len(messageData))
+	rows := make([][]tgbotapi.InlineKeyboardButton, len(messageData))
+
 	for _, v := range messageData {
-		buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonURL(v.text, v.link))
+		button := tgbotapi.NewInlineKeyboardButtonURL(v.text, v.link)
+		row := tgbotapi.NewInlineKeyboardRow(button)
+		rows = append(rows, row)
 	}
 
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-		buttons,
+		rows[0],
 	)
 }
 
