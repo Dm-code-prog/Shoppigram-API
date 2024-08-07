@@ -17,6 +17,8 @@ import (
 //go:embed templates/*/*.md
 var templates embed.FS
 
+const supportContactUrl = "https://t.me/ShoppigramSupport"
+
 type (
 	// Cursor defines the structure for a notify list cursor
 	Cursor struct {
@@ -335,13 +337,20 @@ func (s *Service) Shutdown() error {
 	return nil
 }
 
-func addTelegramButtonToMessage(msg *tgbotapi.MessageConfig, text string, link string) {
-	button := tgbotapi.NewInlineKeyboardButtonURL(text, link)
+type telegramButtonData struct {
+	text string
+	link string
+}
+
+func addTelegramButtonsToMessage(msg *tgbotapi.MessageConfig, messageData ...telegramButtonData) {
+	buttons := make([]tgbotapi.InlineKeyboardButton, len(messageData))
+	for _, v := range messageData {
+		buttons = append(buttons, tgbotapi.NewInlineKeyboardButtonURL(v.text, v.link))
+	}
 
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(
-			button,
-		))
+		tgbotapi.NewInlineKeyboardRow(buttons...),
+	)
 
 }
 
@@ -389,7 +398,7 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 			if err != nil {
 				return errors.Wrap(err, "getTelegramLink()")
 			}
-			addTelegramButtonToMessage(&msg, "Управление заказом", tgLink)
+			addTelegramButtonsToMessage(&msg, telegramButtonData{"Управление заказом", tgLink})
 
 			_, err = s.bot.Send(msg)
 			if err != nil {
@@ -418,7 +427,7 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 		if err != nil {
 			return errors.Wrap(err, "getTelegramLink()")
 		}
-		addTelegramButtonToMessage(&msg, "Посмотреть заказ", tgLink)
+		addTelegramButtonsToMessage(&msg, telegramButtonData{"Посмотреть заказ", tgLink})
 
 		_, err = s.bot.Send(msg)
 		if err != nil {
@@ -464,14 +473,16 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 		msg := tgbotapi.NewMessage(n.OwnerExternalID, onVerificationMsgTxt)
 		msg.ParseMode = tgbotapi.ModeMarkdownV2
 
-		tgLinkPath := "/admin/marketplaces/" + n.ID.String()
-
+		tgLinkPath := n.ID.String()
 		tgLink, err := s.getTelegramLink(tgLinkPath)
 		if err != nil {
 			return errors.Wrap(err, "getTelegramLink()")
 		}
 
-		addTelegramButtonToMessage(&msg, "Перейти к магазину", tgLink)
+		addTelegramButtonsToMessage(&msg,
+			telegramButtonData{"Связаться с поддержкой", supportContactUrl},
+			telegramButtonData{"Посмотреть магазин", tgLink},
+		)
 
 		_, err = s.bot.Send(msg)
 		if err != nil {
@@ -553,9 +564,13 @@ func (s *Service) NotifyChannelIntegrationSuccess(_ context.Context, request Not
 
 // NotifyGreetings sends a greeting message to a user
 func (s *Service) NotifyGreetings(_ context.Context, request NotifyGreetingsRequest) error {
-	msg := tgbotapi.NewMessage(request.UserExternalID, "test")
+	messageText, err := BuildGreetigsMessage()
+	if err != nil {
+		return errors.Wrap(err, "BuildGreetigsMessage()")
+	}
+	msg := tgbotapi.NewMessage(request.UserExternalID, messageText)
 	msg.ParseMode = tgbotapi.ModeMarkdownV2
-	_, err := s.bot.Send(msg)
+	_, err = s.bot.Send(msg)
 	if err != nil {
 		return errors.Wrap(err, "bot.Send")
 	}

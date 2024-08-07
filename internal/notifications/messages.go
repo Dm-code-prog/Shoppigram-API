@@ -184,5 +184,5 @@ func BuildGreetigsMessage() (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
-	return string(greetingsMessage), err
+	return tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, string(greetingsMessage)), nil
 }
