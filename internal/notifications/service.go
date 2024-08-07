@@ -349,9 +349,8 @@ func addTelegramButtonsToMessage(msg *tgbotapi.MessageConfig, messageData ...tel
 	}
 
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(buttons...),
+		buttons,
 	)
-
 }
 
 type pageDataParam struct {
