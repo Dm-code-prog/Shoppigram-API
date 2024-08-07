@@ -12,58 +12,77 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const getOrder = `-- name: GetOrder :many
-select p.id,
-       p.name,
-       p.description,
-       p.category,
-       p.price,
-       p.price_currency::text as price_currency,
-       wa.name        as web_app_name,
-       wa.short_name  as web_app_short_name
-from orders o
-	 join order_products op on o.id = op.order_id
-	 join products p on op.product_id = p.id
-     join web_apps wa on o.web_app_id = wa.id
-where o.id = $1
-	  and (o.external_user_id = $2
-	  or wa.owner_external_id = $2)
+const getOrders = `-- name: GetOrders :many
+SELECT o.id                       AS id,
+       o.web_app_id               AS marketplace_id,
+       o.readable_id              AS readable_id,
+       (SELECT SUM(p.price * op.quantity)
+        FROM order_products op
+                 JOIN products p ON p.id = op.product_id
+        WHERE op.order_id = o.id) AS total_price,
+       tu.username                AS buyer_username,
+       (SELECT json_agg(
+                       json_build_object(
+                               'id', p.id,
+                               'name', p.name,
+                               'quantity', op.quantity,
+                               'price', p.price,
+                               'price_currency', p.price_currency
+                       )
+               )
+        FROM order_products op
+                 JOIN products p ON p.id = op.product_id
+        WHERE op.order_id = o.id) AS products
+FROM orders o
+         JOIN
+     telegram_users tu ON tu.external_id = o.external_user_id
+         join web_apps wa on wa.id = o.web_app_id
+where tu.external_id = $3::integer
+  and wa.owner_external_id = $3::integer
+  and (o.web_app_id = $4::uuid or $4 is null)
+  and (o.state = $5 or $5 is null)
+limit $1 offset $2
 `
 
-type GetOrderParams struct {
-	ID             uuid.UUID
-	ExternalUserID pgtype.Int4
+type GetOrdersParams struct {
+	Limit           int32
+	Offset          int32
+	OwnerExternalID int32
+	MarketplaceID   uuid.UUID
+	State           OrderState
 }
 
-type GetOrderRow struct {
-	ID              uuid.UUID
-	Name            string
-	Description     pgtype.Text
-	Category        pgtype.Text
-	Price           float64
-	PriceCurrency   string
-	WebAppName      string
-	WebAppShortName string
+type GetOrdersRow struct {
+	ID            uuid.UUID
+	MarketplaceID pgtype.UUID
+	ReadableID    pgtype.Int8
+	TotalPrice    int64
+	BuyerUsername pgtype.Text
+	Products      []byte
 }
 
-func (q *Queries) GetOrder(ctx context.Context, arg GetOrderParams) ([]GetOrderRow, error) {
-	rows, err := q.db.Query(ctx, getOrder, arg.ID, arg.ExternalUserID)
+func (q *Queries) GetOrders(ctx context.Context, arg GetOrdersParams) ([]GetOrdersRow, error) {
+	rows, err := q.db.Query(ctx, getOrders,
+		arg.Limit,
+		arg.Offset,
+		arg.OwnerExternalID,
+		arg.MarketplaceID,
+		arg.State,
+	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetOrderRow
+	var items []GetOrdersRow
 	for rows.Next() {
-		var i GetOrderRow
+		var i GetOrdersRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.Name,
-			&i.Description,
-			&i.Category,
-			&i.Price,
-			&i.PriceCurrency,
-			&i.WebAppName,
-			&i.WebAppShortName,
+			&i.MarketplaceID,
+			&i.ReadableID,
+			&i.TotalPrice,
+			&i.BuyerUsername,
+			&i.Products,
 		); err != nil {
 			return nil, err
 		}

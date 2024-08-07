@@ -6,9 +6,10 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"net/http"
+	"strconv"
 )
 
-func decodeCreateMarketplaceRequest(c context.Context, r *http.Request) (interface{}, error) {
+func decodeCreateMarketplaceRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	var request CreateMarketplaceRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, ErrorBadRequest
@@ -17,7 +18,7 @@ func decodeCreateMarketplaceRequest(c context.Context, r *http.Request) (interfa
 	return request, nil
 }
 
-func decodeUpdateMarketplaceRequest(c context.Context, r *http.Request) (interface{}, error) {
+func decodeUpdateMarketplaceRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	var request UpdateMarketplaceRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, ErrorBadRequest
@@ -37,7 +38,7 @@ func decodeUpdateMarketplaceRequest(c context.Context, r *http.Request) (interfa
 	return request, nil
 }
 
-func decodeDeleteMarketplaceRequest(c context.Context, r *http.Request) (interface{}, error) {
+func decodeDeleteMarketplaceRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	var request DeleteMarketplaceRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
@@ -58,7 +59,7 @@ func decodeDeleteMarketplaceRequest(c context.Context, r *http.Request) (interfa
 	return request, nil
 }
 
-func decodeCreateProductRequest(c context.Context, r *http.Request) (interface{}, error) {
+func decodeCreateProductRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	var request CreateProductRequest
 
 	webAppID := chi.URLParam(r, "web_app_id")
@@ -79,7 +80,7 @@ func decodeCreateProductRequest(c context.Context, r *http.Request) (interface{}
 	return request, nil
 }
 
-func decodeUpdateProductRequest(c context.Context, r *http.Request) (interface{}, error) {
+func decodeUpdateProductRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	var request UpdateProductRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, ErrorBadRequest
@@ -99,7 +100,7 @@ func decodeUpdateProductRequest(c context.Context, r *http.Request) (interface{}
 	return request, nil
 }
 
-func decodeDeleteProductRequest(c context.Context, r *http.Request) (interface{}, error) {
+func decodeDeleteProductRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	var request DeleteProductRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, ErrorBadRequest
@@ -119,7 +120,48 @@ func decodeDeleteProductRequest(c context.Context, r *http.Request) (interface{}
 	return request, nil
 }
 
-func decodeCreateProductImageUploadURLRequest(c context.Context, r *http.Request) (interface{}, error) {
+func decodeGetOrdersRequest(_ context.Context, r *http.Request) (interface{}, error) {
+	// get all data from the query params
+	var request GetOrdersRequest
+
+	marketplaceID := r.URL.Query().Get("marketplace_id")
+	if marketplaceID != "" {
+		marketplaceUUID, err := uuid.Parse(marketplaceID)
+		if err != nil {
+			return nil, ErrorBadRequest
+		}
+		request.MarketplaceID = &marketplaceUUID
+	}
+
+	state := r.URL.Query().Get("state")
+	if state != "" {
+		request.State = &state
+	}
+
+	limit := r.URL.Query().Get("limit")
+	if limit != "" {
+		limitInt, err := strconv.Atoi(limit)
+		if err != nil {
+			return nil, ErrorBadRequest
+		}
+
+		request.Limit = &limitInt
+	}
+
+	offset := r.URL.Query().Get("offset")
+	if offset != "" {
+		offsetInt, err := strconv.Atoi(offset)
+		if err != nil {
+			return nil, ErrorBadRequest
+		}
+
+		request.Offset = &offsetInt
+	}
+
+	return request, nil
+}
+
+func decodeCreateProductImageUploadURLRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	var request CreateProductImageUploadURLRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, ErrorBadRequest
@@ -139,7 +181,7 @@ func decodeCreateProductImageUploadURLRequest(c context.Context, r *http.Request
 	return request, nil
 }
 
-func decodeCreateMarketplaceUploadLogoURLRequest(c context.Context, r *http.Request) (interface{}, error) {
+func decodeCreateMarketplaceUploadLogoURLRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	var request CreateMarketplaceLogoUploadURLRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, ErrorBadRequest
@@ -159,7 +201,7 @@ func decodeCreateMarketplaceUploadLogoURLRequest(c context.Context, r *http.Requ
 	return request, nil
 }
 
-func decodePublishMarketplaceBannerToChannelRequest(c context.Context, r *http.Request) (interface{}, error) {
+func decodePublishMarketplaceBannerToChannelRequest(_ context.Context, r *http.Request) (interface{}, error) {
 	var request PublishMarketplaceBannerToChannelRequest
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 		return nil, ErrorBadRequest

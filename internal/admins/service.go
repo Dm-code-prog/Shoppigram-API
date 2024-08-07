@@ -174,6 +174,38 @@ type (
 	GetTelegramChannelsResponse struct {
 		Channels []TelegramChannel `json:"channels"`
 	}
+
+	// GetOrdersRequest is a filter for getting orders
+	GetOrdersRequest struct {
+		ExternalUserID int64
+		State          *string
+		MarketplaceID  *uuid.UUID
+		Limit          *int
+		Offset         *int
+	}
+
+	// Product represents a product in a marketplace
+	Product struct {
+		ID            uuid.UUID `json:"id"`
+		Name          string    `json:"name"`
+		Quantity      int       `json:"quantity"`
+		Price         float64   `json:"price"`
+		PriceCurrency string    `json:"price_currency"`
+	}
+
+	// Order represents an order in a marketplace
+	Order struct {
+		ID            uuid.UUID `json:"id"`
+		MarketplaceID uuid.UUID `json:"marketplace_id"`
+		ReadableID    int       `json:"readable_id"`
+		TotalPrice    float64   `json:"total_price"`
+		BuyerUsername string    `json:"buyer_username"`
+		Products      []Product `json:"products"`
+	}
+
+	GetOrdersResponse struct {
+		Orders []Order `json:"orders"`
+	}
 )
 
 type (
@@ -188,6 +220,8 @@ type (
 		CreateProduct(ctx context.Context, req CreateProductRequest) (CreateProductResponse, error)
 		UpdateProduct(ctx context.Context, req UpdateProductRequest) error
 		DeleteProduct(ctx context.Context, req DeleteProductRequest) error
+
+		GetOrders(ctx context.Context, request GetOrdersRequest) (GetOrdersResponse, error)
 
 		IsUserTheOwnerOfMarketplace(ctx context.Context, externalUserID int64, webAppID uuid.UUID) (bool, error)
 		IsUserTheOwnerOfProduct(ctx context.Context, externalUserID int64, productID uuid.UUID) (bool, error)
@@ -220,6 +254,8 @@ type (
 		CreateProduct(ctx context.Context, req CreateProductRequest) (CreateProductResponse, error)
 		UpdateProduct(ctx context.Context, req UpdateProductRequest) error
 		DeleteProduct(ctx context.Context, req DeleteProductRequest) error
+
+		GetOrders(ctx context.Context, req GetOrdersRequest) (GetOrdersResponse, error)
 
 		CreateProductImageUploadURL(ctx context.Context, request CreateProductImageUploadURLRequest) (CreateProductImageUploadURLResponse, error)
 		CreateMarketplaceLogoUploadURL(ctx context.Context, request CreateMarketplaceLogoUploadURLRequest) (CreateMarketplaceLogoUploadURLResponse, error)
@@ -419,6 +455,16 @@ func (s *DefaultService) DeleteProduct(ctx context.Context, req DeleteProductReq
 	}
 
 	return nil
+}
+
+// GetOrders gets a list of orders
+func (s *DefaultService) GetOrders(ctx context.Context, req GetOrdersRequest) (GetOrdersResponse, error) {
+	orders, err := s.repo.GetOrders(ctx, req)
+	if err != nil {
+		return GetOrdersResponse{}, errors.Wrap(err, "s.repo.GetOrders")
+	}
+
+	return orders, nil
 }
 
 // CreateProductImageUploadURL creates a new upload URL for a product image
