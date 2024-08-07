@@ -65,8 +65,7 @@ type (
 
 	// NotifyGreetingsRequest contains the initial greeting message
 	NotifyGreetingsRequest struct {
-		UserExternalID  int64
-		GreetingMessage string
+		UserExternalID int64
 	}
 
 	// Repository provides access to the user storage
@@ -382,7 +381,6 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 		}
 
 		for _, v := range nl {
-			s.log.Info(adminMsgTxt)
 			msg := tgbotapi.NewMessage(v, adminMsgTxt)
 			msg.ParseMode = tgbotapi.ModeMarkdownV2
 
@@ -462,7 +460,6 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 		if err != nil {
 			return errors.Wrap(err, "a.BuildMessageShoppigram")
 		}
-		s.log.Info(onVerificationMsgTxt)
 
 		msg := tgbotapi.NewMessage(n.OwnerExternalID, onVerificationMsgTxt)
 		msg.ParseMode = tgbotapi.ModeMarkdownV2
@@ -556,7 +553,7 @@ func (s *Service) NotifyChannelIntegrationSuccess(_ context.Context, request Not
 
 // NotifyGreetings sends a greeting message to a user
 func (s *Service) NotifyGreetings(_ context.Context, request NotifyGreetingsRequest) error {
-	msg := tgbotapi.NewMessage(request.UserExternalID, request.GreetingMessage)
+	msg := tgbotapi.NewMessage(request.UserExternalID, "test")
 	msg.ParseMode = tgbotapi.ModeMarkdownV2
 	_, err := s.bot.Send(msg)
 	if err != nil {

@@ -150,36 +150,39 @@ func (m *NewMarketplaceNotification) BuildMessageAdmin() (string, error) {
 
 // BuildMessage creates a notification message for a verified marketplace
 func (m *VerifiedMarketplaceNotification) BuildMessage() (string, error) {
-	verifiedMarketplaceMessageTemplate, err := templates.ReadFile("templates/marketplace_verified.admin.md")
+	verifiedMarketplaceMessageTemplate, err := templates.ReadFile("templates/admin/marketplace_verified.admin.md")
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
 
-	return fmt.Sprintf(
-		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, string(verifiedMarketplaceMessageTemplate)),
-		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, m.Name),
-		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, "https://t.me/"+botName+"/"+m.ShortName),
-	), nil
+	finalMessage := fmt.Sprintf(
+		string(verifiedMarketplaceMessageTemplate),
+		m.Name,
+		"https://t.me/"+botName+"/"+m.ShortName,
+	)
+	return tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, finalMessage), nil
 }
 
 // BuildMessage creates a notification message for a successful channel integration
 func (m *ChannelIntegrationSuccessNotification) BuildMessage() (string, error) {
-	channelIntegrationSuccessMessageTemplate, err := templates.ReadFile("templates/channel_integrated.admin.md")
+	channelIntegrationSuccessMessageTemplate, err := templates.ReadFile("templates/admin/channel_integrated.admin.md")
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
 
-	tmaLink, err := TMALinkingScheme{
-		PageName: "/admin",
-		PageData: map[string]any{},
-	}.ToBase64String()
-	if err != nil {
-		return "", errors.Wrap(err, "TMALinkingScheme.ToBase64String")
-	}
+	finalMessage := fmt.Sprintf(
+		string(channelIntegrationSuccessMessageTemplate),
+		"shop name",
+		m.ChannelTitle,
+	)
 
-	return fmt.Sprintf(
-		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, string(channelIntegrationSuccessMessageTemplate)),
-		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, m.ChannelTitle),
-		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, "https://t.me/"+botName+"/"+"app?startapp="+tmaLink),
-	), nil
+	return tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, finalMessage), nil
+}
+
+func BuildGreetigsMessage() (string, error) {
+	greetingsMessage, err := templates.ReadFile("templates/admin/greetings_message.md")
+	if err != nil {
+		return "", errors.Wrap(err, "templates.ReadFile")
+	}
+	return string(greetingsMessage), err
 }
