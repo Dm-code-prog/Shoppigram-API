@@ -517,6 +517,14 @@ func (s *Service) sendVerifiedMarketplaceNotifications(marketplaceNotifications 
 
 		msg := tgbotapi.NewMessage(notification.OwnerExternalUserID, msgTxt)
 		msg.ParseMode = tgbotapi.ModeMarkdownV2
+
+		tgLinkPath := notification.ID.String()
+		tgLink, err := s.getTelegramLink(tgLinkPath)
+		if err != nil {
+			return errors.Wrap(err, "getTelegramLink()")
+		}
+		addTelegramButtonsToMessage(&msg, telegramButtonData{"Продолжить настройку магазина", tgLink})
+
 		_, err = s.bot.Send(msg)
 		if err != nil {
 			if strings.Contains(err.Error(), "chat not found") {
@@ -556,6 +564,10 @@ func (s *Service) NotifyChannelIntegrationSuccess(_ context.Context, request Not
 
 	msg := tgbotapi.NewMessage(request.UserExternalID, msgTxt)
 	msg.ParseMode = tgbotapi.ModeMarkdownV2
+
+	tgLink := "https://t.me/" + s.botName + "/app"
+	addTelegramButtonsToMessage(&msg, telegramButtonData{"Попробовать новые функции", tgLink})
+
 	_, err = s.bot.Send(msg)
 	if err != nil {
 		return errors.Wrap(err, "bot.Send")

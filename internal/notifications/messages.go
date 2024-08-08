@@ -20,7 +20,8 @@ type (
 		WebAppID        uuid.UUID
 		WebAppName      string
 		Products        []Product
-		status          string
+		Status          string
+		PaymentType     string
 		ExternalUserID  int64
 	}
 
@@ -63,6 +64,7 @@ func (o *NewOrderNotification) BuildMessageAdmin() (string, error) {
 		currency    string
 	)
 	for _, p := range o.Products {
+
 		subtotal += p.Price * float64(p.Quantity)
 		currency = p.PriceCurrency
 		productList.WriteString(fmt.Sprintf(`- %dx %s по цене %s %s
@@ -78,8 +80,9 @@ func (o *NewOrderNotification) BuildMessageAdmin() (string, error) {
 		o.WebAppName,
 		o.UserNickname,
 		o.ReadableOrderID,
+		o.PaymentType,
 		formatFloat(subtotal)+" "+formatCurrency(currency),
-		"status",
+		o.Status,
 		formatRussianTime(o.CreatedAt),
 		"no comment",
 		strings.TrimRight(productList.String(), "; "),
@@ -172,7 +175,6 @@ func (m *ChannelIntegrationSuccessNotification) BuildMessage() (string, error) {
 
 	finalMessage := fmt.Sprintf(
 		string(channelIntegrationSuccessMessageTemplate),
-		"shop name",
 		m.ChannelTitle,
 	)
 

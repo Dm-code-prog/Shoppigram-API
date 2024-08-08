@@ -120,7 +120,7 @@ func (q *Queries) GetNotificationsForNewMarketplacesAfterCursor(ctx context.Cont
 }
 
 const getNotificationsForNewOrdersAfterCursor = `-- name: GetNotificationsForNewOrdersAfterCursor :many
-with orders_batch as (select id as order_id, created_at, readable_id, web_app_id, external_user_id, state
+with orders_batch as (select id as order_id, created_at, readable_id, web_app_id, external_user_id, state, type
                       from orders o
                       where (o.updated_at, o.id) > ($2::timestamp, $3::uuid)
                         and o.state = 'confirmed'
@@ -129,6 +129,7 @@ with orders_batch as (select id as order_id, created_at, readable_id, web_app_id
 select ob.order_id,
        ob.readable_id,
        ob.created_at,
+	   ob.state::text,
        p.web_app_id,
        wa.name       as web_app_name,
        p.name,
@@ -137,7 +138,8 @@ select ob.order_id,
        op.quantity,
        u.username,
        u.external_id as external_user_id,
-       ob.state
+       ob.state::text as state,
+	   ob.type::text as payment_type
 from orders_batch ob
          join order_products op
               on ob.order_id = op.order_id
@@ -158,6 +160,7 @@ type GetNotificationsForNewOrdersAfterCursorRow struct {
 	OrderID        uuid.UUID
 	ReadableID     pgtype.Int8
 	CreatedAt      pgtype.Timestamp
+	ObState        string
 	WebAppID       pgtype.UUID
 	WebAppName     string
 	Name           string
@@ -166,7 +169,8 @@ type GetNotificationsForNewOrdersAfterCursorRow struct {
 	Quantity       int32
 	Username       pgtype.Text
 	ExternalUserID int32
-	State          OrderState
+	State          string
+	PaymentType    string
 }
 
 func (q *Queries) GetNotificationsForNewOrdersAfterCursor(ctx context.Context, arg GetNotificationsForNewOrdersAfterCursorParams) ([]GetNotificationsForNewOrdersAfterCursorRow, error) {
@@ -182,6 +186,7 @@ func (q *Queries) GetNotificationsForNewOrdersAfterCursor(ctx context.Context, a
 			&i.OrderID,
 			&i.ReadableID,
 			&i.CreatedAt,
+			&i.ObState,
 			&i.WebAppID,
 			&i.WebAppName,
 			&i.Name,
@@ -191,6 +196,7 @@ func (q *Queries) GetNotificationsForNewOrdersAfterCursor(ctx context.Context, a
 			&i.Username,
 			&i.ExternalUserID,
 			&i.State,
+			&i.PaymentType,
 		); err != nil {
 			return nil, err
 		}

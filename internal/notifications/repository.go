@@ -136,6 +136,8 @@ func (p *Pg) GetNotificationsForNewOrdersAfterCursor(ctx context.Context, cur Cu
 				UserNickname:    r.Username.String,
 				WebAppID:        asUUID.Bytes,
 				WebAppName:      r.WebAppName,
+				Status:          r.State,
+				PaymentType:     r.PaymentType,
 				Products: []Product{{
 					Name:          r.Name,
 					Quantity:      int(r.Quantity),
