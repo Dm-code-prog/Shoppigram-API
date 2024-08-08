@@ -3,6 +3,7 @@ package notifications
 import (
 	"context"
 	"embed"
+	"encoding/json"
 	"strconv"
 	"strings"
 	"time"
@@ -14,7 +15,7 @@ import (
 	"go.uber.org/zap"
 )
 
-//go:embed templates/*/*.md
+//go:embed templates/*/*/*.md templates/*/*.json
 var templates embed.FS
 
 const supportContactUrl = "https://t.me/ShoppigramSupport"
@@ -68,6 +69,16 @@ type (
 	// NotifyGreetingsRequest contains the initial greeting message
 	NotifyGreetingsRequest struct {
 		UserExternalID int64
+	}
+
+	telegramButtonData struct {
+		text string
+		link string
+	}
+
+	pageDataParam struct {
+		key   string
+		value any
 	}
 
 	// Repository provides access to the user storage
@@ -337,48 +348,6 @@ func (s *Service) Shutdown() error {
 	return nil
 }
 
-type telegramButtonData struct {
-	text string
-	link string
-}
-
-func addTelegramButtonsToMessage(msg *tgbotapi.MessageConfig, messageData ...telegramButtonData) {
-	var rows [][]tgbotapi.InlineKeyboardButton
-
-	for _, v := range messageData {
-		button := tgbotapi.NewInlineKeyboardButtonURL(v.text, v.link)
-		row := tgbotapi.NewInlineKeyboardRow(button)
-		rows = append(rows, row)
-	}
-
-	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-		rows...,
-	)
-}
-
-type pageDataParam struct {
-	key   string
-	value any
-}
-
-func (s *Service) getTelegramLink(path string, pageData ...pageDataParam) (string, error) {
-
-	pageDataParams := make(map[string]any)
-	for _, v := range pageData {
-		pageDataParams[v.key] = v.value
-	}
-
-	tmaLink, err := TMALinkingScheme{
-		PageName: "/app/" + path,
-		PageData: pageDataParams,
-	}.ToBase64String()
-	if err != nil {
-		return "", errors.Wrap(err, "TMALinkingScheme.ToBase64String()")
-	}
-	fullLink := "https://t.me/" + s.botName + "/app?startapp=" + tmaLink
-	return fullLink, nil
-}
-
 // sendNewOrderNotifications sends batch of notifications for new orders
 func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotification) error {
 	for _, notification := range orderNotifications {
@@ -386,7 +355,7 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 		if err != nil {
 			return errors.Wrap(err, "s.repo.GetAdminsNotificationList")
 		}
-		adminMsgTxt, err := notification.BuildMessageAdmin()
+		adminMsgTxt, err := notification.BuildMessageAdmin("ru")
 		if err != nil {
 			return errors.Wrap(err, "a.BuildMessageAdmin")
 		}
@@ -400,7 +369,11 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 			if err != nil {
 				return errors.Wrap(err, "getTelegramLink()")
 			}
-			addTelegramButtonsToMessage(&msg, telegramButtonData{"Управление заказом", tgLink})
+			buttonText, err := getButtonText("ru", "order-management")
+			if err != nil {
+				return errors.Wrap(err, "getButtonText(\"order-management\")")
+			}
+			addTelegramButtonsToMessage(&msg, telegramButtonData{buttonText, tgLink})
 
 			_, err = s.bot.Send(msg)
 			if err != nil {
@@ -415,7 +388,7 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 			}
 		}
 
-		customerMsgTxt, err := notification.BuildMessageCustomer()
+		customerMsgTxt, err := notification.BuildMessageCustomer("ru")
 
 		if err != nil {
 			return errors.Wrap(err, "a.BuildMessageCustomer")
@@ -429,7 +402,12 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 		if err != nil {
 			return errors.Wrap(err, "getTelegramLink()")
 		}
-		addTelegramButtonsToMessage(&msg, telegramButtonData{"Посмотреть заказ", tgLink})
+		buttonText, err := getButtonText("ru", "view-order")
+		if err != nil {
+			return errors.Wrap(err, "getButtonText(\"view-order\")")
+		}
+
+		addTelegramButtonsToMessage(&msg, telegramButtonData{buttonText, tgLink})
 
 		_, err = s.bot.Send(msg)
 		if err != nil {
@@ -467,7 +445,7 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 	}
 	for _, n := range marketplaceNotifications {
 		n.ImageBaseUrl = s.bucketUrl
-		onVerificationMsgTxt, err := n.BuildMessageAdmin()
+		onVerificationMsgTxt, err := n.BuildMessageAdmin("ru")
 		if err != nil {
 			return errors.Wrap(err, "a.BuildMessageShoppigram")
 		}
@@ -480,10 +458,18 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 		if err != nil {
 			return errors.Wrap(err, "getTelegramLink()")
 		}
+		buttonTextContactSupport, err := getButtonText("ru", "contact-support")
+		if err != nil {
+			return errors.Wrap(err, "getButtonText(\"contact-support\")")
+		}
+		buttonTextViewStore, err := getButtonText("ru", "view-store")
+		if err != nil {
+			return errors.Wrap(err, "getButtonText(\"view-store\")")
+		}
 
 		addTelegramButtonsToMessage(&msg,
-			telegramButtonData{"Связаться с поддержкой", supportContactUrl},
-			telegramButtonData{"Посмотреть магазин", tgLink},
+			telegramButtonData{buttonTextContactSupport, supportContactUrl},
+			telegramButtonData{buttonTextViewStore, tgLink},
 		)
 
 		_, err = s.bot.Send(msg)
@@ -492,7 +478,7 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 		}
 
 		for _, r := range reviewers {
-			msgTxt, err := n.BuildMessageShoppigram()
+			msgTxt, err := n.BuildMessageShoppigram("ru")
 			if err != nil {
 				return errors.Wrap(err, "a.BuildMessageShoppigram")
 			}
@@ -510,7 +496,7 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 // sendVerifiedMarketplaceNotifications sends batch of notifications for verified marketplaces
 func (s *Service) sendVerifiedMarketplaceNotifications(marketplaceNotifications []VerifiedMarketplaceNotification) error {
 	for _, notification := range marketplaceNotifications {
-		msgTxt, err := notification.BuildMessage()
+		msgTxt, err := notification.BuildMessage("ru")
 		if err != nil {
 			return errors.Wrap(err, "a.BuildMessageShoppigram")
 		}
@@ -523,7 +509,12 @@ func (s *Service) sendVerifiedMarketplaceNotifications(marketplaceNotifications 
 		if err != nil {
 			return errors.Wrap(err, "getTelegramLink()")
 		}
-		addTelegramButtonsToMessage(&msg, telegramButtonData{"Продолжить настройку магазина", tgLink})
+
+		buttonText, err := getButtonText("ru", "continue-setting-up")
+		if err != nil {
+			return errors.Wrap(err, "getButtonText(\"continue-setting-up\")")
+		}
+		addTelegramButtonsToMessage(&msg, telegramButtonData{buttonText, tgLink})
 
 		_, err = s.bot.Send(msg)
 		if err != nil {
@@ -557,7 +548,7 @@ func (s *Service) AddUserToNewOrderNotifications(ctx context.Context, req AddUse
 // channel integration with Shoppigram
 func (s *Service) NotifyChannelIntegrationSuccess(_ context.Context, request NotifyChannelIntegrationSuccessRequest) error {
 	message := ChannelIntegrationSuccessNotification(request)
-	msgTxt, err := message.BuildMessage()
+	msgTxt, err := message.BuildMessage("ru")
 	if err != nil {
 		return errors.Wrap(err, "message.BuildMessageShoppigram")
 	}
@@ -566,7 +557,11 @@ func (s *Service) NotifyChannelIntegrationSuccess(_ context.Context, request Not
 	msg.ParseMode = tgbotapi.ModeMarkdownV2
 
 	tgLink := "https://t.me/" + s.botName + "/app"
-	addTelegramButtonsToMessage(&msg, telegramButtonData{"Попробовать новые функции", tgLink})
+	buttonText, err := getButtonText("ru", "try-new-features")
+	if err != nil {
+		return errors.Wrap(err, "getButtonText(\"try-new-features\")")
+	}
+	addTelegramButtonsToMessage(&msg, telegramButtonData{buttonText, tgLink})
 
 	_, err = s.bot.Send(msg)
 	if err != nil {
@@ -578,7 +573,7 @@ func (s *Service) NotifyChannelIntegrationSuccess(_ context.Context, request Not
 
 // NotifyGreetings sends a greeting message to a user
 func (s *Service) NotifyGreetings(_ context.Context, request NotifyGreetingsRequest) error {
-	messageText, err := BuildGreetigsMessage()
+	messageText, err := BuildGreetigsMessage("ru")
 	if err != nil {
 		return errors.Wrap(err, "BuildGreetigsMessage()")
 	}
@@ -595,11 +590,11 @@ func (s *Service) NotifyGreetings(_ context.Context, request NotifyGreetingsRequ
 // SendMarketplaceBanner sends a marketplace banner to a Telegram channel
 func (s *Service) SendMarketplaceBanner(_ context.Context, params SendMarketplaceBannerParams) (message int64, err error) {
 	msg := tgbotapi.NewMessage(params.ChannelChatID, params.Message)
-	button := tgbotapi.NewInlineKeyboardButtonURL("Перейти в магазин", params.WebAppLink)
-	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-		tgbotapi.NewInlineKeyboardRow(
-			button,
-		))
+	buttonText, err := getButtonText("ru", "go-to-the-store")
+	if err != nil {
+		return 0, errors.Wrap(err, "getButtonText(\"go-to-the-store\")")
+	}
+	addTelegramButtonsToMessage(&msg, telegramButtonData{buttonText, params.WebAppLink})
 
 	Message, err := s.bot.Send(msg)
 	if err != nil {
@@ -621,4 +616,49 @@ func (s *Service) PinNotification(_ context.Context, req PinNotificationParams) 
 
 	return nil
 
+}
+
+func addTelegramButtonsToMessage(msg *tgbotapi.MessageConfig, messageData ...telegramButtonData) {
+	var rows [][]tgbotapi.InlineKeyboardButton
+
+	for _, v := range messageData {
+		button := tgbotapi.NewInlineKeyboardButtonURL(v.text, v.link)
+		row := tgbotapi.NewInlineKeyboardRow(button)
+		rows = append(rows, row)
+	}
+
+	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+		rows...,
+	)
+}
+
+func (s *Service) getTelegramLink(path string, pageData ...pageDataParam) (string, error) {
+
+	pageDataParams := make(map[string]any)
+	for _, v := range pageData {
+		pageDataParams[v.key] = v.value
+	}
+
+	tmaLink, err := TMALinkingScheme{
+		PageName: "/app/" + path,
+		PageData: pageDataParams,
+	}.ToBase64String()
+	if err != nil {
+		return "", errors.Wrap(err, "TMALinkingScheme.ToBase64String()")
+	}
+	fullLink := "https://t.me/" + s.botName + "/app?startapp=" + tmaLink
+	return fullLink, nil
+}
+
+func getButtonText(lang string, key string) (string, error) {
+	var bt map[string]string
+	data, err := templates.ReadFile("templates/buttons/" + lang + ".json")
+	if err != nil {
+		return "", errors.Wrap(err, "templates.ReadFile(\"translations/buttons/ru.json\")")
+	}
+	err = json.Unmarshal(data, &bt)
+	if err != nil {
+		return "", errors.Wrap(err, "json.Unmarshal(data, bt)")
+	}
+	return bt[key], nil
 }

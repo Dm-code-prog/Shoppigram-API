@@ -57,7 +57,7 @@ type (
 var botName = os.Getenv("BOT_NAME")
 
 // BuildMessageAdmin creates a notification message for a new order for an admin
-func (o *NewOrderNotification) BuildMessageAdmin() (string, error) {
+func (o *NewOrderNotification) BuildMessageAdmin(language string) (string, error) {
 	var (
 		subtotal    float64
 		productList strings.Builder
@@ -71,7 +71,9 @@ func (o *NewOrderNotification) BuildMessageAdmin() (string, error) {
 `, p.Quantity, p.Name, formatFloat(p.Price), formatCurrency(p.PriceCurrency)))
 	}
 
-	newOrderMessageTemplate, err := templates.ReadFile("templates/admin/new_order_message.admin.md")
+	langFolder := getLangFolder(language)
+
+	newOrderMessageTemplate, err := templates.ReadFile("templates/admin/" + langFolder + "/new_order_message.admin.md")
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
@@ -91,7 +93,8 @@ func (o *NewOrderNotification) BuildMessageAdmin() (string, error) {
 }
 
 // BuildMessageCustomer creates a notification message for a new order for a customer
-func (o *NewOrderNotification) BuildMessageCustomer() (string, error) {
+func (o *NewOrderNotification) BuildMessageCustomer(language string) (string, error) {
+	langFolder := getLangFolder(language)
 	var subtotal float64
 	var productList strings.Builder
 	var currency string
@@ -102,7 +105,7 @@ func (o *NewOrderNotification) BuildMessageCustomer() (string, error) {
 `, p.Quantity, p.Name, formatFloat(p.Price), formatCurrency(p.PriceCurrency)))
 	}
 
-	newOrderMessageTemplate, err := templates.ReadFile("templates/customer/new_order_message.customer.md")
+	newOrderMessageTemplate, err := templates.ReadFile("templates/customer/" + langFolder + "/new_order_message.customer.md")
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
@@ -118,8 +121,9 @@ func (o *NewOrderNotification) BuildMessageCustomer() (string, error) {
 }
 
 // BuildMessageShoppigram creates a notification message for a new marketplace
-func (m *NewMarketplaceNotification) BuildMessageShoppigram() (string, error) {
-	newMarketplaceMessageTemplate, err := templates.ReadFile("templates/shoppigram/marketplace_needs_verification.shoppigram.md")
+func (m *NewMarketplaceNotification) BuildMessageShoppigram(language string) (string, error) {
+	langFolder := getLangFolder(language)
+	newMarketplaceMessageTemplate, err := templates.ReadFile("templates/shoppigram/" + langFolder + "/marketplace_needs_verification.shoppigram.md")
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
@@ -137,8 +141,9 @@ func (m *NewMarketplaceNotification) BuildMessageShoppigram() (string, error) {
 }
 
 // BuildMessageAdmin creates a notification message for a marketplace on verification
-func (m *NewMarketplaceNotification) BuildMessageAdmin() (string, error) {
-	marketplaceVerificationMessageTemplate, err := templates.ReadFile("templates/admin/marketplace_sent_for_verification.admin.md")
+func (m *NewMarketplaceNotification) BuildMessageAdmin(language string) (string, error) {
+	langFolder := getLangFolder(language)
+	marketplaceVerificationMessageTemplate, err := templates.ReadFile("templates/admin/" + langFolder + "/marketplace_sent_for_verification.admin.md")
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
@@ -152,8 +157,9 @@ func (m *NewMarketplaceNotification) BuildMessageAdmin() (string, error) {
 }
 
 // BuildMessage creates a notification message for a verified marketplace
-func (m *VerifiedMarketplaceNotification) BuildMessage() (string, error) {
-	verifiedMarketplaceMessageTemplate, err := templates.ReadFile("templates/admin/marketplace_verified.admin.md")
+func (m *VerifiedMarketplaceNotification) BuildMessage(language string) (string, error) {
+	langFolder := getLangFolder(language)
+	verifiedMarketplaceMessageTemplate, err := templates.ReadFile("templates/admin/" + langFolder + "/marketplace_verified.admin.md")
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
@@ -167,8 +173,9 @@ func (m *VerifiedMarketplaceNotification) BuildMessage() (string, error) {
 }
 
 // BuildMessage creates a notification message for a successful channel integration
-func (m *ChannelIntegrationSuccessNotification) BuildMessage() (string, error) {
-	channelIntegrationSuccessMessageTemplate, err := templates.ReadFile("templates/admin/channel_integrated.admin.md")
+func (m *ChannelIntegrationSuccessNotification) BuildMessage(language string) (string, error) {
+	langFolder := getLangFolder(language)
+	channelIntegrationSuccessMessageTemplate, err := templates.ReadFile("templates/admin/" + langFolder + "/channel_integrated.admin.md")
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
@@ -181,10 +188,19 @@ func (m *ChannelIntegrationSuccessNotification) BuildMessage() (string, error) {
 	return tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, finalMessage), nil
 }
 
-func BuildGreetigsMessage() (string, error) {
-	greetingsMessage, err := templates.ReadFile("templates/admin/greetings_message.md")
+func BuildGreetigsMessage(language string) (string, error) {
+	langFolder := getLangFolder(language)
+	greetingsMessage, err := templates.ReadFile("templates/admin/" + langFolder + "/greetings_message.md")
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
 	return tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, string(greetingsMessage)), nil
+}
+
+func getLangFolder(langCode string) string {
+	langFolder := "ru" // Default
+	if langCode == "en" {
+		langFolder = "en"
+	}
+	return langFolder
 }
