@@ -75,7 +75,7 @@ const (
 var botName = os.Getenv("BOT_NAME")
 
 var commentPlaceholder map[string]string = map[string]string{
-	"ru": "Без коменнтария",
+	"ru": "Без комменнтария",
 	"en": "No comment,",
 }
 
