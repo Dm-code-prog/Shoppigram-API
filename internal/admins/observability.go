@@ -109,6 +109,17 @@ func (s *ServiceWithObservability) DeleteProduct(ctx context.Context, request De
 	return err
 }
 
+func (s *ServiceWithObservability) GetOrders(ctx context.Context, request GetOrdersRequest) (GetOrdersResponse, error) {
+	res, err := s.service.GetOrders(ctx, request)
+	if err != nil {
+		s.log.
+			With(zap.String("owner_external_id", strconv.FormatInt(request.ExternalUserID, 10))).
+			Error("s.service.GetOrders", logging.SilentError(err))
+	}
+
+	return res, err
+}
+
 // CreateProductImageUploadURL calls the underlying service's CreateProductImageUploadURL method
 func (s *ServiceWithObservability) CreateProductImageUploadURL(ctx context.Context, request CreateProductImageUploadURLRequest) (CreateProductImageUploadURLResponse, error) {
 	res, err := s.service.CreateProductImageUploadURL(ctx, request)

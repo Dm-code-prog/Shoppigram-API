@@ -178,6 +178,30 @@ func makeDeleteProductEndpoint(s Service) endpoint.Endpoint {
 	}
 }
 
+// makeGetOrdersEndpoint creates a new endpoint for access to
+// GetOrders service method
+func makeGetOrdersEndpoint(s Service) endpoint.Endpoint {
+	return func(ctx context.Context, req any) (any, error) {
+		usr, err := telegramusers.GetUserFromContext(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		request, ok := req.(GetOrdersRequest)
+		if !ok {
+			return nil, ErrorBadRequest
+		}
+
+		request.ExternalUserID = usr.ExternalId
+		response, err := s.GetOrders(ctx, request)
+		if err != nil {
+			return nil, errors.Wrap(err, "s.GetOrders")
+		}
+
+		return response, nil
+	}
+}
+
 // makeCreateProductImageUploadURLEndpoint creates a new endpoint for access to
 // CreateProductImageUploadURL service method
 //
