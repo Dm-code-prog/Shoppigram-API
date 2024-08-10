@@ -3,6 +3,8 @@ SELECT o.id                       AS id,
        o.web_app_id               AS marketplace_id,
        o.readable_id              AS readable_id,
        o.state                    AS state,
+       o.created_at               AS created_at,
+       o.updated_at               AS updated_at,
        (SELECT SUM(p.price * op.quantity)
         FROM order_products op
                  JOIN products p ON p.id = op.product_id
@@ -34,4 +36,5 @@ where tu.external_id = @owner_external_id::integer
         when @marketplace_id != '00000000-0000-0000-0000-000000000000' then web_app_id = @marketplace_id::uuid
         else true end
     )
+order by o.created_at desc
 limit $1 offset $2;

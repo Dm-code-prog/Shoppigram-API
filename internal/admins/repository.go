@@ -195,6 +195,7 @@ func (p *Pg) GetOrders(ctx context.Context, req GetOrdersRequest) (GetOrdersResp
 		Offset:          int32(req.Offset),
 		OwnerExternalID: int32(req.ExternalUserID),
 		MarketplaceID:   req.MarketplaceID,
+		State:           req.State,
 	}
 	if req.Limit == 0 {
 		params.Limit = defaultLimit
@@ -226,6 +227,8 @@ func (p *Pg) GetOrders(ctx context.Context, req GetOrdersRequest) (GetOrdersResp
 			BuyerUsername: v.BuyerUsername.String,
 			Products:      products,
 			State:         string(v.State),
+			CreatedAt:     v.CreatedAt.Time,
+			UpdatedAt:     v.UpdatedAt.Time,
 		}
 	}
 

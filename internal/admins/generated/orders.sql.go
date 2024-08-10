@@ -17,6 +17,8 @@ SELECT o.id                       AS id,
        o.web_app_id               AS marketplace_id,
        o.readable_id              AS readable_id,
        o.state                    AS state,
+       o.created_at               AS created_at,
+       o.updated_at               AS updated_at,
        (SELECT SUM(p.price * op.quantity)
         FROM order_products op
                  JOIN products p ON p.id = op.product_id
@@ -48,6 +50,7 @@ where tu.external_id = $3::integer
         when $5 != '00000000-0000-0000-0000-000000000000' then web_app_id = $5::uuid
         else true end
     )
+order by o.created_at desc
 limit $1 offset $2
 `
 
@@ -64,6 +67,8 @@ type GetOrdersRow struct {
 	MarketplaceID pgtype.UUID
 	ReadableID    pgtype.Int8
 	State         OrderState
+	CreatedAt     pgtype.Timestamp
+	UpdatedAt     pgtype.Timestamp
 	TotalPrice    int64
 	BuyerUsername pgtype.Text
 	Products      []byte
@@ -89,6 +94,8 @@ func (q *Queries) GetOrders(ctx context.Context, arg GetOrdersParams) ([]GetOrde
 			&i.MarketplaceID,
 			&i.ReadableID,
 			&i.State,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 			&i.TotalPrice,
 			&i.BuyerUsername,
 			&i.Products,
