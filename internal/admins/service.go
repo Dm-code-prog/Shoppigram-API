@@ -178,10 +178,10 @@ type (
 	// GetOrdersRequest is a filter for getting orders
 	GetOrdersRequest struct {
 		ExternalUserID int64
-		State          *string
-		MarketplaceID  *uuid.UUID
-		Limit          *int
-		Offset         *int
+		State          string
+		MarketplaceID  uuid.UUID
+		Limit          int
+		Offset         int
 	}
 
 	// Product represents a product in a marketplace
@@ -197,6 +197,7 @@ type (
 	Order struct {
 		ID            uuid.UUID `json:"id"`
 		MarketplaceID uuid.UUID `json:"marketplace_id"`
+		State         string    `json:"state"`
 		ReadableID    int       `json:"readable_id"`
 		TotalPrice    float64   `json:"total_price"`
 		BuyerUsername string    `json:"buyer_username"`

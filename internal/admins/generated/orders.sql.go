@@ -16,6 +16,7 @@ const getOrders = `-- name: GetOrders :many
 SELECT o.id                       AS id,
        o.web_app_id               AS marketplace_id,
        o.readable_id              AS readable_id,
+       o.state                    AS state,
        (SELECT SUM(p.price * op.quantity)
         FROM order_products op
                  JOIN products p ON p.id = op.product_id
@@ -39,8 +40,14 @@ FROM orders o
          join web_apps wa on wa.id = o.web_app_id
 where tu.external_id = $3::integer
   and wa.owner_external_id = $3::integer
-  and (o.web_app_id = $4::uuid or $4 is null)
-  and (o.state = $5 or $5 is null)
+  and (
+    case when $4 != '' then state = $4::order_state else true end
+    )
+  and (
+    case
+        when $5 != '00000000-0000-0000-0000-000000000000' then web_app_id = $5::uuid
+        else true end
+    )
 limit $1 offset $2
 `
 
@@ -48,14 +55,15 @@ type GetOrdersParams struct {
 	Limit           int32
 	Offset          int32
 	OwnerExternalID int32
-	MarketplaceID   uuid.UUID
-	State           OrderState
+	State           interface{}
+	MarketplaceID   interface{}
 }
 
 type GetOrdersRow struct {
 	ID            uuid.UUID
 	MarketplaceID pgtype.UUID
 	ReadableID    pgtype.Int8
+	State         OrderState
 	TotalPrice    int64
 	BuyerUsername pgtype.Text
 	Products      []byte
@@ -66,8 +74,8 @@ func (q *Queries) GetOrders(ctx context.Context, arg GetOrdersParams) ([]GetOrde
 		arg.Limit,
 		arg.Offset,
 		arg.OwnerExternalID,
-		arg.MarketplaceID,
 		arg.State,
+		arg.MarketplaceID,
 	)
 	if err != nil {
 		return nil, err
@@ -80,6 +88,7 @@ func (q *Queries) GetOrders(ctx context.Context, arg GetOrdersParams) ([]GetOrde
 			&i.ID,
 			&i.MarketplaceID,
 			&i.ReadableID,
+			&i.State,
 			&i.TotalPrice,
 			&i.BuyerUsername,
 			&i.Products,

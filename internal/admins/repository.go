@@ -191,27 +191,13 @@ func (p *Pg) DeleteProduct(ctx context.Context, req DeleteProductRequest) error 
 // GetOrders gets a list of orders and allows filtering by marketplace and state
 func (p *Pg) GetOrders(ctx context.Context, req GetOrdersRequest) (GetOrdersResponse, error) {
 	params := generated.GetOrdersParams{
+		Limit:           int32(req.Limit),
+		Offset:          int32(req.Offset),
 		OwnerExternalID: int32(req.ExternalUserID),
+		MarketplaceID:   req.MarketplaceID,
 	}
-
-	if req.MarketplaceID != nil {
-		params.MarketplaceID = *req.MarketplaceID
-	}
-
-	if req.State != nil {
-		params.State = generated.OrderState(*req.State)
-	}
-
-	if req.Limit != nil {
-		params.Limit = int32(*req.Limit)
-	} else {
+	if req.Limit == 0 {
 		params.Limit = defaultLimit
-	}
-
-	if req.Offset != nil {
-		params.Offset = int32(*req.Offset)
-	} else {
-		params.Offset = 0
 	}
 
 	rows, err := p.gen.GetOrders(ctx, params)
@@ -239,6 +225,7 @@ func (p *Pg) GetOrders(ctx context.Context, req GetOrdersRequest) (GetOrdersResp
 			TotalPrice:    float64(v.TotalPrice),
 			BuyerUsername: v.BuyerUsername.String,
 			Products:      products,
+			State:         string(v.State),
 		}
 	}
 

@@ -130,12 +130,12 @@ func decodeGetOrdersRequest(_ context.Context, r *http.Request) (interface{}, er
 		if err != nil {
 			return nil, ErrorBadRequest
 		}
-		request.MarketplaceID = &marketplaceUUID
+		request.MarketplaceID = marketplaceUUID
 	}
 
 	state := r.URL.Query().Get("state")
 	if state != "" {
-		request.State = &state
+		request.State = state
 	}
 
 	limit := r.URL.Query().Get("limit")
@@ -145,7 +145,7 @@ func decodeGetOrdersRequest(_ context.Context, r *http.Request) (interface{}, er
 			return nil, ErrorBadRequest
 		}
 
-		request.Limit = &limitInt
+		request.Limit = limitInt
 	}
 
 	offset := r.URL.Query().Get("offset")
@@ -155,7 +155,7 @@ func decodeGetOrdersRequest(_ context.Context, r *http.Request) (interface{}, er
 			return nil, ErrorBadRequest
 		}
 
-		request.Offset = &offsetInt
+		request.Offset = offsetInt
 	}
 
 	return request, nil
