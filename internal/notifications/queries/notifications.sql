@@ -36,7 +36,9 @@ select ob.order_id,
        p.price_currency,
        op.quantity,
        u.username,
+	   	 u.language_code,
        u.external_id as external_user_id,
+       adm.language_code as admin_language_code,
        ob.state::text as state,
 	   ob.type::text as payment_type
 from orders_batch ob
@@ -45,6 +47,7 @@ from orders_batch ob
          join products p on p.id = op.product_id
          join telegram_users u on external_user_id = u.external_id
          join web_apps wa on ob.web_app_id = wa.id
+         join telegram_users adm on wa.owner_external_id = adm.external_id
 where ob.state = 'confirmed'
 order by ob.created_at, ob.order_id;
 
@@ -64,6 +67,7 @@ select mb.id,
        mb.short_name,
        mb.created_at,
        u.username,
+	   u.language_code,
        u.external_id as owner_external_id
 from marketplaces_batch mb
          join telegram_users u
@@ -85,8 +89,10 @@ select mb.id,
        mb.name,
        mb.short_name,
        mb.verified_at,
-       mb.owner_external_id
+       mb.owner_external_id,
+	   u.language_code
 from marketplaces_batch mb
+	 join telegram_users u on mb.owner_external_id = u.external_id
 order by mb.verified_at, mb.id;
 
 -- name: AddUserToNewOrderNotifications :exec

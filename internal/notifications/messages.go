@@ -17,6 +17,8 @@ type (
 		ReadableOrderID int64
 		CreatedAt       time.Time
 		UserNickname    string
+		UserLanguage    string
+		OwnerLanguage   string
 		WebAppID        uuid.UUID
 		WebAppName      string
 		Products        []Product
@@ -33,6 +35,7 @@ type (
 		CreatedAt       time.Time
 		OwnerUsername   string
 		OwnerExternalID int64
+		OwnerLanguage   string
 		ImageBaseUrl    string
 	}
 
@@ -43,11 +46,13 @@ type (
 		ShortName           string
 		VerifiedAt          time.Time
 		OwnerExternalUserID int64
+		OwnerLanguage       string
 	}
 
 	// ChannelIntegrationSuccessNotification defines the structure of a successful channel integration notification
 	ChannelIntegrationSuccessNotification struct {
 		UserExternalID    int64
+		UserLanguage      string
 		ChannelExternalID int64
 		ChannelTitle      string
 		ChannelName       string
@@ -198,9 +203,8 @@ func BuildGreetigsMessage(language string) (string, error) {
 }
 
 func getLangFolder(langCode string) string {
-	langFolder := "ru" // Default
-	if langCode == "en" {
-		langFolder = "en"
+	if !isLanguageValid(langCode) {
+		return fallbackLanguage
 	}
-	return langFolder
+	return langCode
 }

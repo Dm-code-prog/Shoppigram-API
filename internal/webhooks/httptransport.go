@@ -3,7 +3,6 @@ package webhooks
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -83,8 +82,6 @@ func makeTelegramWebhookAuthMiddleware(secretToken string) endpoint.Middleware {
 	return func(next endpoint.Endpoint) endpoint.Endpoint {
 		return func(ctx context.Context, request any) (any, error) {
 			xTelegramBotApiSecretToken := ctx.Value("X-Telegram-Bot-Api-Secret-Token").(string)
-
-			fmt.Print(xTelegramBotApiSecretToken, " ", secretToken, "\n")
 
 			if xTelegramBotApiSecretToken != secretToken {
 				return nil, errors.New("invalid secret token")

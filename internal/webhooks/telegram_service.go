@@ -29,6 +29,7 @@ type (
 	// channel integration with Shoppigram
 	NotifyChannelIntegrationSuccessRequest struct {
 		UserExternalID    int64
+		UserLanguage      string
 		ChannelExternalID int64
 		ChannelTitle      string
 		ChannelName       string
@@ -47,6 +48,7 @@ type (
 	// of the bot
 	NotifyGreetingsRequest struct {
 		UserExternalID int64
+		UserLanguage   string
 	}
 
 	// Notifier is the service for notifications
@@ -115,6 +117,7 @@ func (s *TelegramService) handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx
 
 	err = s.notifier.NotifyChannelIntegrationSuccess(ctx, NotifyChannelIntegrationSuccessRequest{
 		UserExternalID:    event.From.ID,
+		UserLanguage:      event.From.LanguageCode,
 		ChannelExternalID: event.Chat.ID,
 		ChannelTitle:      event.Chat.Title,
 		ChannelName:       event.Chat.UserName,
@@ -132,6 +135,7 @@ func (s *TelegramService) handleUpdateTypeStartCommand(ctx context.Context, upda
 	// Send the message to the user
 	err := s.notifier.NotifyGreetings(ctx, NotifyGreetingsRequest{
 		UserExternalID: update.Message.From.ID,
+		UserLanguage:   update.Message.From.LanguageCode,
 	})
 	if err != nil {
 		return errors.Wrap(err, "s.notifier.NotifyGreetings")

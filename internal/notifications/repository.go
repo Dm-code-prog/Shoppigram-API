@@ -134,6 +134,8 @@ func (p *Pg) GetNotificationsForNewOrdersAfterCursor(ctx context.Context, cur Cu
 				ReadableOrderID: r.ReadableID.Int64,
 				CreatedAt:       r.CreatedAt.Time,
 				UserNickname:    r.Username.String,
+				UserLanguage:    r.LanguageCode.String,
+				OwnerLanguage:   r.AdminLanguageCode.String,
 				WebAppID:        asUUID.Bytes,
 				WebAppName:      r.WebAppName,
 				Status:          r.State,
@@ -182,6 +184,7 @@ func (p *Pg) GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, 
 			ShortName:       r.ShortName,
 			CreatedAt:       r.CreatedAt.Time,
 			OwnerUsername:   r.Username.String,
+			OwnerLanguage:   r.LanguageCode.String,
 			OwnerExternalID: int64(r.OwnerExternalID),
 		})
 	}
@@ -215,6 +218,7 @@ func (p *Pg) GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Cont
 			ShortName:           r.ShortName,
 			VerifiedAt:          r.VerifiedAt.Time,
 			OwnerExternalUserID: int64(r.OwnerExternalID.Int32),
+			OwnerLanguage:       r.LanguageCode.String,
 		})
 	}
 

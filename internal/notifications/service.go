@@ -17,7 +17,10 @@ import (
 
 //go:embed templates/*/*/*.md templates/*/*.json
 var templates embed.FS
+var validLangCodes []string = []string{"ru", "en"}
 
+const fallbackLanguage = "ru"
+const userKey = "user_key"
 const supportContactUrl = "https://t.me/ShoppigramSupport"
 
 type (
@@ -47,6 +50,7 @@ type (
 	// channel integration with Shoppigram
 	NotifyChannelIntegrationSuccessRequest struct {
 		UserExternalID    int64
+		UserLanguage      string
 		ChannelExternalID int64
 		ChannelTitle      string
 		ChannelName       string
@@ -69,6 +73,19 @@ type (
 	// NotifyGreetingsRequest contains the initial greeting message
 	NotifyGreetingsRequest struct {
 		UserExternalID int64
+		UserLanguage   string
+	}
+
+	tgUser struct {
+		ID           uuid.UUID `json:"id,omitempty"`
+		ExternalId   int64     `json:"external_id"`
+		IsBot        bool      `json:"is_bot,omitempty"`
+		FirstName    string    `json:"first_name"`
+		LastName     string    `json:"last_name,omitempty"`
+		Username     string    `json:"username,omitempty"`
+		LanguageCode string    `json:"language_code,omitempty"`
+		IsPremium    bool      `json:"is_premium,omitempty"`
+		AllowsPm     bool      `json:"allows_write_to_pm,omitempty"`
 	}
 
 	telegramButtonData struct {
@@ -355,7 +372,8 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 		if err != nil {
 			return errors.Wrap(err, "s.repo.GetAdminsNotificationList")
 		}
-		adminMsgTxt, err := notification.BuildMessageAdmin("ru")
+		ownerLang := s.checkAndGetLangCode(notification.OwnerLanguage)
+		adminMsgTxt, err := notification.BuildMessageAdmin(ownerLang)
 		if err != nil {
 			return errors.Wrap(err, "a.BuildMessageAdmin")
 		}
@@ -369,7 +387,8 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 			if err != nil {
 				return errors.Wrap(err, "getTelegramLink()")
 			}
-			buttonText, err := getButtonText("ru", "order-management")
+
+			buttonText, err := getButtonText(ownerLang, "order-management")
 			if err != nil {
 				return errors.Wrap(err, "getButtonText(\"order-management\")")
 			}
@@ -388,7 +407,9 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 			}
 		}
 
-		customerMsgTxt, err := notification.BuildMessageCustomer("ru")
+		userLang := s.checkAndGetLangCode(notification.UserLanguage)
+
+		customerMsgTxt, err := notification.BuildMessageCustomer(userLang)
 
 		if err != nil {
 			return errors.Wrap(err, "a.BuildMessageCustomer")
@@ -402,7 +423,7 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 		if err != nil {
 			return errors.Wrap(err, "getTelegramLink()")
 		}
-		buttonText, err := getButtonText("ru", "view-order")
+		buttonText, err := getButtonText(userLang, "view-order")
 		if err != nil {
 			return errors.Wrap(err, "getButtonText(\"view-order\")")
 		}
@@ -445,7 +466,9 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 	}
 	for _, n := range marketplaceNotifications {
 		n.ImageBaseUrl = s.bucketUrl
-		onVerificationMsgTxt, err := n.BuildMessageAdmin("ru")
+
+		ownerLang := s.checkAndGetLangCode(n.OwnerLanguage)
+		onVerificationMsgTxt, err := n.BuildMessageAdmin(ownerLang)
 		if err != nil {
 			return errors.Wrap(err, "a.BuildMessageShoppigram")
 		}
@@ -458,11 +481,11 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 		if err != nil {
 			return errors.Wrap(err, "getTelegramLink()")
 		}
-		buttonTextContactSupport, err := getButtonText("ru", "contact-support")
+		buttonTextContactSupport, err := getButtonText(ownerLang, "contact-support")
 		if err != nil {
 			return errors.Wrap(err, "getButtonText(\"contact-support\")")
 		}
-		buttonTextViewStore, err := getButtonText("ru", "view-store")
+		buttonTextViewStore, err := getButtonText(ownerLang, "view-store")
 		if err != nil {
 			return errors.Wrap(err, "getButtonText(\"view-store\")")
 		}
@@ -478,7 +501,7 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 		}
 
 		for _, r := range reviewers {
-			msgTxt, err := n.BuildMessageShoppigram("ru")
+			msgTxt, err := n.BuildMessageShoppigram("en")
 			if err != nil {
 				return errors.Wrap(err, "a.BuildMessageShoppigram")
 			}
@@ -496,7 +519,8 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 // sendVerifiedMarketplaceNotifications sends batch of notifications for verified marketplaces
 func (s *Service) sendVerifiedMarketplaceNotifications(marketplaceNotifications []VerifiedMarketplaceNotification) error {
 	for _, notification := range marketplaceNotifications {
-		msgTxt, err := notification.BuildMessage("ru")
+		ownerLang := s.checkAndGetLangCode(notification.OwnerLanguage)
+		msgTxt, err := notification.BuildMessage(ownerLang)
 		if err != nil {
 			return errors.Wrap(err, "a.BuildMessageShoppigram")
 		}
@@ -510,7 +534,7 @@ func (s *Service) sendVerifiedMarketplaceNotifications(marketplaceNotifications 
 			return errors.Wrap(err, "getTelegramLink()")
 		}
 
-		buttonText, err := getButtonText("ru", "continue-setting-up")
+		buttonText, err := getButtonText(ownerLang, "continue-setting-up")
 		if err != nil {
 			return errors.Wrap(err, "getButtonText(\"continue-setting-up\")")
 		}
@@ -548,7 +572,8 @@ func (s *Service) AddUserToNewOrderNotifications(ctx context.Context, req AddUse
 // channel integration with Shoppigram
 func (s *Service) NotifyChannelIntegrationSuccess(_ context.Context, request NotifyChannelIntegrationSuccessRequest) error {
 	message := ChannelIntegrationSuccessNotification(request)
-	msgTxt, err := message.BuildMessage("ru")
+	userLnag := s.checkAndGetLangCode(message.UserLanguage)
+	msgTxt, err := message.BuildMessage(userLnag)
 	if err != nil {
 		return errors.Wrap(err, "message.BuildMessageShoppigram")
 	}
@@ -557,7 +582,7 @@ func (s *Service) NotifyChannelIntegrationSuccess(_ context.Context, request Not
 	msg.ParseMode = tgbotapi.ModeMarkdownV2
 
 	tgLink := "https://t.me/" + s.botName + "/app"
-	buttonText, err := getButtonText("ru", "try-new-features")
+	buttonText, err := getButtonText(userLnag, "try-new-features")
 	if err != nil {
 		return errors.Wrap(err, "getButtonText(\"try-new-features\")")
 	}
@@ -573,7 +598,8 @@ func (s *Service) NotifyChannelIntegrationSuccess(_ context.Context, request Not
 
 // NotifyGreetings sends a greeting message to a user
 func (s *Service) NotifyGreetings(_ context.Context, request NotifyGreetingsRequest) error {
-	messageText, err := BuildGreetigsMessage("ru")
+	userLang := s.checkAndGetLangCode(request.UserLanguage)
+	messageText, err := BuildGreetigsMessage(userLang)
 	if err != nil {
 		return errors.Wrap(err, "BuildGreetigsMessage()")
 	}
@@ -648,6 +674,27 @@ func (s *Service) getTelegramLink(path string, pageData ...pageDataParam) (strin
 	}
 	fullLink := "https://t.me/" + s.botName + "/app?startapp=" + tmaLink
 	return fullLink, nil
+}
+
+func (s *Service) checkAndGetLangCode(lang string) string {
+	if isLanguageValid(lang) {
+		return lang
+	}
+
+	s.log.Warn("Language code is incorrect. Using fallback language",
+		zap.String("passed value", lang),
+		zap.String("fallback value", fallbackLanguage))
+
+	return fallbackLanguage
+}
+
+func isLanguageValid(lang string) bool {
+	for _, v := range validLangCodes {
+		if lang == v {
+			return true
+		}
+	}
+	return false
 }
 
 func getButtonText(lang string, key string) (string, error) {
