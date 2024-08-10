@@ -2,6 +2,7 @@ package admins
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 
 	"github.com/google/uuid"
@@ -13,6 +14,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pkg/errors"
 	"github.com/shoppigram-com/marketplace-api/internal/admins/generated"
+)
+
+const (
+	defaultLimit = 50
 )
 
 // Pg implements the Repository interface
@@ -181,6 +186,53 @@ func (p *Pg) DeleteProduct(ctx context.Context, req DeleteProductRequest) error 
 	}
 
 	return nil
+}
+
+// GetOrders gets a list of orders and allows filtering by marketplace and state
+func (p *Pg) GetOrders(ctx context.Context, req GetOrdersRequest) (GetOrdersResponse, error) {
+	params := generated.GetOrdersParams{
+		Limit:           int32(req.Limit),
+		Offset:          int32(req.Offset),
+		OwnerExternalID: int32(req.ExternalUserID),
+		MarketplaceID:   req.MarketplaceID,
+		State:           req.State,
+	}
+	if req.Limit == 0 {
+		params.Limit = defaultLimit
+	}
+
+	rows, err := p.gen.GetOrders(ctx, params)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return GetOrdersResponse{Orders: make([]Order, 0)}, err
+		}
+
+		return GetOrdersResponse{}, errors.Wrap(err, "p.gen.GetOrders")
+	}
+
+	orders := make([]Order, len(rows))
+
+	for i, v := range rows {
+		products := make([]Product, 0)
+		err := json.Unmarshal(v.Products, &products)
+		if err != nil {
+			return GetOrdersResponse{}, errors.Wrap(err, "json.Unmarshal")
+		}
+
+		orders[i] = Order{
+			ID:            v.ID,
+			MarketplaceID: v.MarketplaceID.Bytes,
+			ReadableID:    int(v.ReadableID.Int64),
+			TotalPrice:    float64(v.TotalPrice),
+			BuyerUsername: v.BuyerUsername.String,
+			Products:      products,
+			State:         string(v.State),
+			CreatedAt:     v.CreatedAt.Time,
+			UpdatedAt:     v.UpdatedAt.Time,
+		}
+	}
+
+	return GetOrdersResponse{Orders: orders}, nil
 }
 
 // IsUserTheOwnerOfMarketplace checks if the user is the owner of the marketplace
