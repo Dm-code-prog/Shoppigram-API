@@ -10,9 +10,13 @@ set cursor_date       = $2,
 where name = $1;
 
 -- name: GetAdminsNotificationList :many
-select admin_chat_id
-from new_order_notifications_list
-where web_app_id = $1;
+with admins_batch as (select admin_chat_id
+	 			  	  from new_order_notifications_list
+					  where web_app_id = $1)
+select ab.admin_chat_id,
+	   u.language_code
+from admins_batch ab
+	 join telegram_users u on ab.admin_chat_id = u.external_id;
 
 -- name: GetReviewersNotificationList :many
 select chat_id
@@ -36,7 +40,7 @@ select ob.order_id,
        p.price_currency,
        op.quantity,
        u.username,
-	   	 u.language_code,
+	   u.language_code,
        u.external_id as external_user_id,
        adm.language_code as admin_language_code,
        ob.state::text as state,

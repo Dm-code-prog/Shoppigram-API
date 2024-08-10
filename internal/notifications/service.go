@@ -76,16 +76,9 @@ type (
 		UserLanguage   string
 	}
 
-	tgUser struct {
-		ID           uuid.UUID `json:"id,omitempty"`
-		ExternalId   int64     `json:"external_id"`
-		IsBot        bool      `json:"is_bot,omitempty"`
-		FirstName    string    `json:"first_name"`
-		LastName     string    `json:"last_name,omitempty"`
-		Username     string    `json:"username,omitempty"`
-		LanguageCode string    `json:"language_code,omitempty"`
-		IsPremium    bool      `json:"is_premium,omitempty"`
-		AllowsPm     bool      `json:"allows_write_to_pm,omitempty"`
+	adminNotitfication struct {
+		Id       int64
+		Language string
 	}
 
 	telegramButtonData struct {
@@ -100,7 +93,7 @@ type (
 
 	// Repository provides access to the user storage
 	Repository interface {
-		GetAdminsNotificationList(ctx context.Context, webAppID uuid.UUID) ([]int64, error)
+		GetAdminsNotificationList(ctx context.Context, webAppID uuid.UUID) ([]adminNotitfication, error)
 		GetReviewersNotificationList(ctx context.Context) ([]int64, error)
 		GetNotifierCursor(ctx context.Context, name string) (Cursor, error)
 		UpdateNotifierCursor(ctx context.Context, cur Cursor) error
@@ -372,14 +365,15 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 		if err != nil {
 			return errors.Wrap(err, "s.repo.GetAdminsNotificationList")
 		}
-		ownerLang := s.checkAndGetLangCode(notification.OwnerLanguage)
-		adminMsgTxt, err := notification.BuildMessageAdmin(ownerLang)
-		if err != nil {
-			return errors.Wrap(err, "a.BuildMessageAdmin")
-		}
 
 		for _, v := range nl {
-			msg := tgbotapi.NewMessage(v, adminMsgTxt)
+			notificationLang := s.checkAndGetLangCode(v.Language)
+			adminMsgTxt, err := notification.BuildMessageAdmin(notificationLang)
+			if err != nil {
+				return errors.Wrap(err, "a.BuildMessageAdmin")
+			}
+
+			msg := tgbotapi.NewMessage(v.Id, adminMsgTxt)
 			msg.ParseMode = tgbotapi.ModeMarkdownV2
 
 			tgLinkPath := notification.WebAppID.String() + "/order/" + "notification.ID.String()"
@@ -388,7 +382,7 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 				return errors.Wrap(err, "getTelegramLink()")
 			}
 
-			buttonText, err := getButtonText(ownerLang, "order-management")
+			buttonText, err := getButtonText(notificationLang, "order-management")
 			if err != nil {
 				return errors.Wrap(err, "getButtonText(\"order-management\")")
 			}
@@ -399,7 +393,7 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 				if strings.Contains(err.Error(), "chat not found") {
 					s.log.With(
 						zap.String("method", "bot.Send"),
-						zap.String("user_id", strconv.FormatInt(v, 10)),
+						zap.String("user_id", strconv.FormatInt(v.Id, 10)),
 					).Warn("chat not found")
 					continue
 				}

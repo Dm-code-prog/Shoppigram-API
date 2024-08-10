@@ -29,24 +29,33 @@ func (q *Queries) AddUserToNewOrderNotifications(ctx context.Context, arg AddUse
 }
 
 const getAdminsNotificationList = `-- name: GetAdminsNotificationList :many
-select admin_chat_id
-from new_order_notifications_list
-where web_app_id = $1
+with admins_batch as (select admin_chat_id
+	 			  	  from new_order_notifications_list
+					  where web_app_id = $1)
+select ab.admin_chat_id,
+	   u.language_code
+from admins_batch ab
+	 join telegram_users u on ab.admin_chat_id = u.external_id
 `
 
-func (q *Queries) GetAdminsNotificationList(ctx context.Context, webAppID pgtype.UUID) ([]int64, error) {
+type GetAdminsNotificationListRow struct {
+	AdminChatID  int64
+	LanguageCode pgtype.Text
+}
+
+func (q *Queries) GetAdminsNotificationList(ctx context.Context, webAppID pgtype.UUID) ([]GetAdminsNotificationListRow, error) {
 	rows, err := q.db.Query(ctx, getAdminsNotificationList, webAppID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []int64
+	var items []GetAdminsNotificationListRow
 	for rows.Next() {
-		var admin_chat_id int64
-		if err := rows.Scan(&admin_chat_id); err != nil {
+		var i GetAdminsNotificationListRow
+		if err := rows.Scan(&i.AdminChatID, &i.LanguageCode); err != nil {
 			return nil, err
 		}
-		items = append(items, admin_chat_id)
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -140,7 +149,7 @@ select ob.order_id,
        p.price_currency,
        op.quantity,
        u.username,
-	   	 u.language_code,
+	   u.language_code,
        u.external_id as external_user_id,
        adm.language_code as admin_language_code,
        ob.state::text as state,
