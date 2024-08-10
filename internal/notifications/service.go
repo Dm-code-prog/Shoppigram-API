@@ -22,6 +22,7 @@ var validLangCodes []string = []string{"ru", "en"}
 const fallbackLanguage = "ru"
 const userKey = "user_key"
 const supportContactUrl = "https://t.me/ShoppigramSupport"
+const pathToButtonsText = "/templates/buttons.json"
 
 type (
 	// Cursor defines the structure for a notify list cursor
@@ -693,7 +694,7 @@ func isLanguageValid(lang string) bool {
 
 func getButtonText(lang string, key string) (string, error) {
 	var bt map[string]string
-	data, err := templates.ReadFile("templates/buttons/" + lang + ".json")
+	data, err := templates.ReadFile(lang + pathToButtonsText)
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile(\"translations/buttons/ru.json\")")
 	}

@@ -103,8 +103,3 @@ order by mb.verified_at, mb.id;
 insert into new_order_notifications_list (web_app_id, admin_chat_id)
 values ($1,
         $2);
-
--- name :: GetNotificationsForOrderStatusChangeAfterCursor :many
--- with orders_batch as (select
--- 	 			  	  from orders o
---					  where )
