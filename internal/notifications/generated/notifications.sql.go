@@ -29,24 +29,33 @@ func (q *Queries) AddUserToNewOrderNotifications(ctx context.Context, arg AddUse
 }
 
 const getAdminsNotificationList = `-- name: GetAdminsNotificationList :many
-select admin_chat_id
-from new_order_notifications_list
-where web_app_id = $1
+with admins_batch as (select admin_chat_id
+	 			  	  from new_order_notifications_list
+					  where web_app_id = $1)
+select ab.admin_chat_id,
+	   u.language_code
+from admins_batch ab
+	 join telegram_users u on ab.admin_chat_id = u.external_id
 `
 
-func (q *Queries) GetAdminsNotificationList(ctx context.Context, webAppID pgtype.UUID) ([]int64, error) {
+type GetAdminsNotificationListRow struct {
+	AdminChatID  int64
+	LanguageCode pgtype.Text
+}
+
+func (q *Queries) GetAdminsNotificationList(ctx context.Context, webAppID pgtype.UUID) ([]GetAdminsNotificationListRow, error) {
 	rows, err := q.db.Query(ctx, getAdminsNotificationList, webAppID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []int64
+	var items []GetAdminsNotificationListRow
 	for rows.Next() {
-		var admin_chat_id int64
-		if err := rows.Scan(&admin_chat_id); err != nil {
+		var i GetAdminsNotificationListRow
+		if err := rows.Scan(&i.AdminChatID, &i.LanguageCode); err != nil {
 			return nil, err
 		}
-		items = append(items, admin_chat_id)
+		items = append(items, i)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err
@@ -70,6 +79,7 @@ select mb.id,
        mb.short_name,
        mb.created_at,
        u.username,
+	   u.language_code,
        u.external_id as owner_external_id
 from marketplaces_batch mb
          join telegram_users u
@@ -89,6 +99,7 @@ type GetNotificationsForNewMarketplacesAfterCursorRow struct {
 	ShortName       string
 	CreatedAt       pgtype.Timestamp
 	Username        pgtype.Text
+	LanguageCode    pgtype.Text
 	OwnerExternalID int32
 }
 
@@ -107,6 +118,7 @@ func (q *Queries) GetNotificationsForNewMarketplacesAfterCursor(ctx context.Cont
 			&i.ShortName,
 			&i.CreatedAt,
 			&i.Username,
+			&i.LanguageCode,
 			&i.OwnerExternalID,
 		); err != nil {
 			return nil, err
@@ -120,7 +132,7 @@ func (q *Queries) GetNotificationsForNewMarketplacesAfterCursor(ctx context.Cont
 }
 
 const getNotificationsForNewOrdersAfterCursor = `-- name: GetNotificationsForNewOrdersAfterCursor :many
-with orders_batch as (select id as order_id, created_at, readable_id, web_app_id, external_user_id, state
+with orders_batch as (select id as order_id, created_at, readable_id, web_app_id, external_user_id, state, type
                       from orders o
                       where (o.updated_at, o.id) > ($2::timestamp, $3::uuid)
                         and o.state = 'confirmed'
@@ -129,6 +141,7 @@ with orders_batch as (select id as order_id, created_at, readable_id, web_app_id
 select ob.order_id,
        ob.readable_id,
        ob.created_at,
+	   ob.state::text,
        p.web_app_id,
        wa.name       as web_app_name,
        p.name,
@@ -136,14 +149,18 @@ select ob.order_id,
        p.price_currency,
        op.quantity,
        u.username,
+	   u.language_code,
        u.external_id as external_user_id,
-       ob.state
+       adm.language_code as admin_language_code,
+       ob.state::text as state,
+	   ob.type::text as payment_type
 from orders_batch ob
          join order_products op
               on ob.order_id = op.order_id
          join products p on p.id = op.product_id
          join telegram_users u on external_user_id = u.external_id
          join web_apps wa on ob.web_app_id = wa.id
+         join telegram_users adm on wa.owner_external_id = adm.external_id
 where ob.state = 'confirmed'
 order by ob.created_at, ob.order_id
 `
@@ -155,18 +172,22 @@ type GetNotificationsForNewOrdersAfterCursorParams struct {
 }
 
 type GetNotificationsForNewOrdersAfterCursorRow struct {
-	OrderID        uuid.UUID
-	ReadableID     pgtype.Int8
-	CreatedAt      pgtype.Timestamp
-	WebAppID       pgtype.UUID
-	WebAppName     string
-	Name           string
-	Price          float64
-	PriceCurrency  ProductCurrency
-	Quantity       int32
-	Username       pgtype.Text
-	ExternalUserID int32
-	State          OrderState
+	OrderID           uuid.UUID
+	ReadableID        pgtype.Int8
+	CreatedAt         pgtype.Timestamp
+	ObState           string
+	WebAppID          pgtype.UUID
+	WebAppName        string
+	Name              string
+	Price             float64
+	PriceCurrency     ProductCurrency
+	Quantity          int32
+	Username          pgtype.Text
+	LanguageCode      pgtype.Text
+	ExternalUserID    int32
+	AdminLanguageCode pgtype.Text
+	State             string
+	PaymentType       string
 }
 
 func (q *Queries) GetNotificationsForNewOrdersAfterCursor(ctx context.Context, arg GetNotificationsForNewOrdersAfterCursorParams) ([]GetNotificationsForNewOrdersAfterCursorRow, error) {
@@ -182,6 +203,7 @@ func (q *Queries) GetNotificationsForNewOrdersAfterCursor(ctx context.Context, a
 			&i.OrderID,
 			&i.ReadableID,
 			&i.CreatedAt,
+			&i.ObState,
 			&i.WebAppID,
 			&i.WebAppName,
 			&i.Name,
@@ -189,8 +211,11 @@ func (q *Queries) GetNotificationsForNewOrdersAfterCursor(ctx context.Context, a
 			&i.PriceCurrency,
 			&i.Quantity,
 			&i.Username,
+			&i.LanguageCode,
 			&i.ExternalUserID,
+			&i.AdminLanguageCode,
 			&i.State,
+			&i.PaymentType,
 		); err != nil {
 			return nil, err
 		}
@@ -217,8 +242,10 @@ select mb.id,
        mb.name,
        mb.short_name,
        mb.verified_at,
-       mb.owner_external_id
+       mb.owner_external_id,
+	   u.language_code
 from marketplaces_batch mb
+	 join telegram_users u on mb.owner_external_id = u.external_id
 order by mb.verified_at, mb.id
 `
 
@@ -234,6 +261,7 @@ type GetNotificationsForVerifiedMarketplacesAfterCursorRow struct {
 	ShortName       string
 	VerifiedAt      pgtype.Timestamp
 	OwnerExternalID pgtype.Int4
+	LanguageCode    pgtype.Text
 }
 
 func (q *Queries) GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Context, arg GetNotificationsForVerifiedMarketplacesAfterCursorParams) ([]GetNotificationsForVerifiedMarketplacesAfterCursorRow, error) {
@@ -251,6 +279,7 @@ func (q *Queries) GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context
 			&i.ShortName,
 			&i.VerifiedAt,
 			&i.OwnerExternalID,
+			&i.LanguageCode,
 		); err != nil {
 			return nil, err
 		}

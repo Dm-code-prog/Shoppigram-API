@@ -50,5 +50,5 @@ func formatRussianTime(t time.Time) string {
 		return ""
 	}
 	t = t.In(loc)
-	return strings.ReplaceAll(t.Format("02.01.2006 15:04:05"), ".", "\\.")
+	return t.Format("02.01.2006 15:04:05")
 }

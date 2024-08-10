@@ -3,7 +3,6 @@ package webhooks
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
@@ -30,6 +29,7 @@ type (
 	// channel integration with Shoppigram
 	NotifyChannelIntegrationSuccessRequest struct {
 		UserExternalID    int64
+		UserLanguage      string
 		ChannelExternalID int64
 		ChannelTitle      string
 		ChannelName       string
@@ -47,8 +47,8 @@ type (
 	// NotifyGreetingsRequest contains the initial greeting message
 	// of the bot
 	NotifyGreetingsRequest struct {
-		UserExternalID  int64
-		GreetingMessage string
+		UserExternalID int64
+		UserLanguage   string
 	}
 
 	// Notifier is the service for notifications
@@ -117,6 +117,7 @@ func (s *TelegramService) handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx
 
 	err = s.notifier.NotifyChannelIntegrationSuccess(ctx, NotifyChannelIntegrationSuccessRequest{
 		UserExternalID:    event.From.ID,
+		UserLanguage:      event.From.LanguageCode,
 		ChannelExternalID: event.Chat.ID,
 		ChannelTitle:      event.Chat.Title,
 		ChannelName:       event.Chat.UserName,
@@ -131,35 +132,10 @@ func (s *TelegramService) handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx
 func (s *TelegramService) handleUpdateTypeStartCommand(ctx context.Context, update tgbotapi.Update) error {
 	// Send a button with the link to the mini app
 
-	var greetingMessage = tgbotapi.EscapeText(
-		tgbotapi.ModeMarkdownV2, `
-Добро пожаловать в Shoppigram!  
-  
-С нами вы можете создать свой интернет-магазин в Telegram всего за несколько кликов. Никаких сложностей и технических навыков – всё максимально просто и интуитивно.  
-  
-✨ Что вы можете сделать с Shoppigram:  
-- Создать витрину товаров.  
-- Управлять ассортиментом.  
-- Обрабатывать заказы.  
-- Взаимодействовать с клиентами напрямую через Telegram.  `) +
-		fmt.Sprintf(`
-📌 Как это может выглядеть:  
-[Магазин кроссовок](https://t.me/%s/sneakerboss) 
-  
-[Кофейня](https://t.me/%s/mycoffe)  
-
-🛠 [Связаться с поддержкой](https://t.me/ShoppigramSupport)  
-🌟 [Открыть бота](https://t.me/%s/app)
-
-`, s.shoppigramBotName, s.shoppigramBotName, s.shoppigramBotName) +
-		tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, `
-Спасибо, что выбрали Shoppigram! Давайте вместе сделаем ваш бизнес ещё успешнее.
-`)
-
 	// Send the message to the user
 	err := s.notifier.NotifyGreetings(ctx, NotifyGreetingsRequest{
-		UserExternalID:  update.Message.From.ID,
-		GreetingMessage: greetingMessage,
+		UserExternalID: update.Message.From.ID,
+		UserLanguage:   update.Message.From.LanguageCode,
 	})
 	if err != nil {
 		return errors.Wrap(err, "s.notifier.NotifyGreetings")

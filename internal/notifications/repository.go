@@ -31,7 +31,7 @@ func NewPg(db *pgxpool.Pool, newOrderFetchLimit int, newMarketplaceFetchLimit in
 }
 
 // GetAdminsNotificationList gets a list of admins to notify about an order
-func (p *Pg) GetAdminsNotificationList(ctx context.Context, webAppID uuid.UUID) ([]int64, error) {
+func (p *Pg) GetAdminsNotificationList(ctx context.Context, webAppID uuid.UUID) ([]adminNotitfication, error) {
 	adminsNotificationList, err := p.gen.GetAdminsNotificationList(ctx, pgtype.UUID{
 		Bytes: webAppID,
 		Valid: true,
@@ -40,7 +40,15 @@ func (p *Pg) GetAdminsNotificationList(ctx context.Context, webAppID uuid.UUID) 
 		return nil, errors.Wrap(err, "p.gen.GetAdminsNotificationList")
 	}
 
-	return adminsNotificationList, nil
+	var retNotifs []adminNotitfication
+	for _, v := range adminsNotificationList {
+		retNotifs = append(retNotifs, adminNotitfication{
+			Id:       v.AdminChatID,
+			Language: v.LanguageCode.String,
+		})
+	}
+
+	return retNotifs, nil
 }
 
 // GetReviewersNotificationList gets a list of reviewers to notify about a new marketplace
@@ -134,8 +142,12 @@ func (p *Pg) GetNotificationsForNewOrdersAfterCursor(ctx context.Context, cur Cu
 				ReadableOrderID: r.ReadableID.Int64,
 				CreatedAt:       r.CreatedAt.Time,
 				UserNickname:    r.Username.String,
+				UserLanguage:    r.LanguageCode.String,
+				OwnerLanguage:   r.AdminLanguageCode.String,
 				WebAppID:        asUUID.Bytes,
 				WebAppName:      r.WebAppName,
+				Status:          r.State,
+				PaymentType:     r.PaymentType,
 				Products: []Product{{
 					Name:          r.Name,
 					Quantity:      int(r.Quantity),
@@ -180,6 +192,7 @@ func (p *Pg) GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, 
 			ShortName:       r.ShortName,
 			CreatedAt:       r.CreatedAt.Time,
 			OwnerUsername:   r.Username.String,
+			OwnerLanguage:   r.LanguageCode.String,
 			OwnerExternalID: int64(r.OwnerExternalID),
 		})
 	}
@@ -213,6 +226,7 @@ func (p *Pg) GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Cont
 			ShortName:           r.ShortName,
 			VerifiedAt:          r.VerifiedAt.Time,
 			OwnerExternalUserID: int64(r.OwnerExternalID.Int32),
+			OwnerLanguage:       r.LanguageCode.String,
 		})
 	}
 

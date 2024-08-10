@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/shoppigram-com/marketplace-api/internal/marketplaces"
 	"net/http"
 	"os"
+	"strings"
 	"syscall"
 	"time"
+
+	"github.com/shoppigram-com/marketplace-api/internal/marketplaces"
 
 	"github.com/shoppigram-com/marketplace-api/internal/webhooks"
 
@@ -136,6 +138,14 @@ func main() {
 		config.NewMarketplaceNotifications.BatchSize,
 		config.VerifiedMarketplaceNotifications.BatchSize,
 	)
+
+	insertPosition := strings.Index(config.DigitalOcean.Spaces.Endpoint, "https://")
+	if insertPosition == -1 {
+		log.Error("Images storage endpoint incorrect!")
+	}
+	insertPosition += len("https://")
+
+	//bucketUrl = config.DigitalOcean.Spaces.Endpoint
 	notificationsService := notifications.New(
 		notificationsRepo,
 		log.With(zap.String("service", "notifications")),
@@ -144,6 +154,9 @@ func main() {
 		time.Duration(config.VerifiedMarketplaceNotifications.Timeout)*time.Second,
 		config.Bot.Token,
 		config.Bot.Name,
+		config.DigitalOcean.Spaces.Endpoint[:insertPosition]+
+			config.DigitalOcean.Spaces.Bucket+"."+
+			config.DigitalOcean.Spaces.Endpoint[insertPosition:],
 	)
 
 	////////////////////////////////////// ADMINS //////////////////////////////////////
