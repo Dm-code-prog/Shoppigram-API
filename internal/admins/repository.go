@@ -52,6 +52,7 @@ func (p *Pg) GetMarketplaces(ctx context.Context, req GetMarketplacesRequest) (G
 			Name:       v.Name,
 			LogoURL:    v.LogoUrl.String,
 			IsVerified: v.IsVerified.Bool,
+			ShortName:  v.ShortName,
 		}
 	}
 

@@ -19,6 +19,7 @@ type (
 		ID                    uuid.UUID `json:"id"`
 		Name                  string    `json:"name"`
 		LogoURL               string    `json:"logo_url"`
+		ShortName             string    `json:"short_name"`
 		IsVerified            bool      `json:"is_verified"`
 		OnlinePaymentsEnabled bool      `json:"online_payments_enabled"`
 	}
