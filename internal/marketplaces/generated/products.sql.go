@@ -30,7 +30,7 @@ SELECT wa.id,
                        )
                                ) FILTER (WHERE p.id IS NOT NULL),
                        '[]'::json
-       ) AS products
+       )::json AS products
 FROM web_apps wa
          LEFT JOIN products p ON wa.id = p.web_app_id
 WHERE wa.id = $1
@@ -45,7 +45,7 @@ type GetMarketplaceWithProductsRow struct {
 	IsVerified            pgtype.Bool
 	OnlinePaymentsEnabled bool
 	Currency              ProductCurrency
-	Products              interface{}
+	Products              []byte
 }
 
 func (q *Queries) GetMarketplaceWithProducts(ctx context.Context, id uuid.UUID) (GetMarketplaceWithProductsRow, error) {

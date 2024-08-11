@@ -34,7 +34,7 @@ SELECT wa.id,
                        )
                                ) FILTER (WHERE p.id IS NOT NULL),
                        '[]'::json
-       ) AS products
+       )::json AS products
 FROM web_apps wa
          LEFT JOIN products p ON wa.id = p.web_app_id
 WHERE wa.id = $1
