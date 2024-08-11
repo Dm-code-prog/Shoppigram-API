@@ -2,6 +2,7 @@ package marketplaces
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -28,43 +29,25 @@ func NewPg(pool *pgxpool.Pool) *Pg {
 
 // GetProducts returns a list of products
 func (pg *Pg) GetProducts(ctx context.Context, request GetProductsRequest) (GetProductsResponse, error) {
-	prod, err := pg.gen.GetProducts(ctx, request.WebAppID)
+	m, err := pg.gen.GetMarketplaceWithProducts(ctx, request.WebAppID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return GetProductsResponse{}, nil
-		}
-		return GetProductsResponse{}, errors.Wrap(err, "pg.gen.GetProducts")
+		return GetProductsResponse{}, errors.Wrap(err, "pg.gen.GetMarketplaceWithProducts")
 	}
 
-	var id uuid.UUID
-	var name string
-	var shortName string
-	var isVerified bool
-	var onlinePaymentsEnabled bool
 	var products []Product
-	for _, p := range prod {
-		products = append(products, Product{
-			ID:            p.ID,
-			Name:          p.Name,
-			Description:   p.Description.String,
-			Category:      p.Category.String,
-			Price:         p.Price,
-			PriceCurrency: p.PriceCurrency,
-		})
-		id = p.WebAppID
-		name = p.WebAppName
-		shortName = p.WebAppShortName
-		isVerified = p.WebAppIsVerified.Bool
-		onlinePaymentsEnabled = p.OnlinePaymentsEnabled
+	err = json.Unmarshal(m.Products, &products)
+	if err != nil {
+		return GetProductsResponse{}, errors.Wrap(err, "json.Unmarshal")
 	}
 
 	return GetProductsResponse{
-		WebAppID:              id,
-		WebAppName:            name,
-		WebAppShortName:       shortName,
-		WebAppIsVerified:      isVerified,
+		WebAppID:              m.ID,
+		WebAppName:            m.Name,
+		WebAppShortName:       m.ShortName,
+		WebAppIsVerified:      m.IsVerified.Bool,
+		OnlinePaymentsEnabled: m.OnlinePaymentsEnabled,
 		Products:              products,
-		OnlinePaymentsEnabled: onlinePaymentsEnabled,
+		Currency:              string(m.Currency),
 	}, nil
 }
 
@@ -185,13 +168,12 @@ func (pg *Pg) GetOrder(ctx context.Context, orderId uuid.UUID, userId int64) (Ge
 
 	for i, v := range rows {
 		products[i] = Product{
-			ID:            v.ID,
-			Name:          v.Name,
-			Description:   v.Description.String,
-			Category:      v.Category.String,
-			Price:         v.Price,
-			PriceCurrency: v.PriceCurrency,
-			Quantity:      v.Quantity,
+			ID:          v.ID,
+			Name:        v.Name,
+			Description: v.Description.String,
+			Category:    v.Category.String,
+			Price:       v.Price,
+			Quantity:    v.Quantity,
 		}
 
 		totalPrice += v.Price * float64(v.Quantity)

@@ -109,12 +109,25 @@ func (s *ServiceWithObservability) DeleteProduct(ctx context.Context, request De
 	return err
 }
 
+// GetOrders calls the underlying service's GetOrders method
 func (s *ServiceWithObservability) GetOrders(ctx context.Context, request GetOrdersRequest) (GetOrdersResponse, error) {
 	res, err := s.service.GetOrders(ctx, request)
 	if err != nil {
 		s.log.
 			With(zap.String("owner_external_id", strconv.FormatInt(request.ExternalUserID, 10))).
 			Error("s.service.GetOrders", logging.SilentError(err))
+	}
+
+	return res, err
+}
+
+// GetBalance calls the underlying service's GetBalance method
+func (s *ServiceWithObservability) GetBalance(ctx context.Context, request GetBalanceRequest) (GetBalanceResponse, error) {
+	res, err := s.service.GetBalance(ctx, request)
+	if err != nil {
+		s.log.
+			With(zap.String("owner_external_id", strconv.FormatInt(request.ExternalUserID, 10))).
+			Error("s.service.GetBalance", logging.SilentError(err))
 	}
 
 	return res, err

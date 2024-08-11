@@ -27,11 +27,11 @@ select p.id,
        p.description,
        p.category,
        p.price,
-       p.price_currency::text as price_currency,
-       wa.name                as web_app_name,
-       wa.short_name          as web_app_short_name,
+       wa.currency::text as price_currency,
+       wa.name           as web_app_name,
+       wa.short_name     as web_app_short_name,
        o.readable_id,
-       tu.username            as seller_username
+       tu.username       as seller_username
 from orders o
          join order_products op on o.id = op.order_id
          join products p on op.product_id = p.id
