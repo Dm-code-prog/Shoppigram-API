@@ -164,7 +164,7 @@ type Product struct {
 	Name          string
 	Description   pgtype.Text
 	Price         float64
-	PriceCurrency ProductCurrency
+	PriceCurrency string
 	ImageUrl      pgtype.Text
 	Category      pgtype.Text
 }
@@ -193,13 +193,17 @@ type TelegramUser struct {
 }
 
 type WebApp struct {
-	ID              uuid.UUID
-	Name            string
-	OwnerExternalID pgtype.Int4
-	LogoUrl         pgtype.Text
-	IsVerified      pgtype.Bool
-	ShortName       string
-	VerifiedAt      pgtype.Timestamp
-	CreatedAt       pgtype.Timestamp
-	IsDeleted       pgtype.Bool
+	ID                    uuid.UUID
+	Name                  string
+	OwnerExternalID       pgtype.Int4
+	LogoUrl               pgtype.Text
+	IsVerified            pgtype.Bool
+	ShortName             string
+	VerifiedAt            pgtype.Timestamp
+	CreatedAt             pgtype.Timestamp
+	IsDeleted             pgtype.Bool
+	OnlinePaymentsEnabled bool
+	Currency              ProductCurrency
+	CommissionPercent     pgtype.Numeric
+	CommissionFixed       pgtype.Numeric
 }

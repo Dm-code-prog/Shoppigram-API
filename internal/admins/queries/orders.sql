@@ -5,6 +5,7 @@ SELECT o.id                       AS id,
        o.state                    AS state,
        o.created_at               AS created_at,
        o.updated_at               AS updated_at,
+       wa.currency                AS currency,
        (SELECT SUM(p.price * op.quantity)
         FROM order_products op
                  JOIN products p ON p.id = op.product_id
@@ -15,8 +16,7 @@ SELECT o.id                       AS id,
                                'id', p.id,
                                'name', p.name,
                                'quantity', op.quantity,
-                               'price', p.price,
-                               'price_currency', p.price_currency
+                               'price', p.price
                        )
                )
         FROM order_products op
