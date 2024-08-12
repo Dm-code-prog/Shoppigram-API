@@ -17,6 +17,7 @@ SELECT o.id                       AS id,
        o.web_app_id               AS marketplace_id,
        o.readable_id              AS readable_id,
        o.state                    AS state,
+       o.type                     AS type,
        o.created_at               AS created_at,
        o.updated_at               AS updated_at,
        wa.currency                AS currency,
@@ -67,6 +68,7 @@ type GetOrdersRow struct {
 	MarketplaceID pgtype.UUID
 	ReadableID    pgtype.Int8
 	State         OrderState
+	Type          OrderType
 	CreatedAt     pgtype.Timestamp
 	UpdatedAt     pgtype.Timestamp
 	Currency      ProductCurrency
@@ -95,6 +97,7 @@ func (q *Queries) GetOrders(ctx context.Context, arg GetOrdersParams) ([]GetOrde
 			&i.MarketplaceID,
 			&i.ReadableID,
 			&i.State,
+			&i.Type,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Currency,
