@@ -198,6 +198,7 @@ type (
 		ID            uuid.UUID `json:"id"`
 		MarketplaceID uuid.UUID `json:"marketplace_id"`
 		State         string    `json:"state"`
+		Type          string    `json:"type"`
 		CreatedAt     time.Time `json:"created_at"`
 		UpdatedAt     time.Time `json:"updated_at"`
 		ReadableID    int       `json:"readable_id"`

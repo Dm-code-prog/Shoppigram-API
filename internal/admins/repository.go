@@ -222,6 +222,7 @@ func (p *Pg) GetOrders(ctx context.Context, req GetOrdersRequest) (GetOrdersResp
 			CreatedAt:     v.CreatedAt.Time,
 			UpdatedAt:     v.UpdatedAt.Time,
 			Currency:      string(v.Currency),
+			Type:          string(v.Type),
 		}
 	}
 
