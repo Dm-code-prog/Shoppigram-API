@@ -202,6 +202,7 @@ type (
 		UpdatedAt     time.Time `json:"updated_at"`
 		ReadableID    int       `json:"readable_id"`
 		TotalPrice    float64   `json:"total_price"`
+		Currency      string    `json:"currency"`
 		BuyerUsername string    `json:"buyer_username"`
 		Products      []Product `json:"products"`
 	}
