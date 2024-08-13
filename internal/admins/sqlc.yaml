@@ -8,11 +8,12 @@ sql:
       - ./queries/orders.sql
       - ./queries/balance.sql
     schema:
-      - ./schemas/20240526.sql
       - ../shared_sql/2024-04-11-aggregate.sql
       - ../shared_sql/2024-07-26.sql
       - ../shared_sql/2024-08-04.sql
       - ../shared_sql/2024-08-11.sql
+      - ./schemas/20240526.sql
+      - ./schemas/20240812.sql
     gen:
       go:
         package: generated

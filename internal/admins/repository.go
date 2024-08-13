@@ -132,11 +132,12 @@ func (p *Pg) CreateProduct(ctx context.Context, req CreateProductRequest) (Creat
 	}
 
 	id, err := p.gen.CreateProduct(ctx, generated.CreateProductParams{
-		WebAppID:    req.WebAppID,
-		Name:        req.Name,
-		Price:       req.Price,
-		Description: req.Description,
-		Category:    req.Category,
+		WebAppID:        req.WebAppID,
+		Name:            req.Name,
+		Price:           req.Price,
+		Description:     req.Description,
+		Category:        req.Category,
+		ExtraProperties: req.ExtraProperties,
 	})
 	if err != nil {
 		return CreateProductResponse{}, errors.Wrap(err, "p.gen.CreateProduct")

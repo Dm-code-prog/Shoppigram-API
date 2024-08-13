@@ -159,14 +159,15 @@ type OrderProduct struct {
 }
 
 type Product struct {
-	ID            uuid.UUID
-	WebAppID      pgtype.UUID
-	Name          string
-	Description   pgtype.Text
-	Price         float64
-	PriceCurrency string
-	ImageUrl      pgtype.Text
-	Category      pgtype.Text
+	ID              uuid.UUID
+	WebAppID        pgtype.UUID
+	Name            string
+	Description     pgtype.Text
+	Price           float64
+	PriceCurrency   string
+	ImageUrl        pgtype.Text
+	Category        pgtype.Text
+	ExtraProperties []byte
 }
 
 type TelegramChannel struct {

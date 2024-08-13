@@ -27,24 +27,26 @@ func (q *Queries) CountMarketplaceProducts(ctx context.Context, webAppID uuid.UU
 }
 
 const createProduct = `-- name: CreateProduct :one
-insert into products (web_app_id, name, description, price, price_currency, category, image_url)
+insert into products (web_app_id, name, description, price, price_currency, category, image_url, extra_properties)
 values ($4::uuid,
         $1,
         nullif($5::text, ''),
         $2,
         $3,
         nullif($6::varchar(30), ''),
-        '')
+        '',
+		nullif($7::json, ''))
 returning id
 `
 
 type CreateProductParams struct {
-	Name          string
-	Price         float64
-	PriceCurrency string
-	WebAppID      uuid.UUID
-	Description   string
-	Category      string
+	Name            string
+	Price           float64
+	PriceCurrency   string
+	WebAppID        uuid.UUID
+	Description     string
+	Category        string
+	ExtraProperties []byte
 }
 
 func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (uuid.UUID, error) {
@@ -55,6 +57,7 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (u
 		arg.WebAppID,
 		arg.Description,
 		arg.Category,
+		arg.ExtraProperties,
 	)
 	var id uuid.UUID
 	err := row.Scan(&id)

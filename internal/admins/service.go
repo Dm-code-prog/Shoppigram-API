@@ -62,12 +62,13 @@ type (
 
 	// CreateProductRequest specifies the information about a product
 	CreateProductRequest struct {
-		WebAppID       uuid.UUID
-		ExternalUserID int64
-		Name           string  `json:"name"`
-		Description    string  `json:"description"`
-		Price          float64 `json:"price"`
-		Category       string  `json:"category,omitempty"`
+		WebAppID        uuid.UUID
+		ExternalUserID  int64
+		Name            string  `json:"name"`
+		Description     string  `json:"description"`
+		Price           float64 `json:"price"`
+		Category        string  `json:"category,omitempty"`
+		ExtraProperties []byte  `json:"extra_properties,omitempty"`
 	}
 
 	// CreateProductResponse returns the ID of the created product
@@ -434,6 +435,11 @@ func (s *DefaultService) CreateProduct(ctx context.Context, req CreateProductReq
 		return CreateProductResponse{}, ErrorBadRequest
 	}
 
+	// https://github.com/microcosm-cc/bluemonday << for sanitizing
+	if !isProductExtraPropsValid(req.ExtraProperties) {
+		return CreateProductResponse{}, ErrorBadRequest // Should I create a new error for this?
+	}
+
 	res, err := s.repo.CreateProduct(ctx, req)
 	if err != nil {
 		return CreateProductResponse{}, errors.Wrap(err, "s.repo.CreateProduct")
@@ -670,4 +676,13 @@ func isValidImageExtension(ext string) bool {
 	}
 
 	return false
+}
+
+func isProductExtraPropsValid(data []byte) bool {
+	for i, v := range data {
+		if i != 0 && v == '{' {
+			return false
+		}
+	}
+	return true
 }

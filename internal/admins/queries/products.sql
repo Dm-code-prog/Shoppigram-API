@@ -1,12 +1,13 @@
 -- name: CreateProduct :one
-insert into products (web_app_id, name, description, price, price_currency, category, image_url)
+insert into products (web_app_id, name, description, price, price_currency, category, image_url, extra_properties)
 values (@web_app_id::uuid,
         $1,
         nullif(@description::text, ''),
         $2,
         $3,
         nullif(@category::varchar(30), ''),
-        '')
+        '',
+		nullif(@extra_properties::json, ''))
 returning id;
 
 -- name: CountMarketplaceProducts :one
