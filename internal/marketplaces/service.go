@@ -15,12 +15,13 @@ import (
 type (
 	// Product defines the structure for a Marketplace product
 	Product struct {
-		ID          uuid.UUID `json:"id"`
-		Name        string    `json:"name"`
-		Description string    `json:"description,omitempty"`
-		Quantity    int32     `json:"quantity,omitempty"`
-		Category    string    `json:"category,omitempty"`
-		Price       float64   `json:"price"`
+		ID                  uuid.UUID `json:"id"`
+		Name                string    `json:"name"`
+		Description         string    `json:"description,omitempty"`
+		Quantity            int32     `json:"quantity,omitempty"`
+		Category            string    `json:"category,omitempty"`
+		Price               float64   `json:"price"`
+		LegacyPriceCurrency string    `json:"price_currency"`
 	}
 
 	// GetProductsRequest defines the request for the GetProducts endpoint

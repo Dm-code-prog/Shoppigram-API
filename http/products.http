@@ -1,4 +1,4 @@
-GET http://localhost:8080/api/v1/public/products/42c6e13e-fb1e-42f0-9bf0-e86e0c066738
+GET http://localhost:8080/api/v1/public/products/0748bd85-191a-408e-86df-52b1dc843836
 
 
 ###

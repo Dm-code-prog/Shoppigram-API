@@ -26,7 +26,8 @@ SELECT wa.id,
                                'name', p.name,
                                'description', p.description,
                                'category', p.category,
-                               'price', p.price
+                               'price', p.price,
+                               'price_currency', p.price_currency::text
                        )
                                ) FILTER (WHERE p.id IS NOT NULL),
                        '[]'::json
