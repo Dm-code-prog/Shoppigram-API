@@ -79,13 +79,14 @@ type (
 	// UpdateProductRequest specifies the new information about a product
 	// in a marketplace
 	UpdateProductRequest struct {
-		ID             uuid.UUID `json:"id"`
-		WebAppID       uuid.UUID
-		ExternalUserID int64
-		Name           string  `json:"name"`
-		Description    string  `json:"description"`
-		Price          float64 `json:"price"`
-		Category       string  `json:"category,omitempty"`
+		ID              uuid.UUID `json:"id"`
+		WebAppID        uuid.UUID
+		ExternalUserID  int64
+		Name            string  `json:"name"`
+		Description     string  `json:"description"`
+		Price           float64 `json:"price"`
+		Category        string  `json:"category,omitempty"`
+		ExtraProperties []byte  `json:"extra_properties,omitempty"`
 	}
 
 	// DeleteProductRequest specifies a product in a marketplace that needs to be deleted
@@ -436,6 +437,8 @@ func (s *DefaultService) CreateProduct(ctx context.Context, req CreateProductReq
 	}
 
 	// https://github.com/microcosm-cc/bluemonday << for sanitizing
+
+	// Decode extra properties!!!
 	if !isProductExtraPropsValid(req.ExtraProperties) {
 		return CreateProductResponse{}, ErrorBadRequest // Should I create a new error for this?
 	}

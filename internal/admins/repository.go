@@ -3,6 +3,7 @@ package admins
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"strings"
 
 	"github.com/google/uuid"
@@ -130,6 +131,8 @@ func (p *Pg) CreateProduct(ctx context.Context, req CreateProductRequest) (Creat
 	if count > maxMarketplaceProducts {
 		return CreateProductResponse{}, ErrorMaxProductsExceeded
 	}
+
+	fmt.Printf("%s\n", req.ExtraProperties)
 
 	id, err := p.gen.CreateProduct(ctx, generated.CreateProductParams{
 		WebAppID:        req.WebAppID,
