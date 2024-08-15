@@ -127,11 +127,13 @@ func (o *NewOrderNotification) BuildMessageAdmin(language string) (string, error
 func (o *NewOrderNotification) BuildMessageCustomer(language string) (string, error) {
 	var subtotal float64
 	var productList strings.Builder
-	var currency string
+	currency := ""
 	for _, p := range o.Products {
 		subtotal += p.Price * float64(p.Quantity)
-		currency = p.PriceCurrency
-		productList.WriteString(fmt.Sprintf(`- %dx %s по цене %s %s
+		if currency == "" {
+			currency = p.PriceCurrency
+		}
+		productList.WriteString(fmt.Sprintf(`- %dx %s: %s %s
 `, p.Quantity, p.Name, formatFloat(p.Price), formatCurrency(p.PriceCurrency)))
 	}
 
