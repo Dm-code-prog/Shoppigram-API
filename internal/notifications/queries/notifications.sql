@@ -10,16 +10,20 @@ set cursor_date       = $2,
 where name = $1;
 
 -- name: GetAdminsNotificationList :many
-select admin_chat_id
-from new_order_notifications_list
-where web_app_id = $1;
+with admins_batch as (select admin_chat_id
+	 			  	  from new_order_notifications_list
+					  where web_app_id = $1)
+select ab.admin_chat_id,
+	   u.language_code
+from admins_batch ab
+	 join telegram_users u on ab.admin_chat_id = u.external_id;
 
 -- name: GetReviewersNotificationList :many
 select chat_id
 from new_web_apps_notifications_list;
 
 -- name: GetNotificationsForNewOrdersAfterCursor :many
-with orders_batch as (select id as order_id, created_at, readable_id, web_app_id, external_user_id, state
+with orders_batch as (select id as order_id, created_at, readable_id, web_app_id, external_user_id, state, type
                       from orders o
                       where (o.updated_at, o.id) > (@updated_at::timestamp, @id::uuid)
                         and o.state = 'confirmed'
@@ -28,6 +32,7 @@ with orders_batch as (select id as order_id, created_at, readable_id, web_app_id
 select ob.order_id,
        ob.readable_id,
        ob.created_at,
+	   ob.state::text,
        p.web_app_id,
        wa.name       as web_app_name,
        p.name,
@@ -35,14 +40,18 @@ select ob.order_id,
        p.price_currency,
        op.quantity,
        u.username,
+	   u.language_code,
        u.external_id as external_user_id,
-       ob.state
+       adm.language_code as admin_language_code,
+       ob.state::text as state,
+	   ob.type::text as payment_type
 from orders_batch ob
          join order_products op
               on ob.order_id = op.order_id
          join products p on p.id = op.product_id
          join telegram_users u on external_user_id = u.external_id
          join web_apps wa on ob.web_app_id = wa.id
+         join telegram_users adm on wa.owner_external_id = adm.external_id
 where ob.state = 'confirmed'
 order by ob.created_at, ob.order_id;
 
@@ -62,6 +71,7 @@ select mb.id,
        mb.short_name,
        mb.created_at,
        u.username,
+	   u.language_code,
        u.external_id as owner_external_id
 from marketplaces_batch mb
          join telegram_users u
@@ -83,8 +93,10 @@ select mb.id,
        mb.name,
        mb.short_name,
        mb.verified_at,
-       mb.owner_external_id
+       mb.owner_external_id,
+	   u.language_code
 from marketplaces_batch mb
+	 join telegram_users u on mb.owner_external_id = u.external_id
 order by mb.verified_at, mb.id;
 
 -- name: AddUserToNewOrderNotifications :exec

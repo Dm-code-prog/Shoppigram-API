@@ -12,6 +12,92 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type OrderState string
+
+const (
+	OrderStateCreated   OrderState = "created"
+	OrderStateConfirmed OrderState = "confirmed"
+	OrderStateDone      OrderState = "done"
+	OrderStateRejected  OrderState = "rejected"
+)
+
+func (e *OrderState) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = OrderState(s)
+	case string:
+		*e = OrderState(s)
+	default:
+		return fmt.Errorf("unsupported scan type for OrderState: %T", src)
+	}
+	return nil
+}
+
+type NullOrderState struct {
+	OrderState OrderState
+	Valid      bool // Valid is true if OrderState is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullOrderState) Scan(value interface{}) error {
+	if value == nil {
+		ns.OrderState, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.OrderState.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullOrderState) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.OrderState), nil
+}
+
+type OrderType string
+
+const (
+	OrderTypeP2p    OrderType = "p2p"
+	OrderTypeOnline OrderType = "online"
+)
+
+func (e *OrderType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = OrderType(s)
+	case string:
+		*e = OrderType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for OrderType: %T", src)
+	}
+	return nil
+}
+
+type NullOrderType struct {
+	OrderType OrderType
+	Valid     bool // Valid is true if OrderType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullOrderType) Scan(value interface{}) error {
+	if value == nil {
+		ns.OrderType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.OrderType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullOrderType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.OrderType), nil
+}
+
 type ProductCurrency string
 
 const (
@@ -62,6 +148,8 @@ type Order struct {
 	ExternalUserID pgtype.Int4
 	CreatedAt      pgtype.Timestamp
 	UpdatedAt      pgtype.Timestamp
+	Type           OrderType
+	State          OrderState
 }
 
 type OrderProduct struct {
@@ -76,7 +164,7 @@ type Product struct {
 	Name          string
 	Description   pgtype.Text
 	Price         float64
-	PriceCurrency ProductCurrency
+	PriceCurrency string
 	ImageUrl      pgtype.Text
 	Category      pgtype.Text
 }
@@ -106,4 +194,7 @@ type WebApp struct {
 	CreatedAt             pgtype.Timestamp
 	IsDeleted             pgtype.Bool
 	OnlinePaymentsEnabled bool
+	Currency              ProductCurrency
+	CommissionPercent     pgtype.Numeric
+	CommissionFixed       pgtype.Numeric
 }

@@ -12,6 +12,57 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const getMarketplaceWithProducts = `-- name: GetMarketplaceWithProducts :one
+SELECT wa.id,
+       wa.name,
+       wa.short_name,
+       wa.is_verified,
+       wa.online_payments_enabled,
+       wa.currency,
+       COALESCE(
+                       json_agg(
+                       json_build_object(
+                               'id', p.id,
+                               'name', p.name,
+                               'description', p.description,
+                               'category', p.category,
+                               'price', p.price
+                       )
+                               ) FILTER (WHERE p.id IS NOT NULL),
+                       '[]'::json
+       )::json AS products
+FROM web_apps wa
+         LEFT JOIN products p ON wa.id = p.web_app_id
+WHERE wa.id = $1
+  AND wa.is_deleted = false
+GROUP BY wa.id, wa.name, wa.short_name, wa.is_verified, wa.online_payments_enabled, wa.currency
+`
+
+type GetMarketplaceWithProductsRow struct {
+	ID                    uuid.UUID
+	Name                  string
+	ShortName             string
+	IsVerified            pgtype.Bool
+	OnlinePaymentsEnabled bool
+	Currency              ProductCurrency
+	Products              []byte
+}
+
+func (q *Queries) GetMarketplaceWithProducts(ctx context.Context, id uuid.UUID) (GetMarketplaceWithProductsRow, error) {
+	row := q.db.QueryRow(ctx, getMarketplaceWithProducts, id)
+	var i GetMarketplaceWithProductsRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.ShortName,
+		&i.IsVerified,
+		&i.OnlinePaymentsEnabled,
+		&i.Currency,
+		&i.Products,
+	)
+	return i, err
+}
+
 const getProducts = `-- name: GetProducts :many
 select p.id,
        p.name,

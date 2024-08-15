@@ -78,6 +78,13 @@ func MakeHandler(bs Service, authMw endpoint.Middleware) http.Handler {
 		opts...,
 	)
 
+	getOrdersHandler := kithttp.NewServer(
+		authMw(makeGetOrdersEndpoint(bs)),
+		decodeGetOrdersRequest,
+		encodeResponse,
+		opts...,
+	)
+
 	createProductImageUploadURL := kithttp.NewServer(
 		authMw(makeCreateProductImageUploadURLEndpoint(bs)),
 		decodeCreateProductImageUploadURLRequest,
@@ -99,6 +106,13 @@ func MakeHandler(bs Service, authMw endpoint.Middleware) http.Handler {
 		opts...,
 	)
 
+	getBalanceHandler := kithttp.NewServer(
+		authMw(makeGetBalanceEndpoint(bs)),
+		httputils.DecodeEmptyRequest,
+		encodeResponse,
+		opts...,
+	)
+
 	r := chi.NewRouter()
 	r.Get("/", getMarketplacesHandler.ServeHTTP)
 	r.Post("/", createMarketplaceHandler.ServeHTTP)
@@ -108,6 +122,9 @@ func MakeHandler(bs Service, authMw endpoint.Middleware) http.Handler {
 	r.Post("/products/{web_app_id}", createProductHandler.ServeHTTP)
 	r.Put("/products/{web_app_id}", updateProductHandler.ServeHTTP)
 	r.Delete("/products/{web_app_id}", deleteProductHandler.ServeHTTP)
+
+	r.Get("/orders", getOrdersHandler.ServeHTTP)
+	r.Get("/balance", getBalanceHandler.ServeHTTP)
 
 	r.Post("/products/upload-image-url/{web_app_id}", createProductImageUploadURL.ServeHTTP)
 	r.Post("/upload-logo-url/{web_app_id}", createMarketplaceUploadLogoURLHandler.ServeHTTP)
@@ -127,7 +144,6 @@ var badRequestErrors = []error{
 	ErrorMaxMarketplacesExceeded,
 	ErrorInvalidImageExtension,
 	ErrorMaxProductsExceeded,
-	ErrorInvalidProductCurrency,
 }
 
 func encodeError(_ context.Context, err error, w http.ResponseWriter) {

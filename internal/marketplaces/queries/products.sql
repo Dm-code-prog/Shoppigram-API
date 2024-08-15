@@ -15,3 +15,29 @@ from web_apps wa
 where wa.id = $1
   and wa.is_deleted = false;
 
+
+-- name: GetMarketplaceWithProducts :one
+SELECT wa.id,
+       wa.name,
+       wa.short_name,
+       wa.is_verified,
+       wa.online_payments_enabled,
+       wa.currency,
+       COALESCE(
+                       json_agg(
+                       json_build_object(
+                               'id', p.id,
+                               'name', p.name,
+                               'description', p.description,
+                               'category', p.category,
+                               'price', p.price
+                       )
+                               ) FILTER (WHERE p.id IS NOT NULL),
+                       '[]'::json
+       )::json AS products
+FROM web_apps wa
+         LEFT JOIN products p ON wa.id = p.web_app_id
+WHERE wa.id = $1
+  AND wa.is_deleted = false
+GROUP BY wa.id, wa.name, wa.short_name, wa.is_verified, wa.online_payments_enabled, wa.currency;
+

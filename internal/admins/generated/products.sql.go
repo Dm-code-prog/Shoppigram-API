@@ -41,7 +41,7 @@ returning id
 type CreateProductParams struct {
 	Name          string
 	Price         float64
-	PriceCurrency ProductCurrency
+	PriceCurrency string
 	WebAppID      uuid.UUID
 	Description   string
 	Category      string
@@ -127,7 +127,7 @@ where web_app_id = $7::uuid
 type UpdateProductParams struct {
 	Name          string
 	Price         float64
-	PriceCurrency ProductCurrency
+	PriceCurrency string
 	ID            uuid.UUID
 	Description   string
 	Category      string

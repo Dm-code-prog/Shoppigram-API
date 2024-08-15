@@ -10,5 +10,9 @@ test:
 
 sqlc:
 	for dir in ./internal/*/; do \
-	  (cd "$$dir" && sqlc generate) || echo "Failed in $$dir"; \
+		(cd "$$dir" && if test -f sqlc.yaml; then \
+			echo "running sqlc generate for $${dir} ...";\
+			sqlc generate; \
+		fi)\
 	done
+

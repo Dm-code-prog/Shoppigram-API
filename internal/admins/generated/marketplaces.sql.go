@@ -17,7 +17,7 @@ const countUserMarketplaces = `-- name: CountUserMarketplaces :one
 select count(*)
 from web_apps
 where owner_external_id = $1
-   and is_deleted=false
+  and is_deleted = false
 `
 
 func (q *Queries) CountUserMarketplaces(ctx context.Context, ownerExternalID pgtype.Int4) (int64, error) {
@@ -62,10 +62,10 @@ func (q *Queries) GetMarketplaceShortName(ctx context.Context, id uuid.UUID) (st
 }
 
 const getMarketplaces = `-- name: GetMarketplaces :many
-select id, name, logo_url, is_verified
+select id, name, logo_url, is_verified, short_name
 from web_apps
 where owner_external_id = $1
-   and is_deleted=false
+  and is_deleted = false
 `
 
 type GetMarketplacesRow struct {
@@ -73,6 +73,7 @@ type GetMarketplacesRow struct {
 	Name       string
 	LogoUrl    pgtype.Text
 	IsVerified pgtype.Bool
+	ShortName  string
 }
 
 func (q *Queries) GetMarketplaces(ctx context.Context, ownerExternalID pgtype.Int4) ([]GetMarketplacesRow, error) {
@@ -89,6 +90,7 @@ func (q *Queries) GetMarketplaces(ctx context.Context, ownerExternalID pgtype.In
 			&i.Name,
 			&i.LogoUrl,
 			&i.IsVerified,
+			&i.ShortName,
 		); err != nil {
 			return nil, err
 		}
@@ -120,7 +122,7 @@ func (q *Queries) IsUserTheOwnerOfMarketplace(ctx context.Context, arg IsUserThe
 
 const softDeleteMarketplace = `-- name: SoftDeleteMarketplace :exec
 update web_apps
-set is_deleted=true
+set is_deleted= true
 where id = $1
 `
 

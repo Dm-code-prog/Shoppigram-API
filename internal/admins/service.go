@@ -16,10 +16,12 @@ import (
 type (
 	// Marketplace defines the structure for a Marketplace
 	Marketplace struct {
-		ID         uuid.UUID `json:"id"`
-		Name       string    `json:"name"`
-		LogoURL    string    `json:"logo_url"`
-		IsVerified bool      `json:"is_verified"`
+		ID                    uuid.UUID `json:"id"`
+		Name                  string    `json:"name"`
+		LogoURL               string    `json:"logo_url"`
+		ShortName             string    `json:"short_name"`
+		IsVerified            bool      `json:"is_verified"`
+		OnlinePaymentsEnabled bool      `json:"online_payments_enabled"`
 	}
 
 	// GetMarketplacesRequest defines the request for the GetMarketplaces endpoint
@@ -36,6 +38,7 @@ type (
 	CreateMarketplaceRequest struct {
 		ShortName      string `json:"short_name"`
 		Name           string `json:"name"`
+		Currency       string `json:"currency"`
 		ExternalUserID int64
 	}
 
@@ -64,7 +67,6 @@ type (
 		Name           string  `json:"name"`
 		Description    string  `json:"description"`
 		Price          float64 `json:"price"`
-		PriceCurrency  string  `json:"price_currency"`
 		Category       string  `json:"category,omitempty"`
 	}
 
@@ -82,7 +84,6 @@ type (
 		Name           string  `json:"name"`
 		Description    string  `json:"description"`
 		Price          float64 `json:"price"`
-		PriceCurrency  string  `json:"price_currency"`
 		Category       string  `json:"category,omitempty"`
 	}
 
@@ -174,6 +175,60 @@ type (
 	GetTelegramChannelsResponse struct {
 		Channels []TelegramChannel `json:"channels"`
 	}
+
+	// GetOrdersRequest is a filter for getting orders
+	GetOrdersRequest struct {
+		ExternalUserID int64
+		State          string
+		MarketplaceID  uuid.UUID
+		Limit          int
+		Offset         int
+	}
+
+	// Product represents a product in a marketplace
+	Product struct {
+		ID       uuid.UUID `json:"id"`
+		Name     string    `json:"name"`
+		Quantity int       `json:"quantity"`
+		Price    float64   `json:"price"`
+	}
+
+	// Order represents an order in a marketplace
+	Order struct {
+		ID            uuid.UUID `json:"id"`
+		MarketplaceID uuid.UUID `json:"marketplace_id"`
+		State         string    `json:"state"`
+		Type          string    `json:"type"`
+		CreatedAt     time.Time `json:"created_at"`
+		UpdatedAt     time.Time `json:"updated_at"`
+		ReadableID    int       `json:"readable_id"`
+		TotalPrice    float64   `json:"total_price"`
+		Currency      string    `json:"currency"`
+		BuyerUsername string    `json:"buyer_username"`
+		Products      []Product `json:"products"`
+	}
+
+	GetOrdersResponse struct {
+		Orders []Order `json:"orders"`
+	}
+
+	// GetBalanceRequest is a request to get the balance of a user
+	// Which is calculated as the sum of all online orders minus the commission
+	GetBalanceRequest struct {
+		ExternalUserID int64
+	}
+
+	// Balance represents the balance of a user
+	// in a currency
+	Balance struct {
+		Currency string  `json:"currency"`
+		Balance  float64 `json:"balance"`
+	}
+
+	// GetBalanceResponse is a response to GetBalanceRequest
+	GetBalanceResponse struct {
+		Balances []Balance `json:"balances"`
+	}
 )
 
 type (
@@ -188,6 +243,9 @@ type (
 		CreateProduct(ctx context.Context, req CreateProductRequest) (CreateProductResponse, error)
 		UpdateProduct(ctx context.Context, req UpdateProductRequest) error
 		DeleteProduct(ctx context.Context, req DeleteProductRequest) error
+
+		GetOrders(ctx context.Context, request GetOrdersRequest) (GetOrdersResponse, error)
+		GetBalance(ctx context.Context, req GetBalanceRequest) (GetBalanceResponse, error)
 
 		IsUserTheOwnerOfMarketplace(ctx context.Context, externalUserID int64, webAppID uuid.UUID) (bool, error)
 		IsUserTheOwnerOfProduct(ctx context.Context, externalUserID int64, productID uuid.UUID) (bool, error)
@@ -221,6 +279,9 @@ type (
 		UpdateProduct(ctx context.Context, req UpdateProductRequest) error
 		DeleteProduct(ctx context.Context, req DeleteProductRequest) error
 
+		GetOrders(ctx context.Context, req GetOrdersRequest) (GetOrdersResponse, error)
+		GetBalance(ctx context.Context, req GetBalanceRequest) (GetBalanceResponse, error)
+
 		CreateProductImageUploadURL(ctx context.Context, request CreateProductImageUploadURLRequest) (CreateProductImageUploadURLResponse, error)
 		CreateMarketplaceLogoUploadURL(ctx context.Context, request CreateMarketplaceLogoUploadURLRequest) (CreateMarketplaceLogoUploadURLResponse, error)
 
@@ -249,8 +310,7 @@ var (
 	ErrorInvalidName             = errors.New("invalid name")
 	ErrorMaxMarketplacesExceeded = errors.New("max marketplaces exceeded")
 
-	ErrorMaxProductsExceeded    = errors.New("max products exceeded")
-	ErrorInvalidProductCurrency = errors.New("invalid product currency")
+	ErrorMaxProductsExceeded = errors.New("max products exceeded")
 
 	ErrorOpNotAllowed = errors.New("operation not allowed")
 
@@ -419,6 +479,25 @@ func (s *DefaultService) DeleteProduct(ctx context.Context, req DeleteProductReq
 	}
 
 	return nil
+}
+
+// GetOrders gets a list of orders
+func (s *DefaultService) GetOrders(ctx context.Context, req GetOrdersRequest) (GetOrdersResponse, error) {
+	orders, err := s.repo.GetOrders(ctx, req)
+	if err != nil {
+		return GetOrdersResponse{}, errors.Wrap(err, "s.repo.GetOrders")
+	}
+
+	return orders, nil
+}
+
+func (s *DefaultService) GetBalance(ctx context.Context, req GetBalanceRequest) (GetBalanceResponse, error) {
+	balances, err := s.repo.GetBalance(ctx, req)
+	if err != nil {
+		return GetBalanceResponse{}, errors.Wrap(err, "s.repo.GetBalance")
+	}
+
+	return balances, nil
 }
 
 // CreateProductImageUploadURL creates a new upload URL for a product image

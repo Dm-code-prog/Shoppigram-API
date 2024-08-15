@@ -2,6 +2,7 @@ package admins
 
 import (
 	"context"
+	"encoding/json"
 	"strings"
 
 	"github.com/google/uuid"
@@ -13,6 +14,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pkg/errors"
 	"github.com/shoppigram-com/marketplace-api/internal/admins/generated"
+)
+
+const (
+	defaultLimit = 50
 )
 
 // Pg implements the Repository interface
@@ -47,6 +52,7 @@ func (p *Pg) GetMarketplaces(ctx context.Context, req GetMarketplacesRequest) (G
 			Name:       v.Name,
 			LogoURL:    v.LogoUrl.String,
 			IsVerified: v.IsVerified.Bool,
+			ShortName:  v.ShortName,
 		}
 	}
 
@@ -126,18 +132,13 @@ func (p *Pg) CreateProduct(ctx context.Context, req CreateProductRequest) (Creat
 	}
 
 	id, err := p.gen.CreateProduct(ctx, generated.CreateProductParams{
-		WebAppID:      req.WebAppID,
-		Name:          req.Name,
-		Price:         req.Price,
-		PriceCurrency: generated.ProductCurrency(req.PriceCurrency),
-		Description:   req.Description,
-		Category:      req.Category,
+		WebAppID:    req.WebAppID,
+		Name:        req.Name,
+		Price:       req.Price,
+		Description: req.Description,
+		Category:    req.Category,
 	})
 	if err != nil {
-		if strings.Contains(err.Error(), pgerrcode.InvalidTextRepresentation) {
-			return CreateProductResponse{}, ErrorInvalidProductCurrency
-		}
-
 		return CreateProductResponse{}, errors.Wrap(err, "p.gen.CreateProduct")
 	}
 
@@ -147,18 +148,14 @@ func (p *Pg) CreateProduct(ctx context.Context, req CreateProductRequest) (Creat
 // UpdateProduct updates the product of a marketplace in the database
 func (p *Pg) UpdateProduct(ctx context.Context, req UpdateProductRequest) error {
 	execRes, err := p.gen.UpdateProduct(ctx, generated.UpdateProductParams{
-		ID:            req.ID,
-		WebAppID:      req.WebAppID,
-		Name:          req.Name,
-		Price:         req.Price,
-		PriceCurrency: generated.ProductCurrency(req.PriceCurrency),
-		Description:   req.Description,
-		Category:      req.Category,
+		ID:          req.ID,
+		WebAppID:    req.WebAppID,
+		Name:        req.Name,
+		Price:       req.Price,
+		Description: req.Description,
+		Category:    req.Category,
 	})
 	if err != nil {
-		if strings.Contains(err.Error(), pgerrcode.InvalidTextRepresentation) {
-			return ErrorInvalidProductCurrency
-		}
 		return errors.Wrap(err, "p.gen.UpdateProduct")
 	}
 
@@ -181,6 +178,73 @@ func (p *Pg) DeleteProduct(ctx context.Context, req DeleteProductRequest) error 
 	}
 
 	return nil
+}
+
+// GetOrders gets a list of orders and allows filtering by marketplace and state
+func (p *Pg) GetOrders(ctx context.Context, req GetOrdersRequest) (GetOrdersResponse, error) {
+	params := generated.GetOrdersParams{
+		Limit:           int32(req.Limit),
+		Offset:          int32(req.Offset),
+		OwnerExternalID: int32(req.ExternalUserID),
+		MarketplaceID:   req.MarketplaceID,
+		State:           req.State,
+	}
+	if req.Limit == 0 {
+		params.Limit = defaultLimit
+	}
+
+	rows, err := p.gen.GetOrders(ctx, params)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return GetOrdersResponse{Orders: make([]Order, 0)}, err
+		}
+
+		return GetOrdersResponse{}, errors.Wrap(err, "p.gen.GetOrders")
+	}
+
+	orders := make([]Order, len(rows))
+
+	for i, v := range rows {
+		products := make([]Product, 0)
+		err := json.Unmarshal(v.Products, &products)
+		if err != nil {
+			return GetOrdersResponse{}, errors.Wrap(err, "json.Unmarshal")
+		}
+
+		orders[i] = Order{
+			ID:            v.ID,
+			MarketplaceID: v.MarketplaceID.Bytes,
+			ReadableID:    int(v.ReadableID.Int64),
+			TotalPrice:    float64(v.TotalPrice),
+			BuyerUsername: v.BuyerUsername.String,
+			Products:      products,
+			State:         string(v.State),
+			CreatedAt:     v.CreatedAt.Time,
+			UpdatedAt:     v.UpdatedAt.Time,
+			Currency:      string(v.Currency),
+			Type:          string(v.Type),
+		}
+	}
+
+	return GetOrdersResponse{Orders: orders}, nil
+}
+
+// GetBalance returns balances in all currencies
+func (p *Pg) GetBalance(ctx context.Context, req GetBalanceRequest) (GetBalanceResponse, error) {
+	rows, err := p.gen.GetBalance(ctx, pgtype.Int4{Int32: int32(req.ExternalUserID), Valid: true})
+	if err != nil {
+		return GetBalanceResponse{}, errors.Wrap(err, "p.gen.GetBalance")
+	}
+
+	balances := make([]Balance, 0, len(rows))
+	for _, r := range rows {
+		balances = append(balances, Balance{
+			Currency: string(r.Currency),
+			Balance:  float64(r.Balance),
+		})
+	}
+
+	return GetBalanceResponse{Balances: balances}, nil
 }
 
 // IsUserTheOwnerOfMarketplace checks if the user is the owner of the marketplace
