@@ -413,7 +413,7 @@ func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotific
 		msg := tgbotapi.NewMessage(notification.ExternalUserID, customerMsgTxt)
 		msg.ParseMode = tgbotapi.ModeMarkdownV2
 
-		tgLinkPath := "/app/" + notification.WebAppID.String() + "/order/" + notification.ID.String()
+		tgLinkPath := notification.WebAppID.String() + "/order/" + notification.ID.String()
 		tgLink, err := s.getTelegramLink(tgLinkPath)
 		if err != nil {
 			return errors.Wrap(err, "getTelegramLink()")
