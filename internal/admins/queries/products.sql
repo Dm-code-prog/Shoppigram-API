@@ -7,7 +7,7 @@ values (@web_app_id::uuid,
         $3,
         nullif(@category::varchar(30), ''),
         '',
-		nullif(@extra_properties::json, ''))
+		@extra_properties
 returning id;
 
 -- name: CountMarketplaceProducts :one
