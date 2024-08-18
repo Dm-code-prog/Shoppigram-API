@@ -21,6 +21,7 @@ type (
 		Quantity            int32     `json:"quantity,omitempty"`
 		Category            string    `json:"category,omitempty"`
 		Price               float64   `json:"price"`
+		ExtraProperties     string    `json:"extra_properties"`
 		LegacyPriceCurrency string    `json:"price_currency"`
 	}
 

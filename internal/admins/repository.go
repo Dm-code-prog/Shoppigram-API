@@ -149,12 +149,13 @@ func (p *Pg) CreateProduct(ctx context.Context, req CreateProductRequest) (Creat
 // UpdateProduct updates the product of a marketplace in the database
 func (p *Pg) UpdateProduct(ctx context.Context, req UpdateProductRequest) error {
 	execRes, err := p.gen.UpdateProduct(ctx, generated.UpdateProductParams{
-		ID:          req.ID,
-		WebAppID:    req.WebAppID,
-		Name:        req.Name,
-		Price:       req.Price,
-		Description: req.Description,
-		Category:    req.Category,
+		ID:              req.ID,
+		WebAppID:        req.WebAppID,
+		Name:            req.Name,
+		Price:           req.Price,
+		Description:     req.Description,
+		Category:        req.Category,
+		ExtraProperties: req.ExtraProperties,
 	})
 	if err != nil {
 		return errors.Wrap(err, "p.gen.UpdateProduct")

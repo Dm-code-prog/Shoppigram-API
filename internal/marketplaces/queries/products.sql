@@ -5,6 +5,7 @@ select p.id,
        p.category,
        p.price,
        p.price_currency::text     as price_currency,
+	   p.extra_properties::text   as extra_properties,
        wa.id                      as web_app_id,
        wa.name                    as web_app_name,
        wa.short_name              as web_app_short_name,
@@ -31,7 +32,8 @@ SELECT wa.id,
                                'description', p.description,
                                'category', p.category,
                                'price', p.price,
-                               'price_currency', p.price_currency::text
+                               'price_currency', p.price_currency::text,
+							   'extra_properties', p.extra_properties::text
                        )
                                ) FILTER (WHERE p.id IS NOT NULL),
                        '[]'::json

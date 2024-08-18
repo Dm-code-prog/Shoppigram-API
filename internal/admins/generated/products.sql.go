@@ -35,7 +35,7 @@ values ($4::uuid,
         $3,
         nullif($6::varchar(30), ''),
         '',
-		nullif(to_json($7), ''))
+		$7)
 returning id
 `
 
@@ -46,7 +46,7 @@ type CreateProductParams struct {
 	WebAppID        uuid.UUID
 	Description     string
 	Category        string
-	ExtraProperties interface{}
+	ExtraProperties []byte
 }
 
 func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (uuid.UUID, error) {
@@ -118,23 +118,25 @@ func (q *Queries) IsUserTheOwnerOfWebApp(ctx context.Context, arg IsUserTheOwner
 
 const updateProduct = `-- name: UpdateProduct :execresult
 update products
-set name           = $1,
-    description    = nullif($5::text, ''),
-    price          = $2,
-    price_currency = $3,
-    category       = nullif($6::varchar(30), '')
-where web_app_id = $7::uuid
-  and id = $4
+set name             = $1,
+    description      = nullif($6::text, ''),
+    price            = $2,
+    price_currency   = $3,
+    category         = nullif($7::varchar(30), ''),
+	extra_properties = $4
+where web_app_id = $8::uuid
+  and id = $5
 `
 
 type UpdateProductParams struct {
-	Name          string
-	Price         float64
-	PriceCurrency string
-	ID            uuid.UUID
-	Description   string
-	Category      string
-	WebAppID      uuid.UUID
+	Name            string
+	Price           float64
+	PriceCurrency   string
+	ExtraProperties []byte
+	ID              uuid.UUID
+	Description     string
+	Category        string
+	WebAppID        uuid.UUID
 }
 
 func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (pgconn.CommandTag, error) {
@@ -142,6 +144,7 @@ func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (p
 		arg.Name,
 		arg.Price,
 		arg.PriceCurrency,
+		arg.ExtraProperties,
 		arg.ID,
 		arg.Description,
 		arg.Category,

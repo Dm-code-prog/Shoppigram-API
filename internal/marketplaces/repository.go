@@ -3,11 +3,12 @@ package marketplaces
 import (
 	"context"
 	"encoding/json"
+	"strings"
+
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/opentracing/opentracing-go/log"
-	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"

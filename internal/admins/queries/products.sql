@@ -7,7 +7,7 @@ values (@web_app_id::uuid,
         $3,
         nullif(@category::varchar(30), ''),
         '',
-		@extra_properties
+		@extra_properties)
 returning id;
 
 -- name: CountMarketplaceProducts :one
@@ -17,13 +17,14 @@ where web_app_id = @web_app_id::uuid;
 
 -- name: UpdateProduct :execresult
 update products
-set name           = $1,
-    description    = nullif(@description::text, ''),
-    price          = $2,
-    price_currency = $3,
-    category       = nullif(@category::varchar(30), '')
+set name             = $1,
+    description      = nullif(@description::text, ''),
+    price            = $2,
+    price_currency   = $3,
+    category         = nullif(@category::varchar(30), ''),
+	extra_properties = $4
 where web_app_id = @web_app_id::uuid
-  and id = $4;
+  and id = $5;
 
 -- name: DeleteProduct :execresult
 delete
