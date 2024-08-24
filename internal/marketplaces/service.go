@@ -97,6 +97,7 @@ type (
 	GetOrderResponse struct {
 		Products        []Product `json:"products"`
 		TotalPrice      float64   `json:"total_price"`
+		Currency        string    `json:"currency"`
 		WebAppName      string    `json:"web_app_name"`
 		WebAppShortName string    `json:"web_app_short_name"`
 		ReadableOrderID int       `json:"readable_order_id"`
