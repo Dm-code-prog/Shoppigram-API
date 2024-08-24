@@ -164,6 +164,7 @@ func (pg *Pg) GetOrder(ctx context.Context, orderId uuid.UUID, userId int64) (Ge
 		totalPrice     float64
 		readableID     int
 		sellerUsername string
+		currency       string
 	)
 
 	for i, v := range rows {
@@ -179,6 +180,7 @@ func (pg *Pg) GetOrder(ctx context.Context, orderId uuid.UUID, userId int64) (Ge
 		totalPrice += v.Price * float64(v.Quantity)
 		readableID = int(v.ReadableID.Int64)
 		sellerUsername = v.SellerUsername.String
+		currency = v.PriceCurrency
 	}
 
 	return GetOrderResponse{
@@ -188,5 +190,6 @@ func (pg *Pg) GetOrder(ctx context.Context, orderId uuid.UUID, userId int64) (Ge
 		TotalPrice:      totalPrice,
 		ReadableOrderID: readableID,
 		SellerUsername:  sellerUsername,
+		Currency:        currency,
 	}, nil
 }
