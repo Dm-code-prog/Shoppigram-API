@@ -33,6 +33,9 @@ jobs:
         run: |
           go vet --mod=readonly ./...
           go test --mod=readonly -cover -v ./...
+      - name: Set up Docker Buildx
+        run: |
+          docker buildx create --use
       - name: Build the image and Push to ECR
         id: build_and_push_image
         env:
@@ -40,10 +43,11 @@ jobs:
           ECR_REPOSITORY: shoppigram/${{ vars.SERVICE_NAME }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
-          docker build -t marketplace-api:$IMAGE_TAG --platform linux/arm64 .
-          
-          docker tag marketplace-api:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          
+          docker buildx build \
+            --platform linux/arm64 \
+            --tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+            --load .
+ 
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           echo "image=$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" >> $GITHUB_OUTPUT
 
