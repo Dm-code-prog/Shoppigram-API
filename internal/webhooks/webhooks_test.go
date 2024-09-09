@@ -13,16 +13,17 @@ type inData struct {
 	paymentMaxDuration time.Duration
 }
 
-var (
-	duration, _        = time.ParseDuration("24h")
-	orderUpdateTime, _ = time.Parse(time.DateTime, "2024-07-29 12:35:00")
+func TestCloudPaymentCheckPayment(t *testing.T) {
+	duration, _ := time.ParseDuration("24h")
+	orderUpdateTime, _ := time.Parse(time.DateTime, "2024-07-29 12:35:00")
 
-	CloudPaymentsCheckPaymentTests = map[string]struct {
-		in  inData
-		out int
+	tests := []struct {
+		in   inData
+		out  int
+		name string
 	}{
-		"valid payment": {
-			inData{
+		{
+			in: inData{
 				check: CloudPaymentsCheckRequest{
 					InvoiceId: func() *string {
 						id := "05b42581-0773-46ad-99ff-5c96ca4ed1f2"
@@ -42,11 +43,11 @@ var (
 				},
 				paymentMaxDuration: duration,
 			},
-			cloudPaymentsResponseCodeSuccess,
+			out: cloudPaymentsResponseCodeSuccess,
 		},
 
-		"wrong InvoiceID": {
-			inData{
+		{
+			in: inData{
 				check: CloudPaymentsCheckRequest{
 					InvoiceId: func() *string {
 						id := "15b42581-0773-46ad-99ff-5c96ca4ed1f2"
@@ -66,11 +67,11 @@ var (
 				},
 				paymentMaxDuration: duration,
 			},
-			cloudPaymentsCheckResponseCodeWrongInvoiceID,
+			out: cloudPaymentsCheckResponseCodeWrongInvoiceID,
 		},
 
-		"wrong payment amount": {
-			inData{
+		{
+			in: inData{
 				check: CloudPaymentsCheckRequest{
 					InvoiceId: func() *string {
 						id := "05b42581-0773-46ad-99ff-5c96ca4ed1f2"
@@ -90,11 +91,11 @@ var (
 				},
 				paymentMaxDuration: duration,
 			},
-			cloudPaymentsCheckResponseCodeWrongSum,
+			out: cloudPaymentsCheckResponseCodeWrongSum,
 		},
 
-		"wrong currency": {
-			inData{
+		{
+			in: inData{
 				check: CloudPaymentsCheckRequest{
 					InvoiceId: func() *string {
 						id := "05b42581-0773-46ad-99ff-5c96ca4ed1f2"
@@ -114,11 +115,11 @@ var (
 				},
 				paymentMaxDuration: duration,
 			},
-			cloudPaymentsCheckResponseCodeWrongSum,
+			out: cloudPaymentsCheckResponseCodeWrongSum,
 		},
 
-		"payment expired": {
-			inData{
+		{
+			in: inData{
 				check: CloudPaymentsCheckRequest{
 					InvoiceId: func() *string {
 						id := "05b42581-0773-46ad-99ff-5c96ca4ed1f2"
@@ -138,10 +139,10 @@ var (
 				},
 				paymentMaxDuration: duration,
 			},
-			cloudPaymentsCheckResponseCodeTransactionExpired,
+			out: cloudPaymentsCheckResponseCodeTransactionExpired,
 		},
-		"empty request": {
-			inData{
+		{
+			in: inData{
 				check: CloudPaymentsCheckRequest{},
 				orderInfo: Order{
 					ID:        uuid.MustParse("05b42581-0773-46ad-99ff-5c96ca4ed1f2"),
@@ -151,18 +152,15 @@ var (
 				},
 				paymentMaxDuration: duration,
 			},
-			cloudPaymentsCheckResponseCodeWrongInvoiceID,
+			out: cloudPaymentsCheckResponseCodeWrongInvoiceID,
 		},
 	}
-)
 
-func TestCloudPaymentCheckPayment(t *testing.T) {
-	for name, test := range CloudPaymentsCheckPaymentTests {
-		t.Run(name, func(t *testing.T) {
-			t.Parallel()
-			out := checkPayment(test.in.check, test.in.orderInfo, test.in.paymentMaxDuration)
-			if out != test.out {
-				t.Errorf("got %d, want %d", out, test.out)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			out := checkPayment(tt.in.check, tt.in.orderInfo, tt.in.paymentMaxDuration)
+			if out != tt.out {
+				t.Errorf("got %d, want %d", out, tt.out)
 			}
 		})
 	}
