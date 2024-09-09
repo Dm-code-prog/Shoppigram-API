@@ -13,13 +13,12 @@ import (
 // Pg implements the Repository interface
 // using PostgreSQL as the backing store.
 type Pg struct {
-	gen           *generated.Queries
-	encryptionKey string
+	gen *generated.Queries
 }
 
 // NewPg creates a new Pg
-func NewPg(db *pgxpool.Pool, encryptionKey string) *Pg {
-	return &Pg{gen: generated.New(db), encryptionKey: encryptionKey}
+func NewPg(db *pgxpool.Pool) *Pg {
+	return &Pg{gen: generated.New(db)}
 }
 
 // CreateOrUpdateTgUser creates or updates a user record

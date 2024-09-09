@@ -1,0 +1,163 @@
+{
+    "taskDefinitionArn": "arn:aws:ecs:eu-central-1:355131767747:task-definition/marketplace-api:19",
+    "containerDefinitions": [
+        {
+            "name": "marketplace-api-server",
+            "image": "355131767747.dkr.ecr.eu-central-1.amazonaws.com/shoppigram/marketplace-api:latest",
+            "cpu": 0,
+            "portMappings": [
+                {
+                    "containerPort": 80,
+                    "hostPort": 80,
+                    "protocol": "tcp",
+                    "appProtocol": "http"
+                }
+            ],
+            "essential": true,
+            "environment": [
+                {
+                    "name": "HTTP_PORT",
+                    "value": "80"
+                },
+                {
+                    "name": "NEW_ORDER_NOTIFICATIONS_IS_ENABLED",
+                    "value": "false"
+                },
+                {
+                    "name": "NEW_MARKETPLACE_NOTIFICATIONS_IS_ENABLED",
+                    "value": "false"
+                },
+                {
+                    "name": "VERIFIED_MARKETPLACE_NOTIFICATIONS_IS_ENABLED",
+                    "value": "false"
+                }
+            ],
+            "mountPoints": [],
+            "volumesFrom": [],
+            "linuxParameters": {
+                "initProcessEnabled": true
+            },
+            "secrets": [
+                {
+                    "name": "POSTGRES_DSN",
+                    "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/production/marketplace-api/POSTGRES_DSN"
+                },
+                {
+                    "name": "BOT_TOKEN",
+                    "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/production/marketplace-api/BOT_TOKEN"
+                },
+                {
+                    "name": "BOT_ID",
+                    "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/production/marketplace-api/BOT_ID"
+                },
+                {
+                    "name": "BOT_NAME",
+                    "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/production/marketplace-api/BOT_NAME"
+                },
+                {
+                    "name": "DIGITALOCEAN_SPACES_ENDPOINT",
+                    "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/production/marketplace-api/DIGITALOCEAN_SPACES_ENDPOINT"
+                },
+                {
+                    "name": "DIGITALOCEAN_SPACES_BUCKET",
+                    "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/production/marketplace-api/DIGITALOCEAN_SPACES_BUCKET"
+                },
+                {
+                    "name": "DIGITALOCEAN_SPACES_KEY",
+                    "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/production/marketplace-api/DIGITALOCEAN_SPACES_KEY"
+                },
+                {
+                    "name": "DIGITALOCEAN_SPACES_SECRET",
+                    "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/production/marketplace-api/DIGITALOCEAN_SPACES_SECRET"
+                },
+                {
+                    "name": "TELEGRAM_WEBHOOK_SECRET",
+                    "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/production/marketplace-api/TELEGRAM_WEBHOOK_SECRET"
+                },
+                {
+                    "name": "CLOUDPAYMENTS_LOGIN",
+                    "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/production/marketplace-api/CLOUDPAYMENTS_LOGIN"
+                },
+                {
+                    "name": "CLOUDPAYMENTS_PASSWORD",
+                    "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/production/marketplace-api/CLOUDPAYMENTS_PASSWORD"
+                }
+            ],
+            "logConfiguration": {
+                "logDriver": "awslogs",
+                "options": {
+                    "awslogs-group": "shoppigram.marketplace-api",
+                    "awslogs-create-group": "true",
+                    "awslogs-region": "eu-central-1",
+                    "awslogs-stream-prefix": "shoppigram.marketplace-api"
+                }
+            },
+            "healthCheck": {
+                "command": [
+                    "CMD-SHELL",
+                    "wget -q --spider http://localhost:7777/health || exit 1"
+                ],
+                "interval": 30,
+                "timeout": 5,
+                "retries": 3
+            },
+            "systemControls": []
+        }
+    ],
+    "family": "marketplace-api",
+    "taskRoleArn": "arn:aws:iam::355131767747:role/service.marketplace-api",
+    "executionRoleArn": "arn:aws:iam::355131767747:role/service.ecs",
+    "networkMode": "bridge",
+    "revision": 19,
+    "volumes": [],
+    "status": "ACTIVE",
+    "requiresAttributes": [
+        {
+            "name": "com.amazonaws.ecs.capability.logging-driver.awslogs"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.docker-remote-api.1.24"
+        },
+        {
+            "name": "ecs.capability.execution-role-awslogs"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.ecr-auth"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.docker-remote-api.1.19"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.task-iam-role"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.docker-remote-api.1.25"
+        },
+        {
+            "name": "ecs.capability.container-health-check"
+        },
+        {
+            "name": "ecs.capability.execution-role-ecr-pull"
+        },
+        {
+            "name": "ecs.capability.secrets.ssm.environment-variables"
+        },
+        {
+            "name": "com.amazonaws.ecs.capability.docker-remote-api.1.29"
+        }
+    ],
+    "placementConstraints": [],
+    "compatibilities": [
+        "EC2"
+    ],
+    "runtimePlatform": {
+        "cpuArchitecture": "ARM64"
+    },
+    "requiresCompatibilities": [
+        "EC2"
+    ],
+    "cpu": "360",
+    "memory": "240",
+    "registeredAt": "2024-09-08T15:10:42.405000+03:00",
+    "registeredBy": "arn:aws:iam::355131767747:user/dmkozloff"
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/shoppigram-com/marketplace-api/health"
 	"net/http"
 	"os"
 	"strings"
@@ -115,7 +116,7 @@ func main() {
 
 	////////////////////////////////////// TELEGRAM USERS //////////////////////////////////////
 	authMw := telegramusers.MakeAuthMiddleware(config.Bot.Token)
-	tgUsersRepo := telegramusers.NewPg(db, config.Encryption.Key)
+	tgUsersRepo := telegramusers.NewPg(db)
 	tgUsersService := telegramusers.NewServiceWithObservability(
 		telegramusers.New(tgUsersRepo),
 		log.With(zap.String("service", "telegram_users")),
@@ -149,9 +150,9 @@ func main() {
 	notificationsService := notifications.New(
 		notificationsRepo,
 		log.With(zap.String("service", "notifications")),
-		time.Duration(config.NewOrderNotifications.Timeout)*time.Second,
-		time.Duration(config.NewMarketplaceNotifications.Timeout)*time.Second,
-		time.Duration(config.VerifiedMarketplaceNotifications.Timeout)*time.Second,
+		time.Duration(config.NewOrderNotifications.TimeoutSec)*time.Second,
+		time.Duration(config.NewMarketplaceNotifications.TimeoutSec)*time.Second,
+		time.Duration(config.VerifiedMarketplaceNotifications.TimeoutSec)*time.Second,
 		config.Bot.Token,
 		config.Bot.Name,
 		config.DigitalOcean.Spaces.Endpoint[:insertPosition]+
@@ -243,7 +244,23 @@ func main() {
 		log.Info("starting HTTP server", zap.String("port", config.HTTP.Port))
 		return httpServer.ListenAndServe()
 	}, func(err error) {
-		_ = httpServer.Shutdown(ctx)
+		err = httpServer.Shutdown(ctx)
+		if err != nil {
+			log.Error("failed to shutdown HTTP server", logging.SilentError(err))
+		}
+	})
+
+	healthR := chi.NewRouter()
+	healthR.Mount("/health", health.NewHandler())
+	healthServer := &http.Server{
+		Addr:    ":7777",
+		Handler: healthR,
+	}
+	g.Add(healthServer.ListenAndServe, func(err error) {
+		err = healthServer.Shutdown(ctx)
+		if err != nil {
+			log.Error("failed to shutdown health server", logging.SilentError(err))
+		}
 	})
 
 	if err := g.Run(); err != nil {
