@@ -51,7 +51,7 @@ jobs:
         id: task-definition
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-          task-definition: task-definition.json
+          task-definition: ./aws/ecs/production/task-definition.json
           container-name: marketplace-api-server
           image: ${{ steps.build_and_push_image.outputs.image }}
 

@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/shoppigram-com/marketplace-api/health"
+	"github.com/shoppigram-com/marketplace-api/packages/health"
 	"net/http"
 	"os"
 	"strings"
