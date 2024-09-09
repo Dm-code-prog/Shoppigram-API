@@ -1,4 +1,4 @@
-FROM --platform=linux/arm64 golang as builder
+FROM  golang as builder
 
 WORKDIR /app
 
@@ -9,7 +9,7 @@ COPY . .
 
 RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/api/main.go ./cmd/api/environment.go ./cmd/api/adapters.go
 
-FROM --platform=linux/arm64 alpine:latest
+FROM alpine:latest
 
 COPY --from=builder /app/main /app/main
 
