@@ -1,8 +1,8 @@
 name: Build and Deploy to AWS ECS
 on:
-  push:
-    tags:
-      - 'v*'
+  pull_request:
+    branches:
+      - main
 
 jobs:
   deploy_to_ecs:
@@ -26,7 +26,7 @@ jobs:
         id: build_and_push_image
         env:
           ECR_REGISTRY: ${{ vars.AWS_ACCOUNT_ID }}.dkr.ecr.${{ vars.AWS_REGION }}.amazonaws.com
-          ECR_REPOSITORY: ${{ vars.AWS_ECR_REPOSITORY_NAME }}/${{ vars.SERVICE_NAME }}
+          ECR_REPOSITORY: ${{ vars.AWS_ECR_REPOSITORY_NAME_DEV }}/${{ vars.SERVICE_NAME }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build -t marketplace-api:$IMAGE_TAG .
@@ -40,7 +40,7 @@ jobs:
         id: task-definition
         uses: aws-actions/amazon-ecs-render-task-definition@v1
         with:
-          task-definition: ./aws/ecs/production/task-definition.json
+          task-definition: ./aws/ecs/dev/task-definition.json
           container-name: marketplace-api-server
           image: ${{ steps.build_and_push_image.outputs.image }}
 
@@ -49,5 +49,5 @@ jobs:
         with:
           task-definition: ${{ steps.task-definition.outputs.task-definition }}
           service: ${{ vars.SERVICE_NAME }}
-          cluster: ${{ vars.AWS_ECS_CLUSTER_NAME }}
+          cluster: ${{ vars.AWS_ECS_CLUSTER_NAME_DEV }}
           wait-for-service-stability: true
