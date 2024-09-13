@@ -2,7 +2,7 @@ name: Build and Deploy to AWS ECS
 on:
   pull_request:
     branches:
-      - SHT-*
+      - main
 
 jobs:
   deploy_to_ecs:
