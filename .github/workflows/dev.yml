@@ -19,7 +19,6 @@ jobs:
       - name: Login to Amazon ECR
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v1
-
       - uses: actions/checkout@v4
 
       - name: Build the image and Push to ECR
