@@ -39,47 +39,47 @@
       "secrets": [
         {
           "name": "POSTGRES_DSN",
-          "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/production/marketplace-api/POSTGRES_DSN"
+          "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/dev/marketplace-api/POSTGRES_DSN"
         },
         {
           "name": "BOT_TOKEN",
-          "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/production/marketplace-api/BOT_TOKEN"
+          "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/dev/marketplace-api/BOT_TOKEN"
         },
         {
           "name": "BOT_ID",
-          "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/production/marketplace-api/BOT_ID"
+          "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/dev/marketplace-api/BOT_ID"
         },
         {
           "name": "BOT_NAME",
-          "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/production/marketplace-api/BOT_NAME"
+          "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/dev/marketplace-api/BOT_NAME"
         },
         {
           "name": "DIGITALOCEAN_SPACES_ENDPOINT",
-          "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/production/marketplace-api/DIGITALOCEAN_SPACES_ENDPOINT"
+          "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/dev/marketplace-api/DIGITALOCEAN_SPACES_ENDPOINT"
         },
         {
           "name": "DIGITALOCEAN_SPACES_BUCKET",
-          "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/production/marketplace-api/DIGITALOCEAN_SPACES_BUCKET"
+          "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/dev/marketplace-api/DIGITALOCEAN_SPACES_BUCKET"
         },
         {
           "name": "DIGITALOCEAN_SPACES_KEY",
-          "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/production/marketplace-api/DIGITALOCEAN_SPACES_KEY"
+          "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/dev/marketplace-api/DIGITALOCEAN_SPACES_KEY"
         },
         {
           "name": "DIGITALOCEAN_SPACES_SECRET",
-          "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/production/marketplace-api/DIGITALOCEAN_SPACES_SECRET"
+          "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/dev/marketplace-api/DIGITALOCEAN_SPACES_SECRET"
         },
         {
           "name": "TELEGRAM_WEBHOOK_SECRET",
-          "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/production/marketplace-api/TELEGRAM_WEBHOOK_SECRET"
+          "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/dev/marketplace-api/TELEGRAM_WEBHOOK_SECRET"
         },
         {
           "name": "CLOUDPAYMENTS_LOGIN",
-          "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/production/marketplace-api/CLOUDPAYMENTS_LOGIN"
+          "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/dev/marketplace-api/CLOUDPAYMENTS_LOGIN"
         },
         {
           "name": "CLOUDPAYMENTS_PASSWORD",
-          "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/production/marketplace-api/CLOUDPAYMENTS_PASSWORD"
+          "valueFrom": "arn:aws:ssm:eu-central-1:355131767747:parameter/shoppigram/dev/marketplace-api/CLOUDPAYMENTS_PASSWORD"
         }
       ],
       "logConfiguration": {
@@ -103,7 +103,7 @@
       "systemControls": []
     }
   ],
-  "family": "marketplace-api",
+  "family": "marketplace-api-dev",
   "taskRoleArn": "arn:aws:iam::355131767747:role/service.marketplace-api",
   "executionRoleArn": "arn:aws:iam::355131767747:role/service.ecs",
   "networkMode": "bridge",
@@ -112,8 +112,8 @@
   "requiresCompatibilities": [
     "EC2"
   ],
-  "cpu": "360",
-  "memory": "240",
+  "cpu": "120",
+  "memory": "120",
   "runtimePlatform": {
     "cpuArchitecture": "X86_64"
   },
