@@ -20,7 +20,6 @@ var templates embed.FS
 var validLangCodes []string = []string{"ru", "en"}
 
 const fallbackLanguage = "ru"
-const userKey = "user_key"
 const supportContactUrl = "https://t.me/ShoppigramSupport"
 const pathToButtonsText = "/buttons.json"
 
@@ -34,10 +33,9 @@ type (
 
 	// Product is a marketplace product
 	Product struct {
-		Name          string
-		Quantity      int
-		Price         float64
-		PriceCurrency string
+		Name     string
+		Quantity int
+		Price    float64
 	}
 
 	// AddUserToNewOrderNotificationsRequest creates a new order notification
