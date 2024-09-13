@@ -117,5 +117,11 @@
   "runtimePlatform": {
     "cpuArchitecture": "X86_64"
   },
-  "tags": []
+  "tags": [],
+  "placementStrategy": [
+    {
+        "field": "memory",
+        "type": "binpack"
+    }
+  ]
 }
