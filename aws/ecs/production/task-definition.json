@@ -1,5 +1,4 @@
 {
-  "taskDefinitionArn": "arn:aws:ecs:eu-central-1:355131767747:task-definition/marketplace-api:24",
   "containerDefinitions": [
     {
       "name": "marketplace-api-server",
@@ -108,44 +107,7 @@
   "taskRoleArn": "arn:aws:iam::355131767747:role/service.marketplace-api",
   "executionRoleArn": "arn:aws:iam::355131767747:role/service.ecs",
   "networkMode": "bridge",
-  "revision": 24,
   "volumes": [],
-  "status": "ACTIVE",
-  "requiresAttributes": [
-    {
-      "name": "com.amazonaws.ecs.capability.logging-driver.awslogs"
-    },
-    {
-      "name": "com.amazonaws.ecs.capability.docker-remote-api.1.24"
-    },
-    {
-      "name": "ecs.capability.execution-role-awslogs"
-    },
-    {
-      "name": "com.amazonaws.ecs.capability.ecr-auth"
-    },
-    {
-      "name": "com.amazonaws.ecs.capability.docker-remote-api.1.19"
-    },
-    {
-      "name": "com.amazonaws.ecs.capability.task-iam-role"
-    },
-    {
-      "name": "com.amazonaws.ecs.capability.docker-remote-api.1.25"
-    },
-    {
-      "name": "ecs.capability.container-health-check"
-    },
-    {
-      "name": "ecs.capability.execution-role-ecr-pull"
-    },
-    {
-      "name": "ecs.capability.secrets.ssm.environment-variables"
-    },
-    {
-      "name": "com.amazonaws.ecs.capability.docker-remote-api.1.29"
-    }
-  ],
   "placementConstraints": [],
   "compatibilities": [
     "EC2"
@@ -158,7 +120,5 @@
   "runtimePlatform": {
     "cpuArchitecture": "X86_64"
   },
-  "registeredAt": "2024-09-09T20:00:48.070Z",
-  "registeredBy": "arn:aws:iam::355131767747:user/github-actions",
   "tags": []
 }
