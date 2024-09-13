@@ -30,12 +30,12 @@ func (q *Queries) AddUserToNewOrderNotifications(ctx context.Context, arg AddUse
 
 const getAdminsNotificationList = `-- name: GetAdminsNotificationList :many
 with admins_batch as (select admin_chat_id
-	 			  	  from new_order_notifications_list
-					  where web_app_id = $1)
+                      from new_order_notifications_list
+                      where web_app_id = $1)
 select ab.admin_chat_id,
-	   u.language_code
+       u.language_code
 from admins_batch ab
-	 join telegram_users u on ab.admin_chat_id = u.external_id
+         join telegram_users u on ab.admin_chat_id = u.external_id
 `
 
 type GetAdminsNotificationListRow struct {
@@ -79,7 +79,7 @@ select mb.id,
        mb.short_name,
        mb.created_at,
        u.username,
-	   u.language_code,
+       u.language_code,
        u.external_id as owner_external_id
 from marketplaces_batch mb
          join telegram_users u
@@ -141,19 +141,19 @@ with orders_batch as (select id as order_id, created_at, readable_id, web_app_id
 select ob.order_id,
        ob.readable_id,
        ob.created_at,
-	   ob.state::text,
+       ob.state::text,
        p.web_app_id,
-       wa.name       as web_app_name,
+       wa.name           as web_app_name,
        p.name,
        p.price,
-       p.price_currency,
+       wa.currency,
        op.quantity,
        u.username,
-	   u.language_code,
-       u.external_id as external_user_id,
+       u.language_code,
+       u.external_id     as external_user_id,
        adm.language_code as admin_language_code,
-       ob.state::text as state,
-	   ob.type::text as payment_type
+       ob.state::text    as state,
+       ob.type::text     as payment_type
 from orders_batch ob
          join order_products op
               on ob.order_id = op.order_id
@@ -180,7 +180,7 @@ type GetNotificationsForNewOrdersAfterCursorRow struct {
 	WebAppName        string
 	Name              string
 	Price             float64
-	PriceCurrency     string
+	Currency          ProductCurrency
 	Quantity          int32
 	Username          pgtype.Text
 	LanguageCode      pgtype.Text
@@ -208,7 +208,7 @@ func (q *Queries) GetNotificationsForNewOrdersAfterCursor(ctx context.Context, a
 			&i.WebAppName,
 			&i.Name,
 			&i.Price,
-			&i.PriceCurrency,
+			&i.Currency,
 			&i.Quantity,
 			&i.Username,
 			&i.LanguageCode,
@@ -243,9 +243,9 @@ select mb.id,
        mb.short_name,
        mb.verified_at,
        mb.owner_external_id,
-	   u.language_code
+       u.language_code
 from marketplaces_batch mb
-	 join telegram_users u on mb.owner_external_id = u.external_id
+         join telegram_users u on mb.owner_external_id = u.external_id
 order by mb.verified_at, mb.id
 `
 

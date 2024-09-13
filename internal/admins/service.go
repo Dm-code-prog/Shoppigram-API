@@ -430,10 +430,6 @@ func (s *DefaultService) CreateProduct(ctx context.Context, req CreateProductReq
 		return CreateProductResponse{}, ErrorInvalidName
 	}
 
-	if req.Price <= 0 {
-		return CreateProductResponse{}, ErrorBadRequest
-	}
-
 	res, err := s.repo.CreateProduct(ctx, req)
 	if err != nil {
 		return CreateProductResponse{}, errors.Wrap(err, "s.repo.CreateProduct")

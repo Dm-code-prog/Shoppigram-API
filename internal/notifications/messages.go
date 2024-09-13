@@ -21,6 +21,7 @@ type (
 		OwnerLanguage   string
 		WebAppID        uuid.UUID
 		WebAppName      string
+		WebAppCurrency  string
 		Products        []Product
 		Status          string
 		Comment         string
@@ -75,8 +76,8 @@ const (
 var botName = os.Getenv("BOT_NAME")
 
 var commentPlaceholder map[string]string = map[string]string{
-	"ru": "Без комменнтария",
-	"en": "No comment,",
+	"ru": "без комментария",
+	"en": "no comment",
 }
 
 // BuildMessageAdmin creates a notification message for a new order for an admin
@@ -89,9 +90,9 @@ func (o *NewOrderNotification) BuildMessageAdmin(language string) (string, error
 	for _, p := range o.Products {
 
 		subtotal += p.Price * float64(p.Quantity)
-		currency = p.PriceCurrency
+		currency = o.WebAppCurrency
 		productList.WriteString(fmt.Sprintf(`- %dx %s по цене %s %s
-`, p.Quantity, p.Name, formatFloat(p.Price), formatCurrency(p.PriceCurrency)))
+`, p.Quantity, p.Name, formatFloat(p.Price), formatCurrency(o.WebAppCurrency)))
 	}
 
 	newOrderMessageTemplate, err := templates.ReadFile(getPathToFile(language, pathToAdminNewOrder))
@@ -111,7 +112,7 @@ func (o *NewOrderNotification) BuildMessageAdmin(language string) (string, error
 	finalMessage := fmt.Sprintf(
 		string(newOrderMessageTemplate),
 		o.WebAppName,
-		o.UserNickname,
+		"@"+o.UserNickname,
 		o.ReadableOrderID,
 		o.PaymentType,
 		formatFloat(subtotal)+" "+formatCurrency(currency),
@@ -131,10 +132,10 @@ func (o *NewOrderNotification) BuildMessageCustomer(language string) (string, er
 	for _, p := range o.Products {
 		subtotal += p.Price * float64(p.Quantity)
 		if currency == "" {
-			currency = p.PriceCurrency
+			currency = o.WebAppCurrency
 		}
 		productList.WriteString(fmt.Sprintf(`- %dx %s: %s %s
-`, p.Quantity, p.Name, formatFloat(p.Price), formatCurrency(p.PriceCurrency)))
+`, p.Quantity, p.Name, formatFloat(p.Price), formatCurrency(o.WebAppCurrency)))
 	}
 
 	newOrderMessageTemplate, err := templates.ReadFile(getPathToFile(language, pathToCustomerNewOrder))
