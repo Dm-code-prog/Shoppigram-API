@@ -76,8 +76,8 @@ const (
 var botName = os.Getenv("BOT_NAME")
 
 var commentPlaceholder map[string]string = map[string]string{
-	"ru": "Без комменнтария",
-	"en": "No comment,",
+	"ru": "без комментария",
+	"en": "no comment",
 }
 
 // BuildMessageAdmin creates a notification message for a new order for an admin
