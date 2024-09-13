@@ -85,7 +85,7 @@
       "logConfiguration": {
         "logDriver": "awslogs",
         "options": {
-          "awslogs-group": "shoppigram.marketplace-api",
+          "awslogs-group": "/shoppigram/production/marketplace-api",
           "awslogs-create-group": "true",
           "awslogs-region": "eu-central-1",
           "awslogs-stream-prefix": "shoppigram.marketplace-api"
