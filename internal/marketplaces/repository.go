@@ -6,13 +6,15 @@ import (
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/opentracing/opentracing-go/log"
 	"strings"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
 	"github.com/pkg/errors"
 	"github.com/shoppigram-com/marketplace-api/internal/marketplaces/generated"
+)
+
+const (
+	stateDone = "done"
 )
 
 // Pg implements the Repository interface
@@ -59,18 +61,14 @@ func (pg *Pg) CreateOrder(ctx context.Context, req SaveOrderRequest) (SaveOrderR
 	if err != nil {
 		return SaveOrderResponse{}, errors.Wrap(err, "pg.pool.Begin")
 	}
-	defer func(tx pgx.Tx, ctx context.Context) {
-		err := tx.Rollback(ctx)
-		if err != nil {
-			log.Error(err)
-		}
-	}(tx, ctx)
+	defer tx.Rollback(ctx)
 	qtx := pg.gen.WithTx(tx)
 
 	var (
 		id         uuid.UUID
 		readableID int
 	)
+
 	if req.Type == orderTypeOnline {
 		res, err := qtx.CreateOnlineOrder(ctx, generated.CreateOnlineOrderParams{
 			WebAppID: pgtype.UUID{
@@ -133,6 +131,21 @@ func (pg *Pg) CreateOrder(ctx context.Context, req SaveOrderRequest) (SaveOrderR
 	})
 	if batchErr != nil {
 		return SaveOrderResponse{}, batchErr
+	}
+
+	orderAmount, err := qtx.GetOrderAmount(ctx, id)
+	if err != nil {
+		return SaveOrderResponse{}, errors.Wrap(err, "pg.gen.GetOrderAmount")
+	}
+
+	if orderAmount == 0 {
+		err = qtx.UpdateOrderState(ctx, generated.UpdateOrderStateParams{
+			ID:    id,
+			State: stateDone,
+		})
+		if err != nil {
+			return SaveOrderResponse{}, errors.Wrap(err, "pg.gen.UpdateOrderState")
+		}
 	}
 
 	err = tx.Commit(ctx)

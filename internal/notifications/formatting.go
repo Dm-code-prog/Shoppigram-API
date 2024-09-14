@@ -1,6 +1,8 @@
 package notifications
 
 import (
+	"encoding/json"
+	"github.com/pkg/errors"
 	"strconv"
 	"strings"
 	"time"
@@ -51,4 +53,26 @@ func formatRussianTime(t time.Time) string {
 	}
 	t = t.In(loc)
 	return t.Format("02.01.2006 15:04:05")
+}
+
+func isLanguageValid(lang string) bool {
+	for _, v := range validLangCodes {
+		if lang == v {
+			return true
+		}
+	}
+	return false
+}
+
+func getButtonText(lang string, key string) (string, error) {
+	var bt map[string]string
+	data, err := templates.ReadFile("templates/" + lang + pathToButtonsText)
+	if err != nil {
+		return "", errors.Wrap(err, "templates.ReadFile("+lang+".json)")
+	}
+	err = json.Unmarshal(data, &bt)
+	if err != nil {
+		return "", errors.Wrap(err, "json.Unmarshal(data, bt)")
+	}
+	return bt[key], nil
 }

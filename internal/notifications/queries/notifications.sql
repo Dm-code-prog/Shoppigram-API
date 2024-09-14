@@ -52,8 +52,56 @@ from orders_batch ob
          join telegram_users u on external_user_id = u.external_id
          join web_apps wa on ob.web_app_id = wa.id
          join telegram_users adm on wa.owner_external_id = adm.external_id
-where ob.state = 'confirmed'
 order by ob.created_at, ob.order_id;
+
+
+-- name: GetNotificationsForUpdatedOrders :many
+with orders_batch as (select id as order_id,
+                             created_at,
+                             readable_id,
+                             external_user_id,
+                             state,
+                             type,
+                             web_app_id
+                      from orders o
+                      where (o.updated_at, o.id) > (@updated_at::timestamp, @id::uuid)
+                      order by o.updated_at, o.id
+                      limit $1)
+select orders_batch.order_id    as order_id,
+       orders_batch.readable_id as readable_id,
+       orders_batch.created_at  as created_at,
+       orders_batch.state::text as state,
+       orders_batch.web_app_id  as web_app_id,
+       wa.name                  as web_app_name,
+       coalesce(
+               json_agg(json_build_object(
+                       'name', p.name,
+                       'quantity', op.quantity,
+                       'price', p.price
+                        )
+               ),
+               '[]'::json
+       ) ::json                 as products,
+       wa.currency              as currency,
+       u.username               as buyer_username,
+       u.language_code          as buyer_language_code,
+       u.external_id            as buyer_external_user_id,
+       adm.language_code        as admin_language_code,
+       orders_batch.state::text as state,
+       orders_batch.type::text  as payment_type
+from orders_batch
+         join order_products op
+              on orders_batch.order_id = op.order_id
+         join products p on p.id = op.product_id
+         join telegram_users u on external_user_id = u.external_id
+         join web_apps wa on orders_batch.web_app_id = wa.id
+         join telegram_users adm on wa.owner_external_id = adm.external_id
+group by orders_batch.order_id, orders_batch.readable_id, orders_batch.created_at, orders_batch.state::text,
+         orders_batch.web_app_id, wa.name,
+         wa.currency, op.quantity, u.username, u.language_code, u.external_id, adm.language_code,
+         orders_batch.state::text,
+         orders_batch.type::text;
+
 
 -- name: GetNotificationsForNewMarketplacesAfterCursor :many
 with marketplaces_batch as (select wa.id,

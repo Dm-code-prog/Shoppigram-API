@@ -2,7 +2,8 @@ package notifications
 
 import (
 	"context"
-
+	"encoding/json"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -15,7 +16,7 @@ import (
 // using PostgreSQL as the backing store.
 type Pg struct {
 	gen                           *generated.Queries
-	newOrderFetchLimit            int
+	orderFetchLimit               int
 	newMarketplaceFetchLimit      int
 	verifiedMarketplaceFetchLimit int
 }
@@ -24,7 +25,7 @@ type Pg struct {
 func NewPg(db *pgxpool.Pool, newOrderFetchLimit int, newMarketplaceFetchLimit int, verifiedMarketplaceFetchLimit int) *Pg {
 	return &Pg{
 		gen:                           generated.New(db),
-		newOrderFetchLimit:            newOrderFetchLimit,
+		orderFetchLimit:               newOrderFetchLimit,
 		newMarketplaceFetchLimit:      newMarketplaceFetchLimit,
 		verifiedMarketplaceFetchLimit: verifiedMarketplaceFetchLimit,
 	}
@@ -98,6 +99,52 @@ func (p *Pg) UpdateNotifierCursor(ctx context.Context, cur Cursor) error {
 	return nil
 }
 
+// GetNotificationsForOrders gets notifications for orders.
+func (p *Pg) GetNotificationsForOrders(ctx context.Context, cursor Cursor) ([]OrderNotification, error) {
+	rows, err := p.gen.GetNotificationsForUpdatedOrders(ctx, generated.GetNotificationsForUpdatedOrdersParams{
+		Limit: int32(p.orderFetchLimit),
+		UpdatedAt: pgtype.Timestamp{
+			Time:  cursor.CursorDate,
+			Valid: true,
+		},
+		ID: cursor.LastProcessedID,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, errors.Wrap(err, "p.gen.GetNotificationsForUpdatedOrders")
+	}
+
+	var notifications []OrderNotification
+	for _, r := range rows {
+		var products []Product
+		err := json.Unmarshal(r.Products, &products)
+		if err != nil {
+			return nil, errors.Wrap(err, "json.Unmarshal")
+		}
+
+		notifications = append(notifications, OrderNotification{
+			ID:              r.OrderID,
+			ReadableOrderID: r.ReadableID.Int64,
+			CreatedAt:       r.CreatedAt.Time,
+			BuyerNickname:   r.BuyerUsername.String,
+			BuyerLanguage:   r.BuyerLanguageCode.String,
+			OwnerLanguage:   r.AdminLanguageCode.String,
+			WebAppID:        r.WebAppID.Bytes,
+			WebAppName:      r.WebAppName,
+			WebAppCurrency:  string(r.Currency),
+			Products:        products,
+			Status:          r.State,
+			Comment:         "",
+			PaymentType:     r.PaymentType,
+			BuyerExternalID: int64(r.BuyerExternalUserID),
+		})
+	}
+
+	return notifications, nil
+}
+
 // GetNotificationsForNewOrdersAfterCursor gets notifcations for orders which were
 // created after date specified in cursor
 func (p *Pg) GetNotificationsForNewOrdersAfterCursor(ctx context.Context, cur Cursor) ([]NewOrderNotification, error) {
@@ -111,7 +158,7 @@ func (p *Pg) GetNotificationsForNewOrdersAfterCursor(ctx context.Context, cur Cu
 				Valid: true,
 			},
 			ID:    cur.LastProcessedID,
-			Limit: int32(p.newOrderFetchLimit),
+			Limit: int32(p.orderFetchLimit),
 		})
 	if err != nil {
 		return nil, errors.Wrap(err, "p.gen.GetNotificationsForNewOrdersAfterCursor")

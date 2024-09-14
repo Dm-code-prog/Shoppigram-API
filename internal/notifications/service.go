@@ -3,7 +3,6 @@ package notifications
 import (
 	"context"
 	"embed"
-	"encoding/json"
 	"strconv"
 	"strings"
 	"time"
@@ -11,17 +10,28 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	"github.com/shoppigram-com/marketplace-api/internal/logging"
 	"go.uber.org/zap"
 )
 
-//go:embed templates/*/*/*.md templates/*/*.json
-var templates embed.FS
-var validLangCodes []string = []string{"ru", "en"}
+var (
+	//go:embed templates/*/*/*.md templates/*/*.json
+	templates      embed.FS
+	validLangCodes []string = []string{"ru", "en"}
+)
 
-const fallbackLanguage = "ru"
-const supportContactUrl = "https://t.me/ShoppigramSupport"
-const pathToButtonsText = "/buttons.json"
+const (
+	fallbackLanguage  = "ru"
+	supportContactUrl = "https://t.me/ShoppigramSupport"
+	pathToButtonsText = "/buttons.json"
+
+	orderNotifier                   = "new_order_notifications"
+	newMarketplaceNotifierName      = "new_marketplace_notifications"
+	verifiedMarketplaceNotifierName = "verified_marketplace_notifications"
+	marketplaceBaseURL              = "https://web-app.shoppigram.com/app/"
+
+	stateConfirmed = "confirmed"
+	stateDone      = "done"
+)
 
 type (
 	// Cursor defines the structure for a notify list cursor
@@ -33,9 +43,9 @@ type (
 
 	// Product is a marketplace product
 	Product struct {
-		Name     string
-		Quantity int
-		Price    float64
+		Name     string  `json:"name"`
+		Quantity int     `json:"quantity"`
+		Price    float64 `json:"price"`
 	}
 
 	// AddUserToNewOrderNotificationsRequest creates a new order notification
@@ -100,6 +110,10 @@ type (
 		GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]NewMarketplaceNotification, error)
 		GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]VerifiedMarketplaceNotification, error)
 		AddUserToNewOrderNotifications(ctx context.Context, req AddUserToNewOrderNotificationsRequest) error
+
+		// GetNotificationsForOrders returns a list of orders that were updated since the last run
+		// along with extra information about the buyer, seller and the shop.
+		GetNotificationsForOrders(ctx context.Context, cursor Cursor) ([]OrderNotification, error)
 	}
 
 	// Service provides user operations
@@ -117,30 +131,11 @@ type (
 	}
 )
 
-const (
-	newOrderNotifierName            = "new_order_notifications"
-	newMarketplaceNotifierName      = "new_marketplace_notifications"
-	verifiedMarketplaceNotifierName = "verified_marketplace_notifications"
-	marketplaceBaseURL              = "https://web-app.shoppigram.com/app/"
-)
-
-// New creates a new user service
+// New creates a new Service
 func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration, newMarketplaceProcessingTimer time.Duration, verifiedMarketplaceProcessingTimer time.Duration, botToken string, botName string, bucketUrl string) *Service {
 	if log == nil {
 		log, _ = zap.NewProduction()
 		log.Warn("log *zap.Logger is nil, using zap.NewProduction")
-	}
-	if newOrderProcessingTimer == 0 {
-		log.Fatal("new order processing timer is not specified")
-		return nil
-	}
-	if newMarketplaceProcessingTimer == 0 {
-		log.Fatal("new marketplace processing timer is not specified")
-		return nil
-	}
-	if botToken == "" {
-		log.Fatal("bot token is not specified")
-		return nil
 	}
 
 	bot, err := tgbotapi.NewBotAPI(botToken)
@@ -166,277 +161,10 @@ func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration
 	}
 }
 
-// RunNewOrderNotifier starts a job that batch loads new orders
-// and sends notifications to the owners of marketplaces
-func (s *Service) RunNewOrderNotifier() error {
-	ticker := time.NewTicker(s.newOrderProcessingTimer)
-	for {
-		select {
-		case <-ticker.C:
-			err := s.runNewOrderNotifierOnce()
-			if err != nil {
-				s.log.Error("runNewOrderNotifierOnce failed", logging.SilentError(err))
-				continue
-			}
-		case <-s.ctx.Done():
-			ticker.Stop()
-			return nil
-		}
-	}
-}
-
-// runNewOrderNotifierOnce executes one iteration of loading a batch of new
-// orders and sending notifications to the owners of marketplaces
-func (s *Service) runNewOrderNotifierOnce() error {
-	cursor, err := s.repo.GetNotifierCursor(s.ctx, newOrderNotifierName)
-	if err != nil {
-		return errors.Wrap(err, "s.repo.GetNotifierCursor")
-	}
-
-	orderNotifications, err := s.repo.GetNotificationsForNewOrdersAfterCursor(s.ctx, cursor)
-	if err != nil {
-		return errors.Wrap(err, "s.repo.GetNotificationsForNewOrdersAfterCursor")
-	}
-
-	if len(orderNotifications) == 0 {
-		return nil
-	}
-
-	s.log.With(
-		zap.String("count", strconv.Itoa(len(orderNotifications))),
-	).Info("sending notifications for new orders")
-	err = s.sendNewOrderNotifications(orderNotifications)
-	if err != nil {
-		return errors.Wrap(err, "s.sendNewOrderNotifications")
-	}
-
-	lastElem := orderNotifications[len(orderNotifications)-1]
-
-	err = s.repo.UpdateNotifierCursor(s.ctx, Cursor{
-		CursorDate:      lastElem.CreatedAt,
-		LastProcessedID: lastElem.ID,
-		Name:            newOrderNotifierName,
-	})
-	if err != nil {
-		return errors.Wrap(err, "s.repo.UpdateNotifierCursor")
-	}
-
-	return nil
-}
-
-// RunNewMarketplaceNotifier starts a job that batch loads new marketplaces
-// and sends notifications to the reviewers of marketplaces
-func (s *Service) RunNewMarketplaceNotifier() error {
-	ticker := time.NewTicker(s.newMarketplaceProcessingTimer)
-	for {
-		select {
-		case <-ticker.C:
-			err := s.runNewMarketplaceNotifierOnce()
-			if err != nil {
-				s.log.Error("runNewMarketplaceNotifierOnce failed", logging.SilentError(err))
-				s.log.Error("runNewMarketplaceNotifierOnce failed", logging.SilentError(err))
-				continue
-			}
-		case <-s.ctx.Done():
-			ticker.Stop()
-			return nil
-		}
-	}
-}
-
-// runNewMarketplaceNotifierOnce executes one iteration of loading a batch of new
-// marketplaces and sending notifications to the reviewers of marketplaces
-func (s *Service) runNewMarketplaceNotifierOnce() error {
-	cursor, err := s.repo.GetNotifierCursor(s.ctx, newMarketplaceNotifierName)
-	if err != nil {
-		return errors.Wrap(err, "s.repo.GetNotifierCursor")
-	}
-
-	marketplaceNotifications, err := s.repo.GetNotificationsForNewMarketplacesAfterCursor(s.ctx, cursor)
-	if err != nil {
-		return errors.Wrap(err, "s.repo.GetNotificationsForNewMarketplacesAfterCursor")
-	}
-
-	if len(marketplaceNotifications) == 0 {
-		return nil
-	}
-
-	s.log.With(
-		zap.String("count", strconv.Itoa(len(marketplaceNotifications))),
-	).Info("sending notifications for new marketplaces")
-
-	err = s.sendNewMarketplaceNotifications(marketplaceNotifications)
-	if err != nil {
-		if strings.Contains(err.Error(), "chat not found") {
-			s.log.With(
-				zap.String("method", "s.sendNewMarketplaceNotifications"),
-				zap.String("user_id", strconv.FormatInt(marketplaceNotifications[0].OwnerExternalID, 10)),
-			).Warn("chat not found, skipping notification sending")
-		} else {
-			return errors.Wrap(err, "s.sendNewMarketplaceNotifications")
-		}
-	}
-
-	lastElem := marketplaceNotifications[len(marketplaceNotifications)-1]
-
-	err = s.repo.UpdateNotifierCursor(s.ctx, Cursor{
-		CursorDate:      lastElem.CreatedAt,
-		LastProcessedID: lastElem.ID,
-		Name:            newMarketplaceNotifierName,
-	})
-	if err != nil {
-		return errors.Wrap(err, "s.repo.UpdateNotifierCursor")
-	}
-
-	return nil
-}
-
-// RunVerifiedMarketplaceNotifier starts a job that batch loads verified marketplaces
-// and sends notifications to the owners of those marketplaces
-func (s *Service) RunVerifiedMarketplaceNotifier() error {
-	ticker := time.NewTicker(s.verifiedMarketplaceProcessingTimer)
-
-	for {
-		select {
-		case <-ticker.C:
-			err := s.runVerifiedMarketplaceNotifierOnce()
-			if err != nil {
-				s.log.Error("runVerifiedMarketplaceNotifierOnce failed", logging.SilentError(err))
-				continue
-			}
-		case <-s.ctx.Done():
-			ticker.Stop()
-			return nil
-		}
-	}
-}
-
-// runVerifiedMarketplaceNotifierOnce executes one iteration of loading a batch of
-// verified marketplaces and sending notifications to the owners of those marketplaces
-func (s *Service) runVerifiedMarketplaceNotifierOnce() error {
-	cursor, err := s.repo.GetNotifierCursor(s.ctx, verifiedMarketplaceNotifierName)
-	if err != nil {
-		return errors.Wrap(err, "s.repo.GetNotifierCursor")
-	}
-
-	marketplaceNotifications, err := s.repo.GetNotificationsForVerifiedMarketplacesAfterCursor(s.ctx, cursor)
-	if err != nil {
-		return errors.Wrap(err, "s.repo.GetNotificationsForVerifiedMarketplacesAfterCursor")
-	}
-
-	if len(marketplaceNotifications) == 0 {
-		return nil
-	}
-
-	s.log.With(
-		zap.String("count", strconv.Itoa(len(marketplaceNotifications))),
-	).Info("sending notifications for verified marketplaces")
-	err = s.sendVerifiedMarketplaceNotifications(marketplaceNotifications)
-	if err != nil {
-		return errors.Wrap(err, "s.sendVerifiedMarketplaceNotifications")
-	}
-
-	lastElem := marketplaceNotifications[len(marketplaceNotifications)-1]
-
-	err = s.repo.UpdateNotifierCursor(s.ctx, Cursor{
-		CursorDate:      lastElem.VerifiedAt,
-		LastProcessedID: lastElem.ID,
-		Name:            verifiedMarketplaceNotifierName,
-	})
-	if err != nil {
-		return errors.Wrap(err, "s.repo.UpdateNotifierCursor")
-	}
-
-	return nil
-}
-
 // Shutdown stops all the notifications
 func (s *Service) Shutdown() error {
 	s.cancel()
 	<-s.ctx.Done()
-	return nil
-}
-
-// sendNewOrderNotifications sends batch of notifications for new orders
-func (s *Service) sendNewOrderNotifications(orderNotifications []NewOrderNotification) error {
-	for _, notification := range orderNotifications {
-		nl, err := s.repo.GetAdminsNotificationList(s.ctx, notification.WebAppID)
-		if err != nil {
-			return errors.Wrap(err, "s.repo.GetAdminsNotificationList")
-		}
-
-		for _, v := range nl {
-			notificationLang := s.checkAndGetLangCode(v.Language)
-			adminMsgTxt, err := notification.BuildMessageAdmin(notificationLang)
-			if err != nil {
-				return errors.Wrap(err, "a.BuildMessageAdmin")
-			}
-
-			msg := tgbotapi.NewMessage(v.Id, adminMsgTxt)
-			msg.ParseMode = tgbotapi.ModeMarkdownV2
-
-			tgLinkPath := notification.WebAppID.String() + "/order/" + notification.ID.String()
-			tgLink, err := s.getTelegramLink(tgLinkPath)
-			if err != nil {
-				return errors.Wrap(err, "getTelegramLink()")
-			}
-
-			buttonText, err := getButtonText(notificationLang, "order-management")
-			if err != nil {
-				return errors.Wrap(err, "getButtonText(\"order-management\")")
-			}
-			addTelegramButtonsToMessage(&msg, telegramButtonData{buttonText, tgLink})
-
-			_, err = s.bot.Send(msg)
-			if err != nil {
-				if strings.Contains(err.Error(), "chat not found") {
-					s.log.With(
-						zap.String("method", "bot.Send"),
-						zap.String("user_id", strconv.FormatInt(v.Id, 10)),
-					).Warn("chat not found")
-					continue
-				}
-				return errors.Wrap(err, "s.sendMessageToChat")
-			}
-		}
-
-		userLang := s.checkAndGetLangCode(notification.UserLanguage)
-
-		customerMsgTxt, err := notification.BuildMessageCustomer(userLang)
-
-		if err != nil {
-			return errors.Wrap(err, "a.BuildMessageCustomer")
-		}
-
-		msg := tgbotapi.NewMessage(notification.ExternalUserID, customerMsgTxt)
-		msg.ParseMode = tgbotapi.ModeMarkdownV2
-
-		tgLinkPath := notification.WebAppID.String() + "/order/" + notification.ID.String()
-		tgLink, err := s.getTelegramLink(tgLinkPath)
-		if err != nil {
-			return errors.Wrap(err, "getTelegramLink()")
-		}
-		buttonText, err := getButtonText(userLang, "view-order")
-		if err != nil {
-			return errors.Wrap(err, "getButtonText(\"view-order\")")
-		}
-
-		addTelegramButtonsToMessage(&msg, telegramButtonData{buttonText, tgLink})
-
-		_, err = s.bot.Send(msg)
-		if err != nil {
-			if strings.Contains(err.Error(), "chat not found") {
-				s.log.With(
-					zap.String("method", "bot.Send"),
-					zap.String("user_id", strconv.FormatInt(notification.ExternalUserID, 10)),
-				).Warn("chat not found")
-				continue
-			}
-			return errors.Wrap(err, "s.sendMessageToChat")
-		}
-
-	}
-
 	return nil
 }
 
@@ -448,105 +176,6 @@ func (s *Service) sendMessageToChat(chatID int64, msgTxt string) error {
 	if err != nil {
 		return errors.Wrap(err, "bot.Send")
 	}
-	return nil
-}
-
-// sendNewMarketplaceNotifications sends batch of notifications for new marketplaces
-func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []NewMarketplaceNotification) error {
-	reviewers, err := s.repo.GetReviewersNotificationList(s.ctx)
-	if err != nil {
-		return errors.Wrap(err, "s.repo.GetReviewersNotificationList")
-	}
-	for _, n := range marketplaceNotifications {
-		n.ImageBaseUrl = s.bucketUrl
-
-		ownerLang := s.checkAndGetLangCode(n.OwnerLanguage)
-		onVerificationMsgTxt, err := n.BuildMessageAdmin(ownerLang)
-		if err != nil {
-			return errors.Wrap(err, "a.BuildMessageShoppigram")
-		}
-
-		msg := tgbotapi.NewMessage(n.OwnerExternalID, onVerificationMsgTxt)
-		msg.ParseMode = tgbotapi.ModeMarkdownV2
-
-		tgLinkPath := n.ID.String()
-		tgLink, err := s.getTelegramLink(tgLinkPath)
-		if err != nil {
-			return errors.Wrap(err, "getTelegramLink()")
-		}
-		buttonTextContactSupport, err := getButtonText(ownerLang, "contact-support")
-		if err != nil {
-			return errors.Wrap(err, "getButtonText(\"contact-support\")")
-		}
-		buttonTextViewStore, err := getButtonText(ownerLang, "view-store")
-		if err != nil {
-			return errors.Wrap(err, "getButtonText(\"view-store\")")
-		}
-
-		addTelegramButtonsToMessage(&msg,
-			telegramButtonData{buttonTextContactSupport, supportContactUrl},
-			telegramButtonData{buttonTextViewStore, tgLink},
-		)
-
-		_, err = s.bot.Send(msg)
-		if err != nil {
-			return errors.Wrap(err, "bot.Send to chat:"+strconv.FormatInt(n.OwnerExternalID, 10))
-		}
-
-		for _, r := range reviewers {
-			msgTxt, err := n.BuildMessageShoppigram("en")
-			if err != nil {
-				return errors.Wrap(err, "a.BuildMessageShoppigram")
-			}
-			err = s.sendMessageToChat(r, msgTxt)
-			if err != nil {
-				return errors.Wrap(err, "sendMessageToChat")
-			}
-		}
-
-	}
-
-	return nil
-}
-
-// sendVerifiedMarketplaceNotifications sends batch of notifications for verified marketplaces
-func (s *Service) sendVerifiedMarketplaceNotifications(marketplaceNotifications []VerifiedMarketplaceNotification) error {
-	for _, notification := range marketplaceNotifications {
-		ownerLang := s.checkAndGetLangCode(notification.OwnerLanguage)
-		msgTxt, err := notification.BuildMessage(ownerLang)
-		if err != nil {
-			return errors.Wrap(err, "a.BuildMessageShoppigram")
-		}
-
-		msg := tgbotapi.NewMessage(notification.OwnerExternalUserID, msgTxt)
-		msg.ParseMode = tgbotapi.ModeMarkdownV2
-
-		tgLinkPath := notification.ID.String()
-		tgLink, err := s.getTelegramLink(tgLinkPath)
-		if err != nil {
-			return errors.Wrap(err, "getTelegramLink()")
-		}
-
-		buttonText, err := getButtonText(ownerLang, "continue-setting-up")
-		if err != nil {
-			return errors.Wrap(err, "getButtonText(\"continue-setting-up\")")
-		}
-		addTelegramButtonsToMessage(&msg, telegramButtonData{buttonText, tgLink})
-
-		_, err = s.bot.Send(msg)
-		if err != nil {
-			if strings.Contains(err.Error(), "chat not found") {
-				s.log.With(
-					zap.String("method", "bot.Send"),
-					zap.String("user_id", strconv.FormatInt(notification.OwnerExternalUserID, 10)),
-				).Warn(err.Error())
-				continue
-			}
-			return errors.Wrap(err, "bot.Send")
-		}
-
-	}
-
 	return nil
 }
 
@@ -577,7 +206,7 @@ func (s *Service) NotifyChannelIntegrationSuccess(_ context.Context, request Not
 	tgLink := "https://t.me/" + s.botName + "/app"
 	buttonText, err := getButtonText(userLnag, "try-new-features")
 	if err != nil {
-		return errors.Wrap(err, "getButtonText(\"try-new-features\")")
+		return errors.Wrap(err, "getButtonText")
 	}
 	addTelegramButtonsToMessage(&msg, telegramButtonData{buttonText, tgLink})
 
@@ -652,7 +281,6 @@ func addTelegramButtonsToMessage(msg *tgbotapi.MessageConfig, messageData ...tel
 }
 
 func (s *Service) getTelegramLink(path string, pageData ...pageDataParam) (string, error) {
-
 	pageDataParams := make(map[string]any)
 	for _, v := range pageData {
 		pageDataParams[v.key] = v.value
@@ -673,32 +301,19 @@ func (s *Service) checkAndGetLangCode(lang string) string {
 	if isLanguageValid(lang) {
 		return lang
 	}
-
-	s.log.Warn("Language code is incorrect. Using fallback language",
-		zap.String("passed value", lang),
-		zap.String("fallback value", fallbackLanguage))
-
 	return fallbackLanguage
 }
 
-func isLanguageValid(lang string) bool {
-	for _, v := range validLangCodes {
-		if lang == v {
-			return true
-		}
+func (s *Service) handleTelegramSendError(err error, chatID int64) error {
+	if err == nil {
+		return nil
 	}
-	return false
-}
-
-func getButtonText(lang string, key string) (string, error) {
-	var bt map[string]string
-	data, err := templates.ReadFile("templates/" + lang + pathToButtonsText)
-	if err != nil {
-		return "", errors.Wrap(err, "templates.ReadFile("+lang+".json)")
+	if strings.Contains(err.Error(), "chat not found") {
+		s.log.With(
+			zap.String("method", "bot.Send"),
+			zap.String("user_id", strconv.FormatInt(chatID, 10)),
+		).Warn("chat not found")
+		return nil
 	}
-	err = json.Unmarshal(data, &bt)
-	if err != nil {
-		return "", errors.Wrap(err, "json.Unmarshal(data, bt)")
-	}
-	return bt[key], nil
+	return errors.Wrap(err, "bot.Send")
 }
