@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	//go:embed templates/*/*/*.md templates/*/*.json
+	//go:embed templates/*/*/*.md
 	templates      embed.FS
 	validLangCodes []string = []string{"ru", "en"}
 )
