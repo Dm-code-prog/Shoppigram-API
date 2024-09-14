@@ -66,6 +66,8 @@ func (s *Service) runOrdersNotifier() error {
 				if err != nil {
 					return errors.Wrap(err, "n.MakeConfirmedNotificationForAdmin")
 				}
+			} else {
+				return nil
 			}
 
 			// Add buttons to the message
@@ -94,21 +96,19 @@ func (s *Service) runOrdersNotifier() error {
 
 		var message string
 
-		// For confirmed orders
 		if n.Status == stateConfirmed {
 			// send notifications to buyers
 			message, err = n.MakeConfirmedNotificationForBuyer(n.BuyerLanguage)
 			if err != nil {
 				return errors.Wrap(err, "n.MakeConfirmedNotificationForBuyer")
 			}
-		}
-
-		// For done orders
-		if n.Status == stateDone {
+		} else if n.Status == stateDone {
 			message, err = n.MakeDoneNotificationForBuyer(n.BuyerLanguage)
 			if err != nil {
 				return errors.Wrap(err, "n.MakeDoneNotificationForBuyer")
 			}
+		} else {
+			return nil
 		}
 
 		tgMessage := tgbotapi.NewMessage(n.BuyerExternalID, message)
