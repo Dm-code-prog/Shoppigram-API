@@ -157,7 +157,7 @@ func (o *OrderNotification) MakeConfirmedNotificationForAdmin(language string) (
 		comment,
 		strings.TrimRight(productList.String(), "; "),
 	)
-	return tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, finalMessage), nil
+	return finalMessage, nil
 }
 
 // MakeConfirmedNotificationForBuyer creates a notification message for a new order for a customer
