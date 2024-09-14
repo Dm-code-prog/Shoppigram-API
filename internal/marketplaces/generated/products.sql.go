@@ -33,10 +33,9 @@ SELECT wa.id,
                        '[]'::json
        )::json AS products
 FROM web_apps wa
-         LEFT JOIN products p ON wa.id = p.web_app_id
+         LEFT JOIN products p ON wa.id = p.web_app_id and p.is_deleted = false
 WHERE wa.id = $1
   AND wa.is_deleted = false
-  AND p.is_deleted = false
 GROUP BY wa.id, wa.name, wa.short_name, wa.is_verified, wa.online_payments_enabled, wa.currency
 `
 
