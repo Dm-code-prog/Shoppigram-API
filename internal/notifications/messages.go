@@ -153,7 +153,6 @@ func (o *OrderNotification) MakeConfirmedNotificationForAdmin(language string) (
 		o.PaymentType,
 		formatFloat(subtotal)+" "+formatCurrency(currency),
 		paymentStatus,
-		o.Status,
 		formatRussianTime(o.CreatedAt),
 		comment,
 		strings.TrimRight(productList.String(), "; "),
@@ -196,7 +195,7 @@ func (o *OrderNotification) MakeConfirmedNotificationForBuyer(language string) (
 		strings.TrimRight(productList.String(), "; "),
 	)
 
-	return tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, finalMessage), nil
+	return finalMessage, nil
 }
 
 func (o *OrderNotification) MakeDoneNotificationForBuyer(language string) (string, error) {
@@ -224,7 +223,7 @@ func (o *OrderNotification) MakeDoneNotificationForBuyer(language string) (strin
 		strings.TrimRight(productList.String(), "; "),
 	)
 
-	return tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, finalMessage), nil
+	return finalMessage, nil
 }
 
 // BuildMessageShoppigram creates a notification message for a new marketplace
