@@ -116,6 +116,9 @@ type (
 		// empty string is returned if no message is found
 		GetProductCustomMessage(ctx context.Context, productID uuid.UUID, state string) (string, error)
 
+		// GetProductCustomMediaForward gets a custom media forward information for a product
+		GetProductCustomMediaForward(ctx context.Context, productID uuid.UUID, state string) (fromChatID int64, messageID int64, err error)
+
 		GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]NewMarketplaceNotification, error)
 		GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]VerifiedMarketplaceNotification, error)
 		AddUserToNewOrderNotifications(ctx context.Context, req AddUserToNewOrderNotificationsRequest) error

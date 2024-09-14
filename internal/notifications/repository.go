@@ -47,6 +47,23 @@ func (p *Pg) GetProductCustomMessage(ctx context.Context, productID uuid.UUID, s
 	return message, nil
 }
 
+// GetProductCustomMediaForward gets a custom media forward information for a product
+func (p *Pg) GetProductCustomMediaForward(ctx context.Context, productID uuid.UUID, state string) (fromChatID int64, messageID int64, err error) {
+	message, err := p.gen.GetProductCustomMediaForward(ctx, generated.GetProductCustomMediaForwardParams{
+		ProductID:    productID,
+		OnOrderState: generated.OrderState(state),
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return
+		}
+		return fromChatID, messageID, errors.Wrap(err, "p.gen.GetProductCustomMediaForward")
+	}
+
+	fromChatID, messageID = message.FromChatID, message.MessageID
+	return
+}
+
 // GetAdminsNotificationList gets a list of admins to notify about an order
 func (p *Pg) GetAdminsNotificationList(ctx context.Context, webAppID uuid.UUID) ([]adminNotitfication, error) {
 	adminsNotificationList, err := p.gen.GetAdminsNotificationList(ctx, pgtype.UUID{

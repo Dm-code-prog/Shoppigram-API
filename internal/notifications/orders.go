@@ -8,7 +8,6 @@ about orders, to be precise:
 package notifications
 
 import (
-	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
 	"github.com/shoppigram-com/marketplace-api/internal/logging"
@@ -155,8 +154,6 @@ func (s *Service) runOrdersNotifier() error {
 			return errors.Wrap(err, "s.handleTelegramSendError")
 		}
 
-		fmt.Println("DEBUG", n.Products)
-
 		// Send custom messages and media for products, if any
 		for _, product := range n.Products {
 			// Send custom message
@@ -169,8 +166,6 @@ func (s *Service) runOrdersNotifier() error {
 				continue
 			}
 
-			s.log.Info("DEBUG: Custom message is " + customMessage)
-
 			tgMessage := tgbotapi.NewMessage(n.BuyerExternalID, customMessage)
 			_, err = s.bot.Send(tgMessage)
 			err = s.handleTelegramSendError(err, n.BuyerExternalID)
@@ -178,7 +173,23 @@ func (s *Service) runOrdersNotifier() error {
 				return errors.Wrap(err, "s.handleTelegramSendError")
 			}
 
-			// TODO: Send custom media
+			// Send custom media forwards
+
+			forwardChat, messageID, err := s.repo.GetProductCustomMediaForward(s.ctx, product.ID, n.Status)
+			if err != nil {
+				return errors.Wrap(err, "s.repo.GetProductCustomMediaForward")
+			}
+
+			if forwardChat == 0 || messageID == 0 {
+				continue
+			}
+
+			tgForward := tgbotapi.NewForward(n.BuyerExternalID, forwardChat, int(messageID))
+			_, err = s.bot.Send(tgForward)
+			err = s.handleTelegramSendError(err, n.BuyerExternalID)
+			if err != nil {
+				return errors.Wrap(err, "s.handleTelegramSendError")
+			}
 		}
 	}
 

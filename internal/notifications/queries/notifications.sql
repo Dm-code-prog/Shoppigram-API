@@ -30,6 +30,14 @@ where product_id = $1
 order by created_at desc
 limit 1;
 
+-- name: GetProductCustomMediaForward :one
+select from_chat_id, message_id
+from product_custom_media_forwards
+where product_id = $1
+  and on_order_state = $2
+order by created_at desc
+limit 1;
+
 -- name: GetNotificationsForUpdatedOrders :many
 with orders_batch as (select id as order_id,
                              created_at,
