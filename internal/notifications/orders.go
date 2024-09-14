@@ -162,19 +162,16 @@ func (s *Service) runOrdersNotifier() error {
 				return errors.Wrap(err, "s.repo.GetProductCustomMessage")
 			}
 
-			if customMessage == "" {
-				continue
-			}
-
-			tgMessage := tgbotapi.NewMessage(n.BuyerExternalID, customMessage)
-			_, err = s.bot.Send(tgMessage)
-			err = s.handleTelegramSendError(err, n.BuyerExternalID)
-			if err != nil {
-				return errors.Wrap(err, "s.handleTelegramSendError")
+			if customMessage != "" {
+				tgMessage := tgbotapi.NewMessage(n.BuyerExternalID, customMessage)
+				_, err = s.bot.Send(tgMessage)
+				err = s.handleTelegramSendError(err, n.BuyerExternalID)
+				if err != nil {
+					return errors.Wrap(err, "s.handleTelegramSendError")
+				}
 			}
 
 			// Send custom media forwards
-
 			forwardChat, messageID, err := s.repo.GetProductCustomMediaForward(s.ctx, product.ID, n.Status)
 			if err != nil {
 				return errors.Wrap(err, "s.repo.GetProductCustomMediaForward")
