@@ -44,9 +44,10 @@ type (
 
 	// Product is a marketplace product
 	Product struct {
-		Name     string  `json:"name"`
-		Quantity int     `json:"quantity"`
-		Price    float64 `json:"price"`
+		ID       uuid.UUID `json:"id"`
+		Name     string    `json:"name"`
+		Quantity int       `json:"quantity"`
+		Price    float64   `json:"price"`
 	}
 
 	// AddUserToNewOrderNotificationsRequest creates a new order notification
@@ -104,10 +105,20 @@ type (
 	// Repository provides access to the user storage
 	Repository interface {
 		GetAdminsNotificationList(ctx context.Context, webAppID uuid.UUID) ([]adminNotitfication, error)
+
 		GetReviewersNotificationList(ctx context.Context) ([]int64, error)
+
 		GetNotifierCursor(ctx context.Context, name string) (Cursor, error)
+
 		UpdateNotifierCursor(ctx context.Context, cur Cursor) error
-		GetNotificationsForNewOrdersAfterCursor(ctx context.Context, cur Cursor) ([]NewOrderNotification, error)
+
+		// GetProductCustomMessage returns a custom notification message for a product
+		// empty string is returned if no message is found
+		GetProductCustomMessage(ctx context.Context, productID uuid.UUID, state string) (string, error)
+
+		// GetProductCustomMediaURL gets a custom media URL for a product
+		GetProductCustomMediaURL(ctx context.Context, productID uuid.UUID, state string) (string, error)
+
 		GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]NewMarketplaceNotification, error)
 		GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]VerifiedMarketplaceNotification, error)
 		AddUserToNewOrderNotifications(ctx context.Context, req AddUserToNewOrderNotificationsRequest) error

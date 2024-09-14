@@ -23,7 +23,7 @@ func (s *Service) RunOrdersNotifier() error {
 		case <-ticker.C:
 			err := s.runOrdersNotifier()
 			if err != nil {
-				s.log.Error("runOrdersNotifier failed", logging.SilentError(err))
+				s.log.Error("Failed to send the notifications for order events", logging.SilentError(err))
 				continue
 			}
 		case <-s.ctx.Done():
@@ -49,6 +49,26 @@ func (s *Service) runOrdersNotifier() error {
 		s.log.Info("no updates of orders")
 		return nil
 	}
+
+	// Update the cursor even if there were errors
+	// during sending notifications
+	// to avoid sending the same notifications again
+	//
+	// Ideally, we should break up this function into smaller, atomic functions
+	// that can be retried independently
+	defer func() {
+		// Get the last element of the slice
+		// as the last processed notification
+		l := notifications[len(notifications)-1]
+		err = s.repo.UpdateNotifierCursor(s.ctx, Cursor{
+			CursorDate:      l.CreatedAt,
+			LastProcessedID: l.ID,
+			Name:            orderNotifier,
+		})
+		if err != nil {
+			s.log.Error("Failed to update the notifier cursor", logging.SilentError(err))
+		}
+	}()
 
 	for _, n := range notifications {
 		admins, err := s.repo.GetAdminsNotificationList(s.ctx, n.WebAppID)
@@ -97,10 +117,9 @@ func (s *Service) runOrdersNotifier() error {
 			}
 		}
 
-		// Send notifications to the buyer
+		// Send standard to the buyer
 
 		var message string
-
 		if n.Status == stateConfirmed {
 			// send notifications to buyers
 			message, err = n.MakeConfirmedNotificationForBuyer(n.BuyerLanguage)
@@ -135,19 +154,28 @@ func (s *Service) runOrdersNotifier() error {
 		if err != nil {
 			return errors.Wrap(err, "s.handleTelegramSendError")
 		}
-	}
 
-	// Get the last element of the slice
-	// as the last processed notification
+		// Send custom messages and media for products, if any
+		for _, product := range n.Products {
+			// Send custom message
+			customMessage, err := s.repo.GetProductCustomMessage(s.ctx, product.ID, n.Status)
+			if err != nil {
+				return errors.Wrap(err, "s.repo.GetProductCustomMessage")
+			}
 
-	l := notifications[len(notifications)-1]
-	err = s.repo.UpdateNotifierCursor(s.ctx, Cursor{
-		CursorDate:      l.CreatedAt,
-		LastProcessedID: l.ID,
-		Name:            orderNotifier,
-	})
-	if err != nil {
-		return errors.Wrap(err, "s.repo.UpdateNotifierCursor")
+			if customMessage == "" {
+				continue
+			}
+
+			tgMessage := tgbotapi.NewMessage(n.BuyerExternalID, customMessage)
+			_, err = s.bot.Send(tgMessage)
+			err = s.handleTelegramSendError(err, n.BuyerExternalID)
+			if err != nil {
+				return errors.Wrap(err, "s.handleTelegramSendError")
+			}
+
+			// TODO: Send custom media
+		}
 	}
 
 	return nil

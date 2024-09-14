@@ -185,6 +185,22 @@ type Product struct {
 	Category      pgtype.Text
 }
 
+type ProductsCustomMedium struct {
+	ID           uuid.UUID
+	CreatedAt    pgtype.Timestamp
+	ProductID    uuid.UUID
+	MediaUrl     string
+	OnOrderState OrderState
+}
+
+type ProductsCustomMessage struct {
+	ID           uuid.UUID
+	CreatedAt    pgtype.Timestamp
+	ProductID    uuid.UUID
+	Message      string
+	OnOrderState OrderState
+}
+
 type TelegramUser struct {
 	ID           uuid.UUID
 	ExternalID   int32

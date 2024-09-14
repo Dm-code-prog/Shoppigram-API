@@ -22,6 +22,22 @@ from admins_batch ab
 select chat_id
 from new_web_apps_notifications_list;
 
+-- name: GetProductCustomMessage :one
+select message
+from products_custom_messages
+where product_id = $1
+  and on_order_state = $2
+order by created_at desc
+limit 1;
+
+-- name: GetProductCustomMediaURL :one
+select media_url
+from products_custom_media
+where product_id = $1
+  and on_order_state = $2
+order by created_at desc
+limit 1;
+
 -- name: GetNotificationsForNewOrdersAfterCursor :many
 with orders_batch as (select id as order_id, created_at, readable_id, web_app_id, external_user_id, state, type
                       from orders o
@@ -75,6 +91,7 @@ select orders_batch.order_id    as order_id,
        wa.name                  as web_app_name,
        coalesce(
                json_agg(json_build_object(
+                       'id', p.id,
                        'name', p.name,
                        'quantity', op.quantity,
                        'price', p.price

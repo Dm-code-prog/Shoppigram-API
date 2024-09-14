@@ -246,6 +246,7 @@ select orders_batch.order_id    as order_id,
        wa.name                  as web_app_name,
        coalesce(
                json_agg(json_build_object(
+                       'id', p.id,
                        'name', p.name,
                        'quantity', op.quantity,
                        'price', p.price
@@ -412,6 +413,48 @@ func (q *Queries) GetNotifierCursor(ctx context.Context, name pgtype.Text) (GetN
 	var i GetNotifierCursorRow
 	err := row.Scan(&i.CursorDate, &i.LastProcessedID)
 	return i, err
+}
+
+const getProductCustomMediaURL = `-- name: GetProductCustomMediaURL :one
+select media_url
+from products_custom_media
+where product_id = $1
+  and on_order_state = $2
+order by created_at desc
+limit 1
+`
+
+type GetProductCustomMediaURLParams struct {
+	ProductID    uuid.UUID
+	OnOrderState OrderState
+}
+
+func (q *Queries) GetProductCustomMediaURL(ctx context.Context, arg GetProductCustomMediaURLParams) (string, error) {
+	row := q.db.QueryRow(ctx, getProductCustomMediaURL, arg.ProductID, arg.OnOrderState)
+	var media_url string
+	err := row.Scan(&media_url)
+	return media_url, err
+}
+
+const getProductCustomMessage = `-- name: GetProductCustomMessage :one
+select message
+from products_custom_messages
+where product_id = $1
+  and on_order_state = $2
+order by created_at desc
+limit 1
+`
+
+type GetProductCustomMessageParams struct {
+	ProductID    uuid.UUID
+	OnOrderState OrderState
+}
+
+func (q *Queries) GetProductCustomMessage(ctx context.Context, arg GetProductCustomMessageParams) (string, error) {
+	row := q.db.QueryRow(ctx, getProductCustomMessage, arg.ProductID, arg.OnOrderState)
+	var message string
+	err := row.Scan(&message)
+	return message, err
 }
 
 const getReviewersNotificationList = `-- name: GetReviewersNotificationList :many
