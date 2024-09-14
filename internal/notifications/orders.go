@@ -66,6 +66,11 @@ func (s *Service) runOrdersNotifier() error {
 				if err != nil {
 					return errors.Wrap(err, "n.MakeConfirmedNotificationForAdmin")
 				}
+			} else if n.Status == stateDone {
+				message, err = n.MakeDoneNotificationForAdmin(admin.Language)
+				if err != nil {
+					return errors.Wrap(err, "n.MakeDoneNotificationForAdmin")
+				}
 			} else {
 				continue
 			}

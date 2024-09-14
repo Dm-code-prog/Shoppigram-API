@@ -5,8 +5,6 @@ import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	"github.com/shoppigram-com/marketplace-api/internal/notifications/templates/en"
-	"github.com/shoppigram-com/marketplace-api/internal/notifications/templates/ru"
 	"os"
 	"strings"
 	"time"
@@ -91,6 +89,7 @@ const (
 
 	pathToOrderConfirmedAdmin = "admin/order_confirmed.md"
 	pathToOrderConfirmedBuyer = "customer/order_confirmed.md"
+	pathToOrderDoneAdmin      = "admin/order_done.md"
 	pathToOrderDoneBuyer      = "customer/order_done.md"
 
 	langRu = "ru"
@@ -112,7 +111,7 @@ func (o *OrderNotification) MakeConfirmedNotificationForAdmin(language string) (
 	for _, p := range o.Products {
 		subtotal += p.Price * float64(p.Quantity)
 		currency = o.WebAppCurrency
-		productList.WriteString(fmt.Sprintf(`- %dx %s по цене %s %s
+		productList.WriteString(fmt.Sprintf(`- %dx %s | %s %s
 `, p.Quantity, p.Name, formatFloat(p.Price), formatCurrency(o.WebAppCurrency)))
 	}
 
@@ -123,26 +122,14 @@ func (o *OrderNotification) MakeConfirmedNotificationForAdmin(language string) (
 
 	comment := o.Comment
 	if comment == "" {
-		if language == langRu {
-			comment = ru.Translations["empty-comment"]
-		} else if language == langEn {
-			comment = en.Translations["empty-comment"]
-		}
+		comment = getTranslation(language, "empty-comment")
 	}
 
 	var paymentStatus string
 	if o.PaymentType == orderTypeP2P {
-		if language == langRu {
-			paymentStatus = ru.Translations["payment-status-unpaid"]
-		} else if language == langEn {
-			paymentStatus = en.Translations["payment-status-unpaid"]
-		}
+		paymentStatus = getTranslation(language, "payment-status-unpaid")
 	} else if o.PaymentType == orderTypeOnline {
-		if language == langRu {
-			paymentStatus = ru.Translations["payment-status-paid"]
-		} else if language == langEn {
-			paymentStatus = en.Translations["payment-status-paid"]
-		}
+		paymentStatus = getTranslation(language, "payment-status-paid")
 	}
 
 	finalMessage := fmt.Sprintf(
@@ -191,6 +178,36 @@ func (o *OrderNotification) MakeConfirmedNotificationForBuyer(language string) (
 		o.WebAppName,
 		o.ReadableOrderID,
 		formatFloat(subtotal)+" "+formatCurrency(currency),
+		paymentStatus,
+		strings.TrimRight(productList.String(), "; "),
+	)
+
+	return finalMessage, nil
+}
+
+// MakeDoneNotificationForAdmin creates a notification message for a done order for an admin
+func (o *OrderNotification) MakeDoneNotificationForAdmin(language string) (string, error) {
+	newOrderMessageTemplate, err := templates.ReadFile(getPathToFile(language, pathToOrderDoneAdmin))
+	if err != nil {
+		return "", errors.Wrap(err, "templates.ReadFile")
+	}
+
+	paymentStatus := getTranslation(language, "payment-status-paid")
+
+	var subtotal float64
+	var productList strings.Builder
+	for _, p := range o.Products {
+		subtotal += p.Price * float64(p.Quantity)
+		productList.WriteString(fmt.Sprintf(`- %dx %s: %s %s
+`, p.Quantity, p.Name, formatFloat(p.Price), formatCurrency(o.WebAppCurrency)))
+	}
+
+	finalMessage := fmt.Sprintf(
+		string(newOrderMessageTemplate),
+		o.WebAppName,
+		"@"+o.BuyerNickname,
+		o.ReadableOrderID,
+		formatFloat(subtotal)+" "+formatCurrency(o.WebAppCurrency),
 		paymentStatus,
 		strings.TrimRight(productList.String(), "; "),
 	)
