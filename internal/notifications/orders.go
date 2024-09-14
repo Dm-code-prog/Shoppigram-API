@@ -84,7 +84,10 @@ func (s *Service) runOrdersNotifier() error {
 			)
 
 			_, err = s.bot.Send(tgMessage)
-			return s.handleTelegramSendError(err, admin.Id)
+			err = s.handleTelegramSendError(err, admin.Id)
+			if err != nil {
+				return errors.Wrap(err, "s.handleTelegramSendError")
+			}
 		}
 
 		// Send notifications to the buyer
@@ -123,7 +126,10 @@ func (s *Service) runOrdersNotifier() error {
 		)
 
 		_, err = s.bot.Send(tgMessage)
-		return s.handleTelegramSendError(err, n.BuyerExternalID)
+		err = s.handleTelegramSendError(err, n.BuyerExternalID)
+		if err != nil {
+			return errors.Wrap(err, "s.handleTelegramSendError")
+		}
 	}
 
 	// Get the last element of the slice
