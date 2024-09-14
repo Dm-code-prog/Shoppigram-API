@@ -35,9 +35,11 @@ func (pg *Pg) GetProducts(ctx context.Context, request GetProductsRequest) (GetP
 	}
 
 	var products []Product
-	err = json.Unmarshal(m.Products, &products)
-	if err != nil {
-		return GetProductsResponse{}, errors.Wrap(err, "json.Unmarshal")
+	if m.Products != nil {
+		err = json.Unmarshal(m.Products, &products)
+		if err != nil {
+			return GetProductsResponse{}, errors.Wrap(err, "json.Unmarshal")
+		}
 	}
 
 	return GetProductsResponse{
