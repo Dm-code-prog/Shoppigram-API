@@ -25,10 +25,10 @@ where web_app_id = @web_app_id::uuid
   and id = $4;
 
 -- name: DeleteProduct :execresult
-delete
-from products
+update products
+set is_deleted = true
 where web_app_id = @web_app_id::uuid
-  and id = @id::uuid;
+  and id = $1;
 
 -- name: IsUserTheOwnerOfWebApp :one
 select owner_external_id = $1
@@ -36,6 +36,7 @@ from web_apps
 where id = $2;
 
 -- name: IsUserTheOwnerOfProduct :one
-select wa.owner_external_id = $1 from products p
-join web_apps wa on p.web_app_id = wa.id
+select wa.owner_external_id = $1
+from products p
+         join web_apps wa on p.web_app_id = wa.id
 where p.id = @id::uuid;

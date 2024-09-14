@@ -10,6 +10,10 @@ type Environment struct {
 		Port string `env:"HTTP_PORT,default=8080"`
 	}
 
+	Cache struct {
+		MaxSize int64 `env:"CACHE_MAX_SIZE,default=100000000"`
+	}
+
 	NewOrderNotifications struct {
 		IsEnabled  bool `env:"NEW_ORDER_NOTIFICATIONS_IS_ENABLED,default=true"`
 		BatchSize  int  `env:"NEW_ORDER_NOTIFICATIONS_BATCH_SIZE,default=1"`
