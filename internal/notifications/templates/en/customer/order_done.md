@@ -1,6 +1,6 @@
 You have made a purchase at %s
 
-Order number: %s
+Order number: #%d
 Amount: %s
 Payment status: %s
 

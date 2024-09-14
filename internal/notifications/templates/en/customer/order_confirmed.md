@@ -1,6 +1,6 @@
 You have created an order at %s
 
-Order number #%d
+Order number: #%d
 Amount: %s
 Payment status: %s
 
