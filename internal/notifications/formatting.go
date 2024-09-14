@@ -1,8 +1,6 @@
 package notifications
 
 import (
-	"encoding/json"
-	"github.com/pkg/errors"
 	"strconv"
 	"strings"
 	"time"
@@ -62,17 +60,4 @@ func isLanguageValid(lang string) bool {
 		}
 	}
 	return false
-}
-
-func getButtonText(lang string, key string) (string, error) {
-	var bt map[string]string
-	data, err := templates.ReadFile("templates/" + lang + pathToButtonsText)
-	if err != nil {
-		return "", errors.Wrap(err, "templates.ReadFile("+lang+".json)")
-	}
-	err = json.Unmarshal(data, &bt)
-	if err != nil {
-		return "", errors.Wrap(err, "json.Unmarshal(data, bt)")
-	}
-	return bt[key], nil
 }

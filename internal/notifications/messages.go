@@ -178,22 +178,13 @@ func (o *OrderNotification) MakeConfirmedNotificationForBuyer(language string) (
 	newOrderMessageTemplate, err := templates.ReadFile(getPathToFile(language, pathToOrderConfirmedBuyer))
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
-
 	}
 
 	var paymentStatus string
 	if o.PaymentType == orderTypeP2P {
-		if language == langRu {
-			paymentStatus = ru.Translations["payment-status-unpaid"]
-		} else if language == langEn {
-			paymentStatus = en.Translations["payment-status-unpaid"]
-		}
+		paymentStatus = getTranslation(language, "payment-status-unpaid")
 	} else if o.PaymentType == orderTypeOnline {
-		if language == langRu {
-			paymentStatus = ru.Translations["payment-status-paid"]
-		} else if language == langEn {
-			paymentStatus = en.Translations["payment-status-paid"]
-		}
+		paymentStatus = getTranslation(language, "payment-status-paid")
 	}
 
 	finalMessage := fmt.Sprintf(
@@ -214,12 +205,7 @@ func (o *OrderNotification) MakeDoneNotificationForBuyer(language string) (strin
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
 
-	var paymentStatus string
-	if language == langRu {
-		paymentStatus = ru.Translations["payment-status-paid"]
-	} else if language == langEn {
-		paymentStatus = en.Translations["payment-status-paid"]
-	}
+	paymentStatus := getTranslation(language, "payment-status-paid")
 
 	var subtotal float64
 	var productList strings.Builder

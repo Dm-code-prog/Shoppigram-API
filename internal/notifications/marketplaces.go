@@ -159,19 +159,12 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 		msg := tgbotapi.NewMessage(n.OwnerExternalID, onVerificationMsgTxt)
 		msg.ParseMode = tgbotapi.ModeMarkdownV2
 
-		tgLinkPath := n.ID.String()
-		tgLink, err := s.getTelegramLink(tgLinkPath)
+		tgLink, err := s.getTelegramLink(n.ID.String())
 		if err != nil {
 			return errors.Wrap(err, "getTelegramLink()")
 		}
-		buttonTextContactSupport, err := getButtonText(ownerLang, "contact-support")
-		if err != nil {
-			return errors.Wrap(err, "getButtonText(\"contact-support\")")
-		}
-		buttonTextViewStore, err := getButtonText(ownerLang, "view-store")
-		if err != nil {
-			return errors.Wrap(err, "getButtonText(\"view-store\")")
-		}
+		buttonTextContactSupport := getTranslation(ownerLang, "contact-support")
+		buttonTextViewStore := getTranslation(ownerLang, "view-store")
 
 		addTelegramButtonsToMessage(&msg,
 			telegramButtonData{buttonTextContactSupport, supportContactUrl},
@@ -217,10 +210,7 @@ func (s *Service) sendVerifiedMarketplaceNotifications(marketplaceNotifications 
 			return errors.Wrap(err, "getTelegramLink()")
 		}
 
-		buttonText, err := getButtonText(ownerLang, "continue-setting-up")
-		if err != nil {
-			return errors.Wrap(err, "getButtonText(\"continue-setting-up\")")
-		}
+		buttonText := getTranslation(ownerLang, "continue-setting-up")
 		addTelegramButtonsToMessage(&msg, telegramButtonData{buttonText, tgLink})
 
 		_, err = s.bot.Send(msg)

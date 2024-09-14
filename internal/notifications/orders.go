@@ -75,12 +75,13 @@ func (s *Service) runOrdersNotifier() error {
 				return errors.Wrap(err, "getTelegramLink()")
 			}
 
-			buttonText, err := getButtonText(admin.Language, "order-management")
-			if err != nil {
-				return errors.Wrap(err, "getButtonText(\"order-management\")")
-			}
-
-			addTelegramButtonsToMessage(&tgMessage, telegramButtonData{buttonText, tgLink})
+			addTelegramButtonsToMessage(
+				&tgMessage,
+				telegramButtonData{
+					getTranslation(admin.Language, "order-management"),
+					tgLink,
+				},
+			)
 
 			_, err = s.bot.Send(tgMessage)
 			return s.handleTelegramSendError(err, admin.Id)
@@ -108,17 +109,18 @@ func (s *Service) runOrdersNotifier() error {
 		}
 
 		tgMessage := tgbotapi.NewMessage(n.BuyerExternalID, message)
-		tgLinkPath := n.WebAppID.String() + "/order/" + n.ID.String()
-		tgLink, err := s.getTelegramLink(tgLinkPath)
+		tgLink, err := s.getTelegramLink(n.WebAppID.String() + "/order/" + n.ID.String())
 		if err != nil {
 			return errors.Wrap(err, "getTelegramLink")
 		}
-		buttonText, err := getButtonText(n.BuyerLanguage, "view-order")
-		if err != nil {
-			return errors.Wrap(err, "getButtonText")
-		}
 
-		addTelegramButtonsToMessage(&tgMessage, telegramButtonData{buttonText, tgLink})
+		addTelegramButtonsToMessage(
+			&tgMessage,
+			telegramButtonData{
+				getTranslation(n.BuyerLanguage, "view-order"),
+				tgLink,
+			},
+		)
 
 		_, err = s.bot.Send(tgMessage)
 		return s.handleTelegramSendError(err, n.BuyerExternalID)

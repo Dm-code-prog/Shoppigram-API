@@ -3,6 +3,8 @@ package notifications
 import (
 	"context"
 	"embed"
+	"github.com/shoppigram-com/marketplace-api/internal/notifications/templates/en"
+	"github.com/shoppigram-com/marketplace-api/internal/notifications/templates/ru"
 	"strconv"
 	"strings"
 	"time"
@@ -22,7 +24,6 @@ var (
 const (
 	fallbackLanguage  = "ru"
 	supportContactUrl = "https://t.me/ShoppigramSupport"
-	pathToButtonsText = "/buttons.json"
 
 	orderNotifier                   = "new_order_notifications"
 	newMarketplaceNotifierName      = "new_marketplace_notifications"
@@ -203,12 +204,14 @@ func (s *Service) NotifyChannelIntegrationSuccess(_ context.Context, request Not
 	msg := tgbotapi.NewMessage(request.UserExternalID, msgTxt)
 	msg.ParseMode = tgbotapi.ModeMarkdownV2
 
-	tgLink := "https://t.me/" + s.botName + "/app"
-	buttonText, err := getButtonText(userLnag, "try-new-features")
-	if err != nil {
-		return errors.Wrap(err, "getButtonText")
-	}
-	addTelegramButtonsToMessage(&msg, telegramButtonData{buttonText, tgLink})
+	buttonText := getTranslation(userLnag, "try-new-features")
+	addTelegramButtonsToMessage(
+		&msg,
+		telegramButtonData{
+			buttonText,
+			"https://t.me/" + s.botName + "/app",
+		},
+	)
 
 	_, err = s.bot.Send(msg)
 	if err != nil {
@@ -238,10 +241,7 @@ func (s *Service) NotifyGreetings(_ context.Context, request NotifyGreetingsRequ
 // SendMarketplaceBanner sends a marketplace banner to a Telegram channel
 func (s *Service) SendMarketplaceBanner(_ context.Context, params SendMarketplaceBannerParams) (message int64, err error) {
 	msg := tgbotapi.NewMessage(params.ChannelChatID, params.Message)
-	buttonText, err := getButtonText("ru", "go-to-the-store")
-	if err != nil {
-		return 0, errors.Wrap(err, "getButtonText(\"go-to-the-store\")")
-	}
+	buttonText := getTranslation("ru", "go-to-the-store")
 	addTelegramButtonsToMessage(&msg, telegramButtonData{buttonText, params.WebAppLink})
 
 	Message, err := s.bot.Send(msg)
@@ -316,4 +316,12 @@ func (s *Service) handleTelegramSendError(err error, chatID int64) error {
 		return nil
 	}
 	return errors.Wrap(err, "bot.Send")
+}
+
+func getTranslation(lang, key string) string {
+	if lang == langRu {
+		return ru.Translations[key]
+	} else {
+		return en.Translations[key]
+	}
 }
