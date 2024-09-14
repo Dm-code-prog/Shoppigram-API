@@ -136,3 +136,34 @@ func (q *Queries) GetOrder(ctx context.Context, arg GetOrderParams) ([]GetOrderR
 	}
 	return items, nil
 }
+
+const getOrderAmount = `-- name: GetOrderAmount :one
+select sum(p.price * op.quantity) as amount
+from orders o
+         join order_products op on o.id = op.order_id
+         join products p on op.product_id = p.id
+where o.id = $1
+`
+
+func (q *Queries) GetOrderAmount(ctx context.Context, id uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, getOrderAmount, id)
+	var amount int64
+	err := row.Scan(&amount)
+	return amount, err
+}
+
+const updateOrderState = `-- name: UpdateOrderState :exec
+update orders
+set state = $2::order_state
+where id = $1
+`
+
+type UpdateOrderStateParams struct {
+	ID    uuid.UUID
+	State OrderState
+}
+
+func (q *Queries) UpdateOrderState(ctx context.Context, arg UpdateOrderStateParams) error {
+	_, err := q.db.Exec(ctx, updateOrderState, arg.ID, arg.State)
+	return err
+}

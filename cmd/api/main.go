@@ -208,7 +208,7 @@ func main() {
 
 	////////////////////////////////////// RUN NOTIFICATION JOBS //////////////////////////////////////
 	if config.NewOrderNotifications.IsEnabled {
-		g.Add(notificationsService.RunNewOrderNotifier, func(err error) {
+		g.Add(notificationsService.RunOrdersNotifier, func(err error) {
 			_ = notificationsService.Shutdown()
 		})
 	} else {

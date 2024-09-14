@@ -41,3 +41,15 @@ where o.id = $1
   and (o.external_user_id = $2
     or wa.owner_external_id = $2);
 
+-- name: GetOrderAmount :one
+select sum(p.price * op.quantity) as amount
+from orders o
+         join order_products op on o.id = op.order_id
+         join products p on op.product_id = p.id
+where o.id = $1;
+
+-- name: UpdateOrderState :exec
+update orders
+set state = @state::order_state
+where id = $1;
+
