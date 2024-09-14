@@ -415,27 +415,6 @@ func (q *Queries) GetNotifierCursor(ctx context.Context, name pgtype.Text) (GetN
 	return i, err
 }
 
-const getProductCustomMediaURL = `-- name: GetProductCustomMediaURL :one
-select media_url
-from products_custom_media
-where product_id = $1
-  and on_order_state = $2
-order by created_at desc
-limit 1
-`
-
-type GetProductCustomMediaURLParams struct {
-	ProductID    uuid.UUID
-	OnOrderState OrderState
-}
-
-func (q *Queries) GetProductCustomMediaURL(ctx context.Context, arg GetProductCustomMediaURLParams) (string, error) {
-	row := q.db.QueryRow(ctx, getProductCustomMediaURL, arg.ProductID, arg.OnOrderState)
-	var media_url string
-	err := row.Scan(&media_url)
-	return media_url, err
-}
-
 const getProductCustomMessage = `-- name: GetProductCustomMessage :one
 select message
 from products_custom_messages

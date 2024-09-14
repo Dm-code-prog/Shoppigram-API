@@ -30,47 +30,6 @@ where product_id = $1
 order by created_at desc
 limit 1;
 
--- name: GetProductCustomMediaURL :one
-select media_url
-from products_custom_media
-where product_id = $1
-  and on_order_state = $2
-order by created_at desc
-limit 1;
-
--- name: GetNotificationsForNewOrdersAfterCursor :many
-with orders_batch as (select id as order_id, created_at, readable_id, web_app_id, external_user_id, state, type
-                      from orders o
-                      where (o.updated_at, o.id) > (@updated_at::timestamp, @id::uuid)
-                        and o.state = 'confirmed'
-                      order by o.created_at, o.id
-                      limit $1)
-select ob.order_id,
-       ob.readable_id,
-       ob.created_at,
-       ob.state::text,
-       p.web_app_id,
-       wa.name           as web_app_name,
-       p.name,
-       p.price,
-       wa.currency,
-       op.quantity,
-       u.username,
-       u.language_code,
-       u.external_id     as external_user_id,
-       adm.language_code as admin_language_code,
-       ob.state::text    as state,
-       ob.type::text     as payment_type
-from orders_batch ob
-         join order_products op
-              on ob.order_id = op.order_id
-         join products p on p.id = op.product_id
-         join telegram_users u on external_user_id = u.external_id
-         join web_apps wa on ob.web_app_id = wa.id
-         join telegram_users adm on wa.owner_external_id = adm.external_id
-order by ob.created_at, ob.order_id;
-
-
 -- name: GetNotificationsForUpdatedOrders :many
 with orders_batch as (select id as order_id,
                              created_at,

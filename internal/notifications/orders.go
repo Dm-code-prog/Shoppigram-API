@@ -8,6 +8,7 @@ about orders, to be precise:
 package notifications
 
 import (
+	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
 	"github.com/shoppigram-com/marketplace-api/internal/logging"
@@ -46,7 +47,6 @@ func (s *Service) runOrdersNotifier() error {
 	}
 
 	if len(notifications) == 0 {
-		s.log.Info("no updates of orders")
 		return nil
 	}
 
@@ -155,6 +155,8 @@ func (s *Service) runOrdersNotifier() error {
 			return errors.Wrap(err, "s.handleTelegramSendError")
 		}
 
+		fmt.Println("DEBUG", n.Products)
+
 		// Send custom messages and media for products, if any
 		for _, product := range n.Products {
 			// Send custom message
@@ -166,6 +168,8 @@ func (s *Service) runOrdersNotifier() error {
 			if customMessage == "" {
 				continue
 			}
+
+			s.log.Info("DEBUG: Custom message is " + customMessage)
 
 			tgMessage := tgbotapi.NewMessage(n.BuyerExternalID, customMessage)
 			_, err = s.bot.Send(tgMessage)

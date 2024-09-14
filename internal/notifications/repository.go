@@ -47,22 +47,6 @@ func (p *Pg) GetProductCustomMessage(ctx context.Context, productID uuid.UUID, s
 	return message, nil
 }
 
-// GetProductCustomMediaURL gets a custom media URL for a product
-func (p *Pg) GetProductCustomMediaURL(ctx context.Context, productID uuid.UUID, state string) (string, error) {
-	url, err := p.gen.GetProductCustomMediaURL(ctx, generated.GetProductCustomMediaURLParams{
-		ProductID:    productID,
-		OnOrderState: generated.OrderState(state),
-	})
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return "", nil
-		}
-		return "", errors.Wrap(err, "p.gen.GetProductCustomMediaURL")
-	}
-
-	return url, nil
-}
-
 // GetAdminsNotificationList gets a list of admins to notify about an order
 func (p *Pg) GetAdminsNotificationList(ctx context.Context, webAppID uuid.UUID) ([]adminNotitfication, error) {
 	adminsNotificationList, err := p.gen.GetAdminsNotificationList(ctx, pgtype.UUID{

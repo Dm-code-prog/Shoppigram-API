@@ -185,14 +185,6 @@ type Product struct {
 	Category      pgtype.Text
 }
 
-type ProductsCustomMedium struct {
-	ID           uuid.UUID
-	CreatedAt    pgtype.Timestamp
-	ProductID    uuid.UUID
-	MediaUrl     string
-	OnOrderState OrderState
-}
-
 type ProductsCustomMessage struct {
 	ID           uuid.UUID
 	CreatedAt    pgtype.Timestamp

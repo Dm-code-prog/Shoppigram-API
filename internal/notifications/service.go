@@ -116,9 +116,6 @@ type (
 		// empty string is returned if no message is found
 		GetProductCustomMessage(ctx context.Context, productID uuid.UUID, state string) (string, error)
 
-		// GetProductCustomMediaURL gets a custom media URL for a product
-		GetProductCustomMediaURL(ctx context.Context, productID uuid.UUID, state string) (string, error)
-
 		GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]NewMarketplaceNotification, error)
 		GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]VerifiedMarketplaceNotification, error)
 		AddUserToNewOrderNotifications(ctx context.Context, req AddUserToNewOrderNotificationsRequest) error
