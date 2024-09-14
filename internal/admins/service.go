@@ -450,10 +450,6 @@ func (s *DefaultService) UpdateProduct(ctx context.Context, req UpdateProductReq
 		return ErrorInvalidName
 	}
 
-	if req.Price <= 0 {
-		return ErrorBadRequest
-	}
-
 	err := s.repo.UpdateProduct(ctx, req)
 	if err != nil {
 		return errors.Wrap(err, "s.repo.UpdateProduct")
