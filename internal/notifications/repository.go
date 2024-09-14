@@ -55,7 +55,7 @@ func (p *Pg) GetProductCustomMediaForward(ctx context.Context, productID uuid.UU
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return
+			return fromChatID, messageID, nil
 		}
 		return fromChatID, messageID, errors.Wrap(err, "p.gen.GetProductCustomMediaForward")
 	}
