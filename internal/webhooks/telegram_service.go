@@ -35,6 +35,16 @@ type (
 		ChannelName       string
 	}
 
+	// NotifyChannelIntegrationFailureRequest contains the data required to notify a user about a failure
+	// during channel integration with Shoppigram
+	NotifyChannelIntegrationFailureRequest struct {
+		UserExternalID    int64
+		UserLanguage      string
+		ChannelExternalID int64
+		ChannelTitle      string
+		ChannelName       string
+	}
+
 	// TelegramService is the service for handling Telegram webhooks
 	TelegramService struct {
 		channelStorage    ChannelStorage
@@ -56,6 +66,7 @@ type (
 	// channel integration with Shoppigram
 	Notifier interface {
 		NotifyChannelIntegrationSuccess(ctx context.Context, request NotifyChannelIntegrationSuccessRequest) error
+		NotifyChannelIntegrationFailure(ctx context.Context, request NotifyChannelIntegrationFailureRequest) error
 		NotifyGreetings(ctx context.Context, request NotifyGreetingsRequest) error
 	}
 )
@@ -101,6 +112,19 @@ func (s *TelegramService) HandleTelegramWebhook(ctx context.Context, update tgbo
 
 func (s *TelegramService) handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx context.Context, update tgbotapi.Update) error {
 	event := update.MyChatMember
+	if !update.MyChatMember.NewChatMember.CanPinMessages && !update.MyChatMember.NewChatMember.CanEditMessages {
+		err := s.notifier.NotifyChannelIntegrationFailure(ctx, NotifyChannelIntegrationFailureRequest{
+			UserExternalID:    event.From.ID,
+			UserLanguage:      event.From.LanguageCode,
+			ChannelExternalID: event.Chat.ID,
+			ChannelTitle:      event.Chat.Title,
+			ChannelName:       event.Chat.UserName,
+		})
+		if err != nil {
+			return errors.Wrap(err, "s.notifier.NotifyChannelIntegrationSuccess")
+		}
+		return nil
+	}
 
 	err := s.channelStorage.CreateOrUpdateTelegramChannel(ctx, CreateOrUpdateTelegramChannelRequest{
 		ExternalID:      event.Chat.ID,

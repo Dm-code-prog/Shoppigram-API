@@ -43,6 +43,10 @@ func (a *notificationsWebhooksAdapter) NotifyChannelIntegrationSuccess(ctx conte
 	return a.notifier.NotifyChannelIntegrationSuccess(ctx, notifications.NotifyChannelIntegrationSuccessRequest(req))
 }
 
+func (a *notificationsWebhooksAdapter) NotifyChannelIntegrationFailure(ctx context.Context, req webhooks.NotifyChannelIntegrationFailureRequest) error {
+	return a.notifier.NotifyChannelIntegrationFailure(ctx, notifications.NotifyChannelIntegrationFailureRequest(req))
+}
+
 func (a *notificationsWebhooksAdapter) NotifyGreetings(ctx context.Context, req webhooks.NotifyGreetingsRequest) error {
 	return a.notifier.NotifyGreetings(ctx, notifications.NotifyGreetingsRequest(req))
 }

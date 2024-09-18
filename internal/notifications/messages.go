@@ -58,10 +58,20 @@ type (
 		ChannelTitle      string
 		ChannelName       string
 	}
+
+	// ChannelIntegrationFailureNotification defines the structure of a failed channel integration notification
+	ChannelIntegrationFailureNotification struct {
+		UserExternalID    int64
+		UserLanguage      string
+		ChannelExternalID int64
+		ChannelTitle      string
+		ChannelName       string
+	}
 )
 
 const (
 	pathToAdminChannelIntegrated              = "admin/channel_integrated.md"
+	pathToAdminChannelIntegrationFailure      = "admin/channel_integration_failure.md"
 	pathToAdminGreetings                      = "admin/greetings_message.md"
 	pathToAdminMarketplaceSentForVerification = "admin/marketplace_sent_for_verification.md"
 	pathToAdminNewOrder                       = "admin/new_order_message.md"
@@ -223,6 +233,21 @@ func BuildGreetigsMessage(language string) (string, error) {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
 	return tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, string(greetingsMessage)), nil
+}
+
+// BuildMessage creates a notification message for a failed channel integration
+func (m *ChannelIntegrationFailureNotification) BuildMessage(language string) (string, error) {
+	channelIntegrationSuccessMessageTemplate, err := templates.ReadFile(getPathToFile(language, pathToAdminChannelIntegrationFailure))
+	if err != nil {
+		return "", errors.Wrap(err, "templates.ReadFile")
+	}
+
+	finalMessage := fmt.Sprintf(
+		string(channelIntegrationSuccessMessageTemplate),
+		m.ChannelTitle,
+	)
+
+	return tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, finalMessage), nil
 }
 
 func getPathToFile(lang string, path string) string {

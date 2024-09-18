@@ -57,6 +57,16 @@ type (
 		ChannelName       string
 	}
 
+	// NotifyChannelIntegrationFailureRequest contains the data required to notify a user about a failure
+	// during channel integration with Shoppigram
+	NotifyChannelIntegrationFailureRequest struct {
+		UserExternalID    int64
+		UserLanguage      string
+		ChannelExternalID int64
+		ChannelTitle      string
+		ChannelName       string
+	}
+
 	// SendMarketplaceBannerParams is a struct for request params to send a marketplace banner to a Telegram channel
 	// with a TWA link button markup
 	SendMarketplaceBannerParams struct {
@@ -636,7 +646,34 @@ func (s *Service) PinNotification(_ context.Context, req PinNotificationParams) 
 	}
 
 	return nil
+}
 
+// NotifyChannelIntegrationFailure notifies a user about a failure
+// happened during channel integration with Shoppigram
+func (s *Service) NotifyChannelIntegrationFailure(_ context.Context, request NotifyChannelIntegrationFailureRequest) error {
+	message := ChannelIntegrationFailureNotification(request)
+	userLnag := s.checkAndGetLangCode(message.UserLanguage)
+	msgTxt, err := message.BuildMessage(userLnag)
+	if err != nil {
+		return errors.Wrap(err, "message.BuildMessageShoppigram")
+	}
+
+	msg := tgbotapi.NewMessage(request.UserExternalID, msgTxt)
+	msg.ParseMode = tgbotapi.ModeMarkdownV2
+
+	tgLink := "https://t.me/" + s.botName + "?startchannel&admin=post_messages+pin_messages"
+	buttonText, err := getButtonText(userLnag, "try-again")
+	if err != nil {
+		return errors.Wrap(err, "getButtonText(\"try-again\")")
+	}
+	addTelegramButtonsToMessage(&msg, telegramButtonData{buttonText, tgLink})
+
+	_, err = s.bot.Send(msg)
+	if err != nil {
+		return errors.Wrap(err, "bot.Send")
+	}
+
+	return nil
 }
 
 func addTelegramButtonsToMessage(msg *tgbotapi.MessageConfig, messageData ...telegramButtonData) {
