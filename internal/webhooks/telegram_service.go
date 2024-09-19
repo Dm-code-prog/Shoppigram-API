@@ -19,10 +19,21 @@ type (
 		IsPublic        bool
 	}
 
+	// GetTelegramChannelOwnerRequest contains chat id of a channel
+	GetTelegramChannelOwnerRequest struct {
+		ChannelChatId int64
+	}
+
+	// GetTelegramChannelOwnerResponse contains channel's owner external id
+	GetTelegramChannelOwnerResponse struct {
+		ChatId int64 `json:"chat_id"`
+	}
+
 	// ChannelStorage is an interface for storing and retrieving data about Telegram channels
 	// from our own storage
 	ChannelStorage interface {
 		CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error
+		GetTelegramChannelOwner(ctx context.Context, req GetTelegramChannelOwnerRequest) (GetTelegramChannelOwnerResponse, error)
 	}
 
 	// NotifyChannelIntegrationSuccessRequest contains the data required to notify a user about a successful
@@ -169,19 +180,24 @@ func (s *TelegramService) handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx
 
 func (s *TelegramService) handleUpdateTypeShoppigramBotRemovedFromChannelAsAdmin(ctx context.Context, update tgbotapi.Update) error {
 	event := update.MyChatMember
-
-	s.log.Info("Bot was removed from channel "+event.Chat.Title, zap.Int64("ID", event.Chat.ID))
-
-	/* err := s.notifier.NotifyBotRemovedFromChannel(ctx, NotifyBotRemovedFromChannelRequest{
-		UserExternalID:    event.From.ID,
-		UserLanguage:      "ru",
+	lang := event.From.LanguageCode
+	if "" == lang {
+		lang = "ru"
+	}
+	resp, err := s.channelStorage.GetTelegramChannelOwner(ctx, GetTelegramChannelOwnerRequest{ChannelChatId: event.Chat.ID})
+	if err != nil {
+		return errors.Wrap(err, "s.channelStorage.GetTelegramChannelOwner")
+	}
+	err = s.notifier.NotifyBotRemovedFromChannel(ctx, NotifyBotRemovedFromChannelRequest{
+		UserExternalID:    resp.ChatId,
+		UserLanguage:      lang,
 		ChannelExternalID: event.Chat.ID,
 		ChannelTitle:      event.Chat.Title,
 		ChannelName:       event.Chat.UserName,
 	})
 	if err != nil {
-		return errors.Wrap(err, "s.notifier.NotifyChannelIntegrationSuccess")
-	}*/
+		return errors.Wrap(err, "s.notifier.NotifyBotRemovedFromChannel")
+	}
 
 	return nil
 }

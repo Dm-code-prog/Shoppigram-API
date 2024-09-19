@@ -154,6 +154,16 @@ type (
 		IsPublic        bool
 	}
 
+	// GetTelegramChannelOwnerRequest contains a channel id
+	GetTelegramChannelOwnerRequest struct {
+		ChannelChatId int64
+	}
+
+	// GetTelegramChannelsResponse contains the data about Telegram channels owned by a specific user
+	GetTelegramChannelOwnerResponse struct {
+		ChatId int64 `json:"chat_id"`
+	}
+
 	// PublishMarketplaceBannerToChannelRequest contains the data about a banner to be published to a Telegram channel
 	PublishMarketplaceBannerToChannelRequest struct {
 		WebAppID          uuid.UUID
@@ -252,6 +262,7 @@ type (
 		IsUserTheOwnerOfTelegramChannel(ctx context.Context, externalUserID, channelID int64) (bool, error)
 
 		CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error
+		GetTelegramChannelOwner(ctx context.Context, chatId int64) (GetTelegramChannelOwnerResponse, error)
 		GetTelegramChannels(ctx context.Context, ownerExternalID int64) (GetTelegramChannelsResponse, error)
 	}
 
@@ -287,6 +298,7 @@ type (
 
 		GetTelegramChannels(ctx context.Context, ownerExternalID int64) (GetTelegramChannelsResponse, error)
 		CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error
+		GetTelegramChannelOwner(ctx context.Context, req GetTelegramChannelOwnerRequest) (GetTelegramChannelOwnerResponse, error)
 		PublishMarketplaceBannerToChannel(ctx context.Context, req PublishMarketplaceBannerToChannelRequest) error
 	}
 
@@ -600,6 +612,15 @@ func (s *DefaultService) CreateOrUpdateTelegramChannel(ctx context.Context, req 
 	}
 
 	return nil
+}
+
+func (s *DefaultService) GetTelegramChannelOwner(ctx context.Context, req GetTelegramChannelOwnerRequest) (GetTelegramChannelOwnerResponse, error) {
+	res, err := s.repo.GetTelegramChannelOwner(ctx, req.ChannelChatId)
+	if err != nil {
+		return GetTelegramChannelOwnerResponse{}, errors.Wrap(err, "s.repo.GetTelegramChannelOwner")
+	}
+
+	return res, nil
 }
 
 // PublishMarketplaceBannerToChannel publishes a banner to a Telegram channel

@@ -35,6 +35,11 @@ func (a *adminWebhooksAdapter) CreateOrUpdateTelegramChannel(ctx context.Context
 	return a.admin.CreateOrUpdateTelegramChannel(ctx, admins.CreateOrUpdateTelegramChannelRequest(req))
 }
 
+func (a *adminWebhooksAdapter) GetTelegramChannelOwner(ctx context.Context, req webhooks.GetTelegramChannelOwnerRequest) (webhooks.GetTelegramChannelOwnerResponse, error) {
+	resp, err := a.admin.GetTelegramChannelOwner(ctx, admins.GetTelegramChannelOwnerRequest{ChannelChatId: req.ChannelChatId})
+	return webhooks.GetTelegramChannelOwnerResponse(resp), err
+}
+
 type notificationsWebhooksAdapter struct {
 	notifier *notifications.Service
 }

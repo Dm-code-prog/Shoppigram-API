@@ -181,6 +181,17 @@ func (s *ServiceWithObservability) CreateOrUpdateTelegramChannel(ctx context.Con
 	return err
 }
 
+// GetTelegramChannelOwner calls the underlying service's GetTelegramChannelOwner method
+func (s *ServiceWithObservability) GetTelegramChannelOwner(ctx context.Context, request GetTelegramChannelOwnerRequest) (GetTelegramChannelOwnerResponse, error) {
+	res, err := s.service.GetTelegramChannelOwner(ctx, request)
+	if err != nil {
+		s.log.
+			With(zap.String("channel_chat_id", strconv.FormatInt(request.ChannelChatId, 10))).
+			Error("s.service.GetTelegramChannelOwner", logging.SilentError(err))
+	}
+	return res, err
+}
+
 // PublishMarketplaceBannerToChannel calls the underlying service's PublishMarketplaceBannerToChannel method
 func (s *ServiceWithObservability) PublishMarketplaceBannerToChannel(ctx context.Context, request PublishMarketplaceBannerToChannelRequest) error {
 	err := s.service.PublishMarketplaceBannerToChannel(ctx, request)

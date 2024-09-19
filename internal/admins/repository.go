@@ -329,3 +329,13 @@ func (p *Pg) GetTelegramChannels(ctx context.Context, ownerExternalID int64) (Ge
 
 	return GetTelegramChannelsResponse{Channels: channels}, nil
 }
+
+// GetTelegramChannels gets a list of Telegram channels owned by a specific user
+func (p *Pg) GetTelegramChannelOwner(ctx context.Context, chatId int64) (GetTelegramChannelOwnerResponse, error) {
+	adminChatId, err := p.gen.GetTelegramChannelAdmin(ctx, chatId)
+	if err != nil {
+		return GetTelegramChannelOwnerResponse{}, errors.Wrap(err, "p.gen.GetTelegramChannelAdmin")
+	}
+
+	return GetTelegramChannelOwnerResponse{ChatId: adminChatId}, nil
+}
