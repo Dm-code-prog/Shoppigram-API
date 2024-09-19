@@ -67,6 +67,15 @@ type (
 		ChannelName       string
 	}
 
+	// NotifyBotRemovedFromChannelRequest contains the data required to notify a user about a bot removal
+	NotifyBotRemovedFromChannelRequest struct {
+		UserExternalID    int64
+		UserLanguage      string
+		ChannelExternalID int64
+		ChannelTitle      string
+		ChannelName       string
+	}
+
 	// SendMarketplaceBannerParams is a struct for request params to send a marketplace banner to a Telegram channel
 	// with a TWA link button markup
 	SendMarketplaceBannerParams struct {
@@ -678,7 +687,8 @@ func (s *Service) NotifyChannelIntegrationFailure(_ context.Context, request Not
 
 // NotifyChannelIntegrationFailure notifies a user about a failure
 // happened during channel integration with Shoppigram
-func (s *Service) NotifyBotRemovedFromChannel(_ context.Context, request NotifyChannelIntegrationFailureRequest) error {
+func (s *Service) NotifyBotRemovedFromChannel(_ context.Context, request NotifyBotRemovedFromChannelRequest) error {
+
 	message := BotRemovedFromChannelNotification(request)
 	userLnag := s.checkAndGetLangCode(message.UserLanguage)
 	msgTxt, err := message.BuildMessage(userLnag)
@@ -694,6 +704,7 @@ func (s *Service) NotifyBotRemovedFromChannel(_ context.Context, request NotifyC
 	if err != nil {
 		return errors.Wrap(err, "getButtonText(\"add-bot-as-admin\")")
 	}
+
 	addTelegramButtonsToMessage(&msg, telegramButtonData{buttonText, tgLink})
 
 	_, err = s.bot.Send(msg)
