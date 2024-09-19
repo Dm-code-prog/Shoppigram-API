@@ -676,6 +676,34 @@ func (s *Service) NotifyChannelIntegrationFailure(_ context.Context, request Not
 	return nil
 }
 
+// NotifyChannelIntegrationFailure notifies a user about a failure
+// happened during channel integration with Shoppigram
+func (s *Service) NotifyBotRemovedFromChannel(_ context.Context, request NotifyChannelIntegrationFailureRequest) error {
+	message := BotRemovedFromChannelNotification(request)
+	userLnag := s.checkAndGetLangCode(message.UserLanguage)
+	msgTxt, err := message.BuildMessage(userLnag)
+	if err != nil {
+		return errors.Wrap(err, "message.BuildMessageShoppigram")
+	}
+
+	msg := tgbotapi.NewMessage(request.UserExternalID, msgTxt)
+	msg.ParseMode = tgbotapi.ModeMarkdownV2
+
+	tgLink := "https://t.me/" + s.botName + "?startchannel&admin=post_messages+pin_messages"
+	buttonText, err := getButtonText(userLnag, "add-bot-as-admin")
+	if err != nil {
+		return errors.Wrap(err, "getButtonText(\"add-bot-as-admin\")")
+	}
+	addTelegramButtonsToMessage(&msg, telegramButtonData{buttonText, tgLink})
+
+	_, err = s.bot.Send(msg)
+	if err != nil {
+		return errors.Wrap(err, "bot.Send")
+	}
+
+	return nil
+}
+
 func addTelegramButtonsToMessage(msg *tgbotapi.MessageConfig, messageData ...telegramButtonData) {
 	var rows [][]tgbotapi.InlineKeyboardButton
 

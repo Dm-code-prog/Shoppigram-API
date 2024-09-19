@@ -67,11 +67,21 @@ type (
 		ChannelTitle      string
 		ChannelName       string
 	}
+
+	// ChannelIntegrationFailureNotification defines the structure of a failed channel integration notification
+	BotRemovedFromChannelNotification struct {
+		UserExternalID    int64
+		UserLanguage      string
+		ChannelExternalID int64
+		ChannelTitle      string
+		ChannelName       string
+	}
 )
 
 const (
 	pathToAdminChannelIntegrated              = "admin/channel_integrated.md"
 	pathToAdminChannelIntegrationFailure      = "admin/channel_integration_failure.md"
+	pathToAdminBotRemovedFromChannel          = "admin/bot_removed_from_channel.md"
 	pathToAdminGreetings                      = "admin/greetings_message.md"
 	pathToAdminMarketplaceSentForVerification = "admin/marketplace_sent_for_verification.md"
 	pathToAdminNewOrder                       = "admin/new_order_message.md"
@@ -252,4 +262,19 @@ func (m *ChannelIntegrationFailureNotification) BuildMessage(language string) (s
 
 func getPathToFile(lang string, path string) string {
 	return "templates/" + lang + "/" + path
+}
+
+// BuildMessage creates a notification message for bot removal
+func (m *BotRemovedFromChannelNotification) BuildMessage(language string) (string, error) {
+	channelIntegrationSuccessMessageTemplate, err := templates.ReadFile(getPathToFile(language, pathToAdminBotRemovedFromChannel))
+	if err != nil {
+		return "", errors.Wrap(err, "templates.ReadFile")
+	}
+
+	finalMessage := fmt.Sprintf(
+		string(channelIntegrationSuccessMessageTemplate),
+		m.ChannelTitle,
+	)
+
+	return tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, finalMessage), nil
 }

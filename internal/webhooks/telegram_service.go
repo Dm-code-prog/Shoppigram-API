@@ -3,6 +3,7 @@ package webhooks
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
@@ -45,6 +46,16 @@ type (
 		ChannelName       string
 	}
 
+	// NotifyBotRemovedFromChannelRequest contains the data required to notify a user about a removal
+	// of a Shoppigram bot from channel
+	NotifyBotRemovedFromChannelRequest struct {
+		UserExternalID    int64
+		UserLanguage      string
+		ChannelExternalID int64
+		ChannelTitle      string
+		ChannelName       string
+	}
+
 	// TelegramService is the service for handling Telegram webhooks
 	TelegramService struct {
 		channelStorage    ChannelStorage
@@ -67,6 +78,7 @@ type (
 	Notifier interface {
 		NotifyChannelIntegrationSuccess(ctx context.Context, request NotifyChannelIntegrationSuccessRequest) error
 		NotifyChannelIntegrationFailure(ctx context.Context, request NotifyChannelIntegrationFailureRequest) error
+		NotifyBotRemovedFromChannel(ctx context.Context, request NotifyBotRemovedFromChannelRequest) error
 		NotifyGreetings(ctx context.Context, request NotifyGreetingsRequest) error
 	}
 )
@@ -96,6 +108,8 @@ func (s *TelegramService) HandleTelegramWebhook(ctx context.Context, update tgbo
 		return s.handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx, update)
 	case s.isUpdateTypeStartCommand(update):
 		return s.handleUpdateTypeStartCommand(ctx, update)
+		//case s.isUpdateTypeShoppigramBotRemovedFromChannelAsAdmin(update):
+		//return s.handleUpdateTypeShoppigramBotRemovedFromChannelAsAdmin(ctx, update)
 	default:
 		b, err := json.MarshalIndent(update, "", "  ")
 		if err != nil {
@@ -142,6 +156,25 @@ func (s *TelegramService) handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx
 	err = s.notifier.NotifyChannelIntegrationSuccess(ctx, NotifyChannelIntegrationSuccessRequest{
 		UserExternalID:    event.From.ID,
 		UserLanguage:      event.From.LanguageCode,
+		ChannelExternalID: event.Chat.ID,
+		ChannelTitle:      event.Chat.Title,
+		ChannelName:       event.Chat.UserName,
+	})
+	if err != nil {
+		return errors.Wrap(err, "s.notifier.NotifyChannelIntegrationSuccess")
+	}
+
+	return nil
+}
+
+func (s *TelegramService) handleUpdateTypeShoppigramBotRemovedFromChannelAsAdmin(ctx context.Context, update tgbotapi.Update) error {
+	event := update.MyChatMember
+
+	fmt.Println("NO MORE ADMIN")
+
+	err := s.notifier.NotifyBotRemovedFromChannel(ctx, NotifyBotRemovedFromChannelRequest{
+		UserExternalID:    event.From.ID,
+		UserLanguage:      "ru",
 		ChannelExternalID: event.Chat.ID,
 		ChannelTitle:      event.Chat.Title,
 		ChannelName:       event.Chat.UserName,

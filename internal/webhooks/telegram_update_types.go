@@ -27,6 +27,27 @@ func (s *TelegramService) isUpdateTypeShoppigramBotAddedToChannelAsAdmin(update 
 	return true
 }
 
+func (s *TelegramService) isUpdateTypeShoppigramBotRemovedFromChannelAsAdmin(update tgbotapi.Update) bool {
+	if update.MyChatMember == nil {
+		return false
+	}
+	event := update.MyChatMember
+
+	if event.Chat.Type != "channel" {
+		return false
+	}
+
+	if event.NewChatMember.User.ID != s.shoppigramBotID {
+		return false
+	}
+
+	if event.NewChatMember.Status == "administrator" {
+		return false
+	}
+
+	return true
+}
+
 func (s *TelegramService) isUpdateTypeStartCommand(update tgbotapi.Update) bool {
 	if update.Message == nil {
 		return false
