@@ -670,7 +670,7 @@ func (s *Service) NotifyChannelIntegrationFailure(_ context.Context, request Not
 	msg := tgbotapi.NewMessage(request.UserExternalID, msgTxt)
 	msg.ParseMode = tgbotapi.ModeMarkdownV2
 
-	tgLink := "https://t.me/" + s.botName + "?startchannel&admin=post_messages+pin_messages"
+	tgLink := "https://t.me/" + s.botName + "?startchannel&admin=post_messages+edit_messages+pin_messages"
 	buttonText, err := getButtonText(userLnag, "try-again")
 	if err != nil {
 		return errors.Wrap(err, "getButtonText(\"try-again\")")
@@ -699,7 +699,7 @@ func (s *Service) NotifyBotRemovedFromChannel(_ context.Context, request NotifyB
 	msg := tgbotapi.NewMessage(request.UserExternalID, msgTxt)
 	msg.ParseMode = tgbotapi.ModeMarkdownV2
 
-	tgLink := "https://t.me/" + s.botName + "?startchannel&admin=post_messages+pin_messages"
+	tgLink := "https://t.me/" + s.botName + "?startchannel&admin=post_messages+edit_messages+pin_messages"
 	buttonText, err := getButtonText(userLnag, "add-bot-as-admin")
 	if err != nil {
 		return errors.Wrap(err, "getButtonText(\"add-bot-as-admin\")")
