@@ -4,8 +4,9 @@ sql:
     queries:
       - ./queries/notifications.sql
     schema:
-      - ./schemas/20240429.sql
-      - ./schemas/20240808.sql
+      - ./schemas/2024-04-29.sql
+      - ./schemas/2024-08-08.sql
+      - ./schemas/2024-09-14.sql
       - ../shared_sql/2024-04-11-aggregate.sql
       - ../shared_sql/2024-07-26.sql
       - ../shared_sql/2024-08-04.sql

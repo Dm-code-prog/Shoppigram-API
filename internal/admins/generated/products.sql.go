@@ -62,24 +62,25 @@ func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (u
 }
 
 const deleteProduct = `-- name: DeleteProduct :execresult
-delete
-from products
-where web_app_id = $1::uuid
-  and id = $2::uuid
+update products
+set is_deleted = true
+where web_app_id = $2::uuid
+  and id = $1
 `
 
 type DeleteProductParams struct {
-	WebAppID uuid.UUID
 	ID       uuid.UUID
+	WebAppID uuid.UUID
 }
 
 func (q *Queries) DeleteProduct(ctx context.Context, arg DeleteProductParams) (pgconn.CommandTag, error) {
-	return q.db.Exec(ctx, deleteProduct, arg.WebAppID, arg.ID)
+	return q.db.Exec(ctx, deleteProduct, arg.ID, arg.WebAppID)
 }
 
 const isUserTheOwnerOfProduct = `-- name: IsUserTheOwnerOfProduct :one
-select wa.owner_external_id = $1 from products p
-join web_apps wa on p.web_app_id = wa.id
+select wa.owner_external_id = $1
+from products p
+         join web_apps wa on p.web_app_id = wa.id
 where p.id = $2::uuid
 `
 

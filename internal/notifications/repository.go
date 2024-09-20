@@ -2,7 +2,8 @@ package notifications
 
 import (
 	"context"
-
+	"encoding/json"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -15,7 +16,7 @@ import (
 // using PostgreSQL as the backing store.
 type Pg struct {
 	gen                           *generated.Queries
-	newOrderFetchLimit            int
+	orderFetchLimit               int
 	newMarketplaceFetchLimit      int
 	verifiedMarketplaceFetchLimit int
 }
@@ -24,10 +25,43 @@ type Pg struct {
 func NewPg(db *pgxpool.Pool, newOrderFetchLimit int, newMarketplaceFetchLimit int, verifiedMarketplaceFetchLimit int) *Pg {
 	return &Pg{
 		gen:                           generated.New(db),
-		newOrderFetchLimit:            newOrderFetchLimit,
+		orderFetchLimit:               newOrderFetchLimit,
 		newMarketplaceFetchLimit:      newMarketplaceFetchLimit,
 		verifiedMarketplaceFetchLimit: verifiedMarketplaceFetchLimit,
 	}
+}
+
+// GetProductCustomMessage gets a custom notification message for a product
+func (p *Pg) GetProductCustomMessage(ctx context.Context, productID uuid.UUID, state string) (string, error) {
+	message, err := p.gen.GetProductCustomMessage(ctx, generated.GetProductCustomMessageParams{
+		ProductID:    productID,
+		OnOrderState: generated.OrderState(state),
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", nil
+		}
+		return "", errors.Wrap(err, "p.gen.GetProductCustomMessage")
+	}
+
+	return message, nil
+}
+
+// GetProductCustomMediaForward gets a custom media forward information for a product
+func (p *Pg) GetProductCustomMediaForward(ctx context.Context, productID uuid.UUID, state string) (fromChatID int64, messageID int64, err error) {
+	message, err := p.gen.GetProductCustomMediaForward(ctx, generated.GetProductCustomMediaForwardParams{
+		ProductID:    productID,
+		OnOrderState: generated.OrderState(state),
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fromChatID, messageID, nil
+		}
+		return fromChatID, messageID, errors.Wrap(err, "p.gen.GetProductCustomMediaForward")
+	}
+
+	fromChatID, messageID = message.FromChatID, message.MessageID
+	return
 }
 
 // GetAdminsNotificationList gets a list of admins to notify about an order
@@ -98,72 +132,50 @@ func (p *Pg) UpdateNotifierCursor(ctx context.Context, cur Cursor) error {
 	return nil
 }
 
-// GetNotificationsForNewOrdersAfterCursor gets notifcations for orders which were
-// created after date specified in cursor
-func (p *Pg) GetNotificationsForNewOrdersAfterCursor(ctx context.Context, cur Cursor) ([]NewOrderNotification, error) {
-	var newOrderNotifications []NewOrderNotification
-
-	rows, err := p.gen.GetNotificationsForNewOrdersAfterCursor(
-		ctx,
-		generated.GetNotificationsForNewOrdersAfterCursorParams{
-			UpdatedAt: pgtype.Timestamp{
-				Time:  cur.CursorDate,
-				Valid: true,
-			},
-			ID:    cur.LastProcessedID,
-			Limit: int32(p.newOrderFetchLimit),
-		})
+// GetNotificationsForOrders gets notifications for orders.
+func (p *Pg) GetNotificationsForOrders(ctx context.Context, cursor Cursor) ([]OrderNotification, error) {
+	rows, err := p.gen.GetNotificationsForUpdatedOrders(ctx, generated.GetNotificationsForUpdatedOrdersParams{
+		Limit: int32(p.orderFetchLimit),
+		UpdatedAt: pgtype.Timestamp{
+			Time:  cursor.CursorDate,
+			Valid: true,
+		},
+		ID: cursor.LastProcessedID,
+	})
 	if err != nil {
-		return nil, errors.Wrap(err, "p.gen.GetNotificationsForNewOrdersAfterCursor")
-	}
-
-	ordersMap := map[string]NewOrderNotification{}
-
-	for _, r := range rows {
-		orderID := r.OrderID.String()
-		if order, ok := ordersMap[orderID]; ok {
-			// If the order exists, append the new product to the existing order's product list
-			order.Products = append(order.Products, Product{
-				Name:          r.Name,
-				Quantity:      int(r.Quantity),
-				Price:         r.Price,
-				PriceCurrency: string(r.PriceCurrency),
-			})
-			// Update the map after modification
-			ordersMap[orderID] = order
-		} else {
-			asUUID, err := r.WebAppID.UUIDValue()
-			if err != nil {
-				return nil, errors.Wrap(err, "p.gen.GetNotificationsForNewOrdersAfterCursor")
-			}
-
-			ordersMap[orderID] = NewOrderNotification{
-				ID:              r.OrderID,
-				ReadableOrderID: r.ReadableID.Int64,
-				CreatedAt:       r.CreatedAt.Time,
-				UserNickname:    r.Username.String,
-				UserLanguage:    r.LanguageCode.String,
-				OwnerLanguage:   r.AdminLanguageCode.String,
-				WebAppID:        asUUID.Bytes,
-				WebAppName:      r.WebAppName,
-				Status:          r.State,
-				PaymentType:     r.PaymentType,
-				Products: []Product{{
-					Name:          r.Name,
-					Quantity:      int(r.Quantity),
-					Price:         r.Price,
-					PriceCurrency: string(r.PriceCurrency),
-				}},
-				ExternalUserID: int64(r.ExternalUserID),
-			}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
 		}
+		return nil, errors.Wrap(err, "p.gen.GetNotificationsForUpdatedOrders")
 	}
 
-	for _, order := range ordersMap {
-		newOrderNotifications = append(newOrderNotifications, order)
+	var notifications []OrderNotification
+	for _, r := range rows {
+		var products []Product
+		err := json.Unmarshal(r.Products, &products)
+		if err != nil {
+			return nil, errors.Wrap(err, "json.Unmarshal")
+		}
+
+		notifications = append(notifications, OrderNotification{
+			ID:              r.OrderID,
+			ReadableOrderID: r.ReadableID.Int64,
+			CreatedAt:       r.CreatedAt.Time,
+			BuyerNickname:   r.BuyerUsername.String,
+			BuyerLanguage:   r.BuyerLanguageCode.String,
+			OwnerLanguage:   r.AdminLanguageCode.String,
+			WebAppID:        r.WebAppID.Bytes,
+			WebAppName:      r.WebAppName,
+			WebAppCurrency:  string(r.Currency),
+			Products:        products,
+			Status:          r.State,
+			Comment:         "",
+			PaymentType:     r.PaymentType,
+			BuyerExternalID: int64(r.BuyerExternalUserID),
+		})
 	}
 
-	return newOrderNotifications, nil
+	return notifications, nil
 }
 
 // GetNotificationsForNewMarketplacesAfterCursor gets notifcations for marketplaces

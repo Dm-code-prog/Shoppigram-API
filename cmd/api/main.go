@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/shoppigram-com/marketplace-api/health"
+	"github.com/shoppigram-com/marketplace-api/packages/health"
 	"net/http"
 	"os"
 	"strings"
@@ -105,13 +105,12 @@ func main() {
 	})
 
 	productsCache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 1e7,         // number of keys to track frequency of (10M).
-		MaxCost:     200_000_000, // maximum cost of productsCache (200 MB).
-		BufferItems: 64,          // number of keys per Get buffer.
+		NumCounters: 1e7,                  // number of keys to track frequency of (10M).
+		MaxCost:     config.Cache.MaxSize, // maximum cost of the cache
+		BufferItems: 64,                   // number of keys per Get buffer.
 	})
 	if err != nil {
 		log.Fatal("failed to create productsCache", logging.SilentError(err))
-		return
 	}
 
 	////////////////////////////////////// TELEGRAM USERS //////////////////////////////////////
@@ -209,7 +208,7 @@ func main() {
 
 	////////////////////////////////////// RUN NOTIFICATION JOBS //////////////////////////////////////
 	if config.NewOrderNotifications.IsEnabled {
-		g.Add(notificationsService.RunNewOrderNotifier, func(err error) {
+		g.Add(notificationsService.RunOrdersNotifier, func(err error) {
 			_ = notificationsService.Shutdown()
 		})
 	} else {

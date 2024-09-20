@@ -21,11 +21,30 @@ type (
 		OwnerLanguage   string
 		WebAppID        uuid.UUID
 		WebAppName      string
+		WebAppCurrency  string
 		Products        []Product
 		Status          string
 		Comment         string
 		PaymentType     string
 		ExternalUserID  int64
+	}
+
+	// OrderNotification defines the structure of order notification
+	OrderNotification struct {
+		ID              uuid.UUID
+		ReadableOrderID int64
+		CreatedAt       time.Time
+		BuyerNickname   string
+		BuyerLanguage   string
+		OwnerLanguage   string
+		WebAppID        uuid.UUID
+		WebAppName      string
+		WebAppCurrency  string
+		Products        []Product
+		Status          string
+		Comment         string
+		PaymentType     string
+		BuyerExternalID int64
 	}
 
 	// NewMarketplaceNotification defines the structure of new marketplace notification
@@ -84,82 +103,94 @@ const (
 	pathToAdminBotRemovedFromChannel          = "admin/bot_removed_from_channel.md"
 	pathToAdminGreetings                      = "admin/greetings_message.md"
 	pathToAdminMarketplaceSentForVerification = "admin/marketplace_sent_for_verification.md"
-	pathToAdminNewOrder                       = "admin/new_order_message.md"
 	pathToAdminMarketplaceVerified            = "admin/marketplace_verified.md"
 
 	pathToShoppigramMarketplaceNeedsVerification = "shoppigram/marketplace_needs_verification.md"
 
-	pathToCustomerNewOrder = "customer/new_order_message.md"
+	pathToOrderConfirmedAdmin = "admin/order_confirmed.md"
+	pathToOrderConfirmedBuyer = "customer/order_confirmed.md"
+	pathToOrderDoneAdmin      = "admin/order_done.md"
+	pathToOrderDoneBuyer      = "customer/order_done.md"
+
+	langRu = "ru"
+	langEn = "en"
+
+	orderTypeP2P    = "p2p"
+	orderTypeOnline = "online"
 )
 
 var botName = os.Getenv("BOT_NAME")
 
-var commentPlaceholder map[string]string = map[string]string{
-	"ru": "Без комменнтария",
-	"en": "No comment,",
-}
-
-// BuildMessageAdmin creates a notification message for a new order for an admin
-func (o *NewOrderNotification) BuildMessageAdmin(language string) (string, error) {
+// MakeConfirmedNotificationForAdmin creates a notification message for a new order for an admin
+func (o *OrderNotification) MakeConfirmedNotificationForAdmin(language string) (string, error) {
 	var (
 		subtotal    float64
 		productList strings.Builder
 		currency    string
 	)
 	for _, p := range o.Products {
-
 		subtotal += p.Price * float64(p.Quantity)
-		currency = p.PriceCurrency
-		productList.WriteString(fmt.Sprintf(`- %dx %s по цене %s %s
-`, p.Quantity, p.Name, formatFloat(p.Price), formatCurrency(p.PriceCurrency)))
+		currency = o.WebAppCurrency
+		productList.WriteString(fmt.Sprintf(`- %dx %s | %s %s
+`, p.Quantity, p.Name, formatFloat(p.Price), formatCurrency(o.WebAppCurrency)))
 	}
 
-	newOrderMessageTemplate, err := templates.ReadFile(getPathToFile(language, pathToAdminNewOrder))
+	newOrderMessageTemplate, err := templates.ReadFile(getPathToFile(language, pathToOrderConfirmedAdmin))
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
 
-	commentMessage := o.Comment
-	if commentMessage == "" {
-		msg, ok := commentPlaceholder[language]
-		if !ok {
-			msg = commentPlaceholder[fallbackLanguage]
-		}
-		commentMessage = msg
+	comment := o.Comment
+	if comment == "" {
+		comment = getTranslation(language, "empty-comment")
+	}
+
+	var paymentStatus string
+	if o.PaymentType == orderTypeP2P {
+		paymentStatus = getTranslation(language, "payment-status-unpaid")
+	} else if o.PaymentType == orderTypeOnline {
+		paymentStatus = getTranslation(language, "payment-status-paid")
 	}
 
 	finalMessage := fmt.Sprintf(
 		string(newOrderMessageTemplate),
 		o.WebAppName,
-		o.UserNickname,
+		"@"+o.BuyerNickname,
 		o.ReadableOrderID,
 		o.PaymentType,
 		formatFloat(subtotal)+" "+formatCurrency(currency),
-		o.Status,
+		paymentStatus,
 		formatRussianTime(o.CreatedAt),
-		commentMessage,
+		comment,
 		strings.TrimRight(productList.String(), "; "),
 	)
-	return tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, finalMessage), nil
+	return finalMessage, nil
 }
 
-// BuildMessageCustomer creates a notification message for a new order for a customer
-func (o *NewOrderNotification) BuildMessageCustomer(language string) (string, error) {
+// MakeConfirmedNotificationForBuyer creates a notification message for a new order for a customer
+func (o *OrderNotification) MakeConfirmedNotificationForBuyer(language string) (string, error) {
 	var subtotal float64
 	var productList strings.Builder
 	currency := ""
 	for _, p := range o.Products {
 		subtotal += p.Price * float64(p.Quantity)
 		if currency == "" {
-			currency = p.PriceCurrency
+			currency = o.WebAppCurrency
 		}
 		productList.WriteString(fmt.Sprintf(`- %dx %s: %s %s
-`, p.Quantity, p.Name, formatFloat(p.Price), formatCurrency(p.PriceCurrency)))
+`, p.Quantity, p.Name, formatFloat(p.Price), formatCurrency(o.WebAppCurrency)))
 	}
 
-	newOrderMessageTemplate, err := templates.ReadFile(getPathToFile(language, pathToCustomerNewOrder))
+	newOrderMessageTemplate, err := templates.ReadFile(getPathToFile(language, pathToOrderConfirmedBuyer))
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
+	}
+
+	var paymentStatus string
+	if o.PaymentType == orderTypeP2P {
+		paymentStatus = getTranslation(language, "payment-status-unpaid")
+	} else if o.PaymentType == orderTypeOnline {
+		paymentStatus = getTranslation(language, "payment-status-paid")
 	}
 
 	finalMessage := fmt.Sprintf(
@@ -167,10 +198,69 @@ func (o *NewOrderNotification) BuildMessageCustomer(language string) (string, er
 		o.WebAppName,
 		o.ReadableOrderID,
 		formatFloat(subtotal)+" "+formatCurrency(currency),
+		paymentStatus,
 		strings.TrimRight(productList.String(), "; "),
 	)
 
-	return tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, finalMessage), nil
+	return finalMessage, nil
+}
+
+// MakeDoneNotificationForAdmin creates a notification message for a done order for an admin
+func (o *OrderNotification) MakeDoneNotificationForAdmin(language string) (string, error) {
+	newOrderMessageTemplate, err := templates.ReadFile(getPathToFile(language, pathToOrderDoneAdmin))
+	if err != nil {
+		return "", errors.Wrap(err, "templates.ReadFile")
+	}
+
+	paymentStatus := getTranslation(language, "payment-status-paid")
+
+	var subtotal float64
+	var productList strings.Builder
+	for _, p := range o.Products {
+		subtotal += p.Price * float64(p.Quantity)
+		productList.WriteString(fmt.Sprintf(`- %dx %s: %s %s
+`, p.Quantity, p.Name, formatFloat(p.Price), formatCurrency(o.WebAppCurrency)))
+	}
+
+	finalMessage := fmt.Sprintf(
+		string(newOrderMessageTemplate),
+		o.WebAppName,
+		"@"+o.BuyerNickname,
+		o.ReadableOrderID,
+		formatFloat(subtotal)+" "+formatCurrency(o.WebAppCurrency),
+		paymentStatus,
+		strings.TrimRight(productList.String(), "; "),
+	)
+
+	return finalMessage, nil
+}
+
+func (o *OrderNotification) MakeDoneNotificationForBuyer(language string) (string, error) {
+	newOrderMessageTemplate, err := templates.ReadFile(getPathToFile(language, pathToOrderDoneBuyer))
+	if err != nil {
+		return "", errors.Wrap(err, "templates.ReadFile")
+	}
+
+	paymentStatus := getTranslation(language, "payment-status-paid")
+
+	var subtotal float64
+	var productList strings.Builder
+	for _, p := range o.Products {
+		subtotal += p.Price * float64(p.Quantity)
+		productList.WriteString(fmt.Sprintf(`- %dx %s: %s %s
+`, p.Quantity, p.Name, formatFloat(p.Price), formatCurrency(o.WebAppCurrency)))
+	}
+
+	finalMessage := fmt.Sprintf(
+		string(newOrderMessageTemplate),
+		o.WebAppName,
+		o.ReadableOrderID,
+		formatFloat(subtotal)+" "+formatCurrency(o.WebAppCurrency),
+		paymentStatus,
+		strings.TrimRight(productList.String(), "; "),
+	)
+
+	return finalMessage, nil
 }
 
 // BuildMessageShoppigram creates a notification message for a new marketplace

@@ -185,6 +185,23 @@ type Product struct {
 	Category      pgtype.Text
 }
 
+type ProductCustomMediaForward struct {
+	ID           uuid.UUID
+	CreatedAt    pgtype.Timestamp
+	ProductID    uuid.UUID
+	FromChatID   int64
+	MessageID    int64
+	OnOrderState OrderState
+}
+
+type ProductsCustomMessage struct {
+	ID           uuid.UUID
+	CreatedAt    pgtype.Timestamp
+	ProductID    uuid.UUID
+	Message      string
+	OnOrderState OrderState
+}
+
 type TelegramUser struct {
 	ID           uuid.UUID
 	ExternalID   int32

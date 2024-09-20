@@ -30,12 +30,12 @@ func (q *Queries) AddUserToNewOrderNotifications(ctx context.Context, arg AddUse
 
 const getAdminsNotificationList = `-- name: GetAdminsNotificationList :many
 with admins_batch as (select admin_chat_id
-	 			  	  from new_order_notifications_list
-					  where web_app_id = $1)
+                      from new_order_notifications_list
+                      where web_app_id = $1)
 select ab.admin_chat_id,
-	   u.language_code
+       u.language_code
 from admins_batch ab
-	 join telegram_users u on ab.admin_chat_id = u.external_id
+         join telegram_users u on ab.admin_chat_id = u.external_id
 `
 
 type GetAdminsNotificationListRow struct {
@@ -79,7 +79,7 @@ select mb.id,
        mb.short_name,
        mb.created_at,
        u.username,
-	   u.language_code,
+       u.language_code,
        u.external_id as owner_external_id
 from marketplaces_batch mb
          join telegram_users u
@@ -131,90 +131,101 @@ func (q *Queries) GetNotificationsForNewMarketplacesAfterCursor(ctx context.Cont
 	return items, nil
 }
 
-const getNotificationsForNewOrdersAfterCursor = `-- name: GetNotificationsForNewOrdersAfterCursor :many
-with orders_batch as (select id as order_id, created_at, readable_id, web_app_id, external_user_id, state, type
+const getNotificationsForUpdatedOrders = `-- name: GetNotificationsForUpdatedOrders :many
+with orders_batch as (select id as order_id,
+                             created_at,
+                             readable_id,
+                             external_user_id,
+                             state,
+                             type,
+                             web_app_id
                       from orders o
                       where (o.updated_at, o.id) > ($2::timestamp, $3::uuid)
-                        and o.state = 'confirmed'
-                      order by o.created_at, o.id
+                      order by o.updated_at, o.id
                       limit $1)
-select ob.order_id,
-       ob.readable_id,
-       ob.created_at,
-	   ob.state::text,
-       p.web_app_id,
-       wa.name       as web_app_name,
-       p.name,
-       p.price,
-       p.price_currency,
-       op.quantity,
-       u.username,
-	   u.language_code,
-       u.external_id as external_user_id,
-       adm.language_code as admin_language_code,
-       ob.state::text as state,
-	   ob.type::text as payment_type
-from orders_batch ob
+select orders_batch.order_id    as order_id,
+       orders_batch.readable_id as readable_id,
+       orders_batch.created_at  as created_at,
+       orders_batch.state::text as state,
+       orders_batch.web_app_id  as web_app_id,
+       wa.name                  as web_app_name,
+       coalesce(
+               json_agg(json_build_object(
+                       'id', p.id,
+                       'name', p.name,
+                       'quantity', op.quantity,
+                       'price', p.price
+                        )
+               ),
+               '[]'::json
+       ) ::json                 as products,
+       wa.currency              as currency,
+       u.username               as buyer_username,
+       u.language_code          as buyer_language_code,
+       u.external_id            as buyer_external_user_id,
+       adm.language_code        as admin_language_code,
+       orders_batch.state::text as state,
+       orders_batch.type::text  as payment_type
+from orders_batch
          join order_products op
-              on ob.order_id = op.order_id
+              on orders_batch.order_id = op.order_id
          join products p on p.id = op.product_id
          join telegram_users u on external_user_id = u.external_id
-         join web_apps wa on ob.web_app_id = wa.id
+         join web_apps wa on orders_batch.web_app_id = wa.id
          join telegram_users adm on wa.owner_external_id = adm.external_id
-where ob.state = 'confirmed'
-order by ob.created_at, ob.order_id
+group by orders_batch.order_id, orders_batch.readable_id, orders_batch.created_at, orders_batch.state::text,
+         orders_batch.web_app_id, wa.name,
+         wa.currency, op.quantity, u.username, u.language_code, u.external_id, adm.language_code,
+         orders_batch.state::text,
+         orders_batch.type::text
 `
 
-type GetNotificationsForNewOrdersAfterCursorParams struct {
+type GetNotificationsForUpdatedOrdersParams struct {
 	Limit     int32
 	UpdatedAt pgtype.Timestamp
 	ID        uuid.UUID
 }
 
-type GetNotificationsForNewOrdersAfterCursorRow struct {
-	OrderID           uuid.UUID
-	ReadableID        pgtype.Int8
-	CreatedAt         pgtype.Timestamp
-	ObState           string
-	WebAppID          pgtype.UUID
-	WebAppName        string
-	Name              string
-	Price             float64
-	PriceCurrency     string
-	Quantity          int32
-	Username          pgtype.Text
-	LanguageCode      pgtype.Text
-	ExternalUserID    int32
-	AdminLanguageCode pgtype.Text
-	State             string
-	PaymentType       string
+type GetNotificationsForUpdatedOrdersRow struct {
+	OrderID             uuid.UUID
+	ReadableID          pgtype.Int8
+	CreatedAt           pgtype.Timestamp
+	State               string
+	WebAppID            pgtype.UUID
+	WebAppName          string
+	Products            []byte
+	Currency            ProductCurrency
+	BuyerUsername       pgtype.Text
+	BuyerLanguageCode   pgtype.Text
+	BuyerExternalUserID int32
+	AdminLanguageCode   pgtype.Text
+	State_2             string
+	PaymentType         string
 }
 
-func (q *Queries) GetNotificationsForNewOrdersAfterCursor(ctx context.Context, arg GetNotificationsForNewOrdersAfterCursorParams) ([]GetNotificationsForNewOrdersAfterCursorRow, error) {
-	rows, err := q.db.Query(ctx, getNotificationsForNewOrdersAfterCursor, arg.Limit, arg.UpdatedAt, arg.ID)
+func (q *Queries) GetNotificationsForUpdatedOrders(ctx context.Context, arg GetNotificationsForUpdatedOrdersParams) ([]GetNotificationsForUpdatedOrdersRow, error) {
+	rows, err := q.db.Query(ctx, getNotificationsForUpdatedOrders, arg.Limit, arg.UpdatedAt, arg.ID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetNotificationsForNewOrdersAfterCursorRow
+	var items []GetNotificationsForUpdatedOrdersRow
 	for rows.Next() {
-		var i GetNotificationsForNewOrdersAfterCursorRow
+		var i GetNotificationsForUpdatedOrdersRow
 		if err := rows.Scan(
 			&i.OrderID,
 			&i.ReadableID,
 			&i.CreatedAt,
-			&i.ObState,
+			&i.State,
 			&i.WebAppID,
 			&i.WebAppName,
-			&i.Name,
-			&i.Price,
-			&i.PriceCurrency,
-			&i.Quantity,
-			&i.Username,
-			&i.LanguageCode,
-			&i.ExternalUserID,
+			&i.Products,
+			&i.Currency,
+			&i.BuyerUsername,
+			&i.BuyerLanguageCode,
+			&i.BuyerExternalUserID,
 			&i.AdminLanguageCode,
-			&i.State,
+			&i.State_2,
 			&i.PaymentType,
 		); err != nil {
 			return nil, err
@@ -243,9 +254,9 @@ select mb.id,
        mb.short_name,
        mb.verified_at,
        mb.owner_external_id,
-	   u.language_code
+       u.language_code
 from marketplaces_batch mb
-	 join telegram_users u on mb.owner_external_id = u.external_id
+         join telegram_users u on mb.owner_external_id = u.external_id
 order by mb.verified_at, mb.id
 `
 
@@ -307,6 +318,53 @@ func (q *Queries) GetNotifierCursor(ctx context.Context, name pgtype.Text) (GetN
 	var i GetNotifierCursorRow
 	err := row.Scan(&i.CursorDate, &i.LastProcessedID)
 	return i, err
+}
+
+const getProductCustomMediaForward = `-- name: GetProductCustomMediaForward :one
+select from_chat_id, message_id
+from product_custom_media_forwards
+where product_id = $1
+  and on_order_state = $2
+order by created_at desc
+limit 1
+`
+
+type GetProductCustomMediaForwardParams struct {
+	ProductID    uuid.UUID
+	OnOrderState OrderState
+}
+
+type GetProductCustomMediaForwardRow struct {
+	FromChatID int64
+	MessageID  int64
+}
+
+func (q *Queries) GetProductCustomMediaForward(ctx context.Context, arg GetProductCustomMediaForwardParams) (GetProductCustomMediaForwardRow, error) {
+	row := q.db.QueryRow(ctx, getProductCustomMediaForward, arg.ProductID, arg.OnOrderState)
+	var i GetProductCustomMediaForwardRow
+	err := row.Scan(&i.FromChatID, &i.MessageID)
+	return i, err
+}
+
+const getProductCustomMessage = `-- name: GetProductCustomMessage :one
+select message
+from products_custom_messages
+where product_id = $1
+  and on_order_state = $2
+order by created_at desc
+limit 1
+`
+
+type GetProductCustomMessageParams struct {
+	ProductID    uuid.UUID
+	OnOrderState OrderState
+}
+
+func (q *Queries) GetProductCustomMessage(ctx context.Context, arg GetProductCustomMessageParams) (string, error) {
+	row := q.db.QueryRow(ctx, getProductCustomMessage, arg.ProductID, arg.OnOrderState)
+	var message string
+	err := row.Scan(&message)
+	return message, err
 }
 
 const getReviewersNotificationList = `-- name: GetReviewersNotificationList :many
