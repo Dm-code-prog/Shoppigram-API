@@ -309,7 +309,7 @@ func (s *Service) NotifyChannelIntegrationFailure(_ context.Context, request Not
 	msg.ParseMode = tgbotapi.ModeMarkdownV2
 
 	tgLink := "https://t.me/" + s.botName + "?startchannel&admin=post_messages+edit_messages+pin_messages"
-	buttonText, err := getButtonText(userLnag, "try-again")
+	buttonText := getTranslation(userLnag, "try-again")
 	if err != nil {
 		return errors.Wrap(err, "getButtonText(\"try-again\")")
 	}
@@ -338,7 +338,7 @@ func (s *Service) NotifyBotRemovedFromChannel(_ context.Context, request NotifyB
 	msg.ParseMode = tgbotapi.ModeMarkdownV2
 
 	tgLink := "https://t.me/" + s.botName + "?startchannel&admin=post_messages+edit_messages+pin_messages"
-	buttonText, err := getButtonText(userLnag, "add-bot-as-admin")
+	buttonText := getTranslation(userLnag, "add-bot-as-admin")
 	if err != nil {
 		return errors.Wrap(err, "getButtonText(\"add-bot-as-admin\")")
 	}
@@ -406,9 +406,12 @@ func (s *Service) handleTelegramSendError(err error, chatID int64) error {
 }
 
 func getTranslation(lang, key string) string {
-	if lang == langRu {
+	switch lang {
+	case langRu:
 		return ru.Translations[key]
-	} else {
+	case langEn:
 		return en.Translations[key]
+	default:
+		return ru.Translations[key]
 	}
 }
