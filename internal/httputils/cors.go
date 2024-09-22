@@ -9,6 +9,7 @@ import (
 var allowedOrigins = map[string]struct{}{
 	"https://web-app.shoppigram.com":             {},
 	"https://admin.shoppigram.com":               {},
+	"https://dev-app.shoppigram.com":             {},
 	"https://web-app.shoppigram.ru":              {},
 	"https://dev-marketplace-web-app.vercel.app": {},
 	"https://web-app.shoppigram.dev":             {},

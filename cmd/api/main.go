@@ -90,7 +90,6 @@ func main() {
 	}
 
 	r.Use(
-		httputils.MakeLoggingMiddleware(log),
 		middleware.Timeout(10*time.Second),
 		middleware.Recoverer,
 		middleware.Compress(5, "application/json"),
