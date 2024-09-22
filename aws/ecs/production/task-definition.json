@@ -20,15 +20,15 @@
         },
         {
           "name": "NEW_ORDER_NOTIFICATIONS_IS_ENABLED",
-          "value": "false"
+          "value": "true"
         },
         {
           "name": "NEW_MARKETPLACE_NOTIFICATIONS_IS_ENABLED",
-          "value": "false"
+          "value": "true"
         },
         {
           "name": "VERIFIED_MARKETPLACE_NOTIFICATIONS_IS_ENABLED",
-          "value": "false"
+          "value": "true"
         }
       ],
       "mountPoints": [],
