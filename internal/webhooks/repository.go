@@ -67,3 +67,30 @@ func (p *Pg) SavePaymentExtraInfo(ctx context.Context, params SavePaymentExtraIn
 	}
 	return nil
 }
+
+// GetTelegramChannels gets a list of Telegram channels owned by a specific user
+func (p *Pg) GetTelegramChannelOwner(ctx context.Context, chatId int64) (GetTelegramChannelOwnerResponse, error) {
+	adminChatId, err := p.gen.GetTelegramChannelOwner(ctx, chatId)
+	if err != nil {
+		return GetTelegramChannelOwnerResponse{}, errors.Wrap(err, "p.gen.GetTelegramChannelOwner")
+	}
+
+	return GetTelegramChannelOwnerResponse{ChatId: adminChatId}, nil
+}
+
+// CreateOrUpdateTelegramChannel creates or updates a Telegram channel
+// that was integrated with Shoppigram
+func (p *Pg) CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error {
+	err := p.gen.CreateOrUpdateTelegramChannel(ctx, generated.CreateOrUpdateTelegramChannelParams{
+		ExternalID:      req.ExternalID,
+		Name:            pgtype.Text{String: req.Name, Valid: req.Name != ""},
+		Title:           req.Title,
+		IsPublic:        req.IsPublic,
+		OwnerExternalID: req.OwnerExternalID,
+	})
+	if err != nil {
+		return errors.Wrap(err, "p.gen.CreateOrUpdateTelegramChannel")
+	}
+
+	return nil
+}

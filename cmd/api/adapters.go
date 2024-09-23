@@ -25,21 +25,6 @@ func (a *notificationsAdminAdapter) PinNotification(ctx context.Context, req adm
 	return a.notifier.PinNotification(ctx, notifications.PinNotificationParams(req))
 }
 
-// adminWebhooksAdapter is an adapter for the admin service
-// meant to be used by the webhooks service
-type adminWebhooksAdapter struct {
-	admin admins.Service
-}
-
-func (a *adminWebhooksAdapter) CreateOrUpdateTelegramChannel(ctx context.Context, req webhooks.CreateOrUpdateTelegramChannelRequest) error {
-	return a.admin.CreateOrUpdateTelegramChannel(ctx, admins.CreateOrUpdateTelegramChannelRequest(req))
-}
-
-func (a *adminWebhooksAdapter) GetTelegramChannelOwner(ctx context.Context, req webhooks.GetTelegramChannelOwnerRequest) (webhooks.GetTelegramChannelOwnerResponse, error) {
-	resp, err := a.admin.GetTelegramChannelOwner(ctx, admins.GetTelegramChannelOwnerRequest{ChannelChatId: req.ChannelChatId})
-	return webhooks.GetTelegramChannelOwnerResponse(resp), err
-}
-
 type notificationsWebhooksAdapter struct {
 	notifier *notifications.Service
 }

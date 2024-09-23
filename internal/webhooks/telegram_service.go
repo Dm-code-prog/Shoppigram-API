@@ -10,6 +10,11 @@ import (
 )
 
 type (
+	TgRepository interface {
+		CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error
+		GetTelegramChannelOwner(ctx context.Context, chatId int64) (GetTelegramChannelOwnerResponse, error)
+	}
+
 	// CreateOrUpdateTelegramChannelRequest contains the data about a Telegram channel, Shoppigram bot is added to
 	CreateOrUpdateTelegramChannelRequest struct {
 		ExternalID      int64
@@ -27,13 +32,6 @@ type (
 	// GetTelegramChannelOwnerResponse contains channel's owner external id
 	GetTelegramChannelOwnerResponse struct {
 		ChatId int64 `json:"chat_id"`
-	}
-
-	// ChannelStorage is an interface for storing and retrieving data about Telegram channels
-	// from our own storage
-	ChannelStorage interface {
-		CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error
-		GetTelegramChannelOwner(ctx context.Context, req GetTelegramChannelOwnerRequest) (GetTelegramChannelOwnerResponse, error)
 	}
 
 	// NotifyChannelIntegrationSuccessRequest contains the data required to notify a user about a successful
@@ -68,7 +66,7 @@ type (
 
 	// TelegramService is the service for handling Telegram webhooks
 	TelegramService struct {
-		channelStorage    ChannelStorage
+		rep               TgRepository
 		notifier          Notifier
 		log               *zap.Logger
 		shoppigramBotID   int64
@@ -94,9 +92,9 @@ type (
 )
 
 // NewTelegram returns a new instance of the TelegramService
-func NewTelegram(channelStorage ChannelStorage, notifier Notifier, log *zap.Logger, shoppigramBotID int64, shoppigramBotName string) *TelegramService {
+func NewTelegram(rep TgRepository, notifier Notifier, log *zap.Logger, shoppigramBotID int64, shoppigramBotName string) *TelegramService {
 	return &TelegramService{
-		channelStorage:    channelStorage,
+		rep:               rep,
 		notifier:          notifier,
 		log:               log,
 		shoppigramBotID:   shoppigramBotID,
@@ -151,7 +149,7 @@ func (s *TelegramService) handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx
 		return nil
 	}
 
-	err := s.channelStorage.CreateOrUpdateTelegramChannel(ctx, CreateOrUpdateTelegramChannelRequest{
+	err := s.rep.CreateOrUpdateTelegramChannel(ctx, CreateOrUpdateTelegramChannelRequest{
 		ExternalID:      event.Chat.ID,
 		Title:           event.Chat.Title,
 		Name:            event.Chat.UserName,
@@ -184,7 +182,7 @@ func (s *TelegramService) handleUpdateTypeShoppigramBotRemovedFromChannelAsAdmin
 	if "" == lang {
 		lang = "ru"
 	}
-	resp, err := s.channelStorage.GetTelegramChannelOwner(ctx, GetTelegramChannelOwnerRequest{ChannelChatId: event.Chat.ID})
+	resp, err := s.rep.GetTelegramChannelOwner(ctx, event.Chat.ID)
 	if err != nil {
 		return errors.Wrap(err, "s.channelStorage.GetTelegramChannelOwner")
 	}

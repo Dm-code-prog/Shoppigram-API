@@ -3,10 +3,12 @@ sql:
   - engine: postgresql
     queries:
       - ./queries/orders.sql
+      - ./queries/telegram_channels.sql
     schema:
       - ../shared_sql/2024-04-11-aggregate.sql
       - ../shared_sql/2024-07-26.sql
       - ./schemas/2024-08-03.sql
+      - ./schemas/2024-09-24.sql
     gen:
       go:
         package: generated
