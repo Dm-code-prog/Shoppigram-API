@@ -161,7 +161,7 @@ type (
 
 	// GetTelegramChannelsResponse contains the data about Telegram channels owned by a specific user
 	GetTelegramChannelOwnerResponse struct {
-		ChatId int64 `json:"chat_id"`
+		ChatId int64
 	}
 
 	// PublishMarketplaceBannerToChannelRequest contains the data about a banner to be published to a Telegram channel
@@ -606,6 +606,7 @@ func (s *DefaultService) CreateOrUpdateTelegramChannel(ctx context.Context, req 
 	return nil
 }
 
+// GetTelegramChannelOwner gets telegram channel's owner external id
 func (s *DefaultService) GetTelegramChannelOwner(ctx context.Context, req GetTelegramChannelOwnerRequest) (GetTelegramChannelOwnerResponse, error) {
 	res, err := s.repo.GetTelegramChannelOwner(ctx, req.ChannelChatId)
 	if err != nil {

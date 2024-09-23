@@ -308,7 +308,7 @@ func (s *Service) NotifyChannelIntegrationFailure(_ context.Context, request Not
 	msg := tgbotapi.NewMessage(request.UserExternalID, msgTxt)
 	msg.ParseMode = tgbotapi.ModeMarkdownV2
 
-	tgLink := "https://t.me/" + s.botName + "?startchannel&admin=post_messages+edit_messages+pin_messages"
+	tgLink := createAddBotAsAdminLink(s.botName)
 	buttonText := getTranslation(userLnag, "try-again")
 	if err != nil {
 		return errors.Wrap(err, "getButtonText(\"try-again\")")
@@ -337,7 +337,7 @@ func (s *Service) NotifyBotRemovedFromChannel(_ context.Context, request NotifyB
 	msg := tgbotapi.NewMessage(request.UserExternalID, msgTxt)
 	msg.ParseMode = tgbotapi.ModeMarkdownV2
 
-	tgLink := "https://t.me/" + s.botName + "?startchannel&admin=post_messages+edit_messages+pin_messages"
+	tgLink := createAddBotAsAdminLink(s.botName)
 	buttonText := getTranslation(userLnag, "add-bot-as-admin")
 	if err != nil {
 		return errors.Wrap(err, "getButtonText(\"add-bot-as-admin\")")
@@ -414,4 +414,8 @@ func getTranslation(lang, key string) string {
 	default:
 		return ru.Translations[key]
 	}
+}
+
+func createAddBotAsAdminLink(botName string) string {
+	return "https://t.me/" + botName + "?startchannel&admin=post_messages+edit_messages+pin_messages"
 }

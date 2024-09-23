@@ -1,1 +1,1 @@
-Integration for a channel %s went wrong. It might happen because our bot wasn't permitted to edit messages. Please try again
+Something went wrong. @ShoppigramBot was not added to your channel %s. Please try again. Please make sure that @ShoppigramBot is allowed to post and edit messages.

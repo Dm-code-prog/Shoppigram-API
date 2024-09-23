@@ -41,14 +41,14 @@ func (q *Queries) CreateOrUpdateTelegramChannel(ctx context.Context, arg CreateO
 	return err
 }
 
-const getTelegramChannelAdmin = `-- name: GetTelegramChannelAdmin :one
+const getTelegramChannelOwner = `-- name: GetTelegramChannelOwner :one
 select owner_external_id
 from telegram_channels
 where external_id = $1
 `
 
-func (q *Queries) GetTelegramChannelAdmin(ctx context.Context, externalID int64) (int64, error) {
-	row := q.db.QueryRow(ctx, getTelegramChannelAdmin, externalID)
+func (q *Queries) GetTelegramChannelOwner(ctx context.Context, externalID int64) (int64, error) {
+	row := q.db.QueryRow(ctx, getTelegramChannelOwner, externalID)
 	var owner_external_id int64
 	err := row.Scan(&owner_external_id)
 	return owner_external_id, err

@@ -20,7 +20,7 @@ select id,
 from telegram_channels
 where owner_external_id = $1;
 
--- name: GetTelegramChannelAdmin :one
+-- name: GetTelegramChannelOwner :one
 select owner_external_id
 from telegram_channels
 where external_id = $1;

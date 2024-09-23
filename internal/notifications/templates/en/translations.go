@@ -12,5 +12,5 @@ var Translations = map[string]string{
 	"payment-status-unpaid": "Unpaid",
 	"payment-status-paid":   "Paid",
 	"try-again":             "Try again",
-	"add-bot-as-admin":      "Add Shoppigram bot as an administrator",
+	"add-bot-as-admin":      "Add bot to the channel",
 }
