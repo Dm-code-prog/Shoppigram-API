@@ -261,8 +261,6 @@ type (
 		IsUserTheOwnerOfProduct(ctx context.Context, externalUserID int64, productID uuid.UUID) (bool, error)
 		IsUserTheOwnerOfTelegramChannel(ctx context.Context, externalUserID, channelID int64) (bool, error)
 
-		CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error
-		GetTelegramChannelOwner(ctx context.Context, chatId int64) (GetTelegramChannelOwnerResponse, error)
 		GetTelegramChannels(ctx context.Context, ownerExternalID int64) (GetTelegramChannelsResponse, error)
 	}
 
@@ -297,8 +295,6 @@ type (
 		CreateMarketplaceLogoUploadURL(ctx context.Context, request CreateMarketplaceLogoUploadURLRequest) (CreateMarketplaceLogoUploadURLResponse, error)
 
 		GetTelegramChannels(ctx context.Context, ownerExternalID int64) (GetTelegramChannelsResponse, error)
-		CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error
-		GetTelegramChannelOwner(ctx context.Context, req GetTelegramChannelOwnerRequest) (GetTelegramChannelOwnerResponse, error)
 		PublishMarketplaceBannerToChannel(ctx context.Context, req PublishMarketplaceBannerToChannelRequest) error
 	}
 
@@ -591,26 +587,6 @@ func (s *DefaultService) GetTelegramChannels(ctx context.Context, ownerExternalI
 	res, err := s.repo.GetTelegramChannels(ctx, ownerExternalID)
 	if err != nil {
 		return GetTelegramChannelsResponse{}, errors.Wrap(err, "s.repo.GetTelegramChannels")
-	}
-
-	return res, nil
-}
-
-// CreateOrUpdateTelegramChannel creates or updates a Telegram channel
-func (s *DefaultService) CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error {
-	err := s.repo.CreateOrUpdateTelegramChannel(ctx, req)
-	if err != nil {
-		return errors.Wrap(err, "s.repo.CreateOrUpdateTelegramChannel")
-	}
-
-	return nil
-}
-
-// GetTelegramChannelOwner gets telegram channel's owner external id
-func (s *DefaultService) GetTelegramChannelOwner(ctx context.Context, req GetTelegramChannelOwnerRequest) (GetTelegramChannelOwnerResponse, error) {
-	res, err := s.repo.GetTelegramChannelOwner(ctx, req.ChannelChatId)
-	if err != nil {
-		return GetTelegramChannelOwnerResponse{}, errors.Wrap(err, "s.repo.GetTelegramChannelOwner")
 	}
 
 	return res, nil

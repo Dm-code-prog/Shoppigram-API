@@ -169,29 +169,6 @@ func (s *ServiceWithObservability) GetTelegramChannels(ctx context.Context, owne
 	return res, err
 }
 
-// CreateOrUpdateTelegramChannel calls the underlying service's CreateOrUpdateTelegramChannel method
-func (s *ServiceWithObservability) CreateOrUpdateTelegramChannel(ctx context.Context, request CreateOrUpdateTelegramChannelRequest) error {
-	err := s.service.CreateOrUpdateTelegramChannel(ctx, request)
-	if err != nil {
-		s.log.
-			With(zap.String("owner_external_id", strconv.FormatInt(request.OwnerExternalID, 10))).
-			Error("s.service.CreateOrUpdateTelegramChannel", logging.SilentError(err))
-	}
-
-	return err
-}
-
-// GetTelegramChannelOwner calls the underlying service's GetTelegramChannelOwner method
-func (s *ServiceWithObservability) GetTelegramChannelOwner(ctx context.Context, request GetTelegramChannelOwnerRequest) (GetTelegramChannelOwnerResponse, error) {
-	res, err := s.service.GetTelegramChannelOwner(ctx, request)
-	if err != nil {
-		s.log.
-			With(zap.String("channel_chat_id", strconv.FormatInt(request.ChannelChatId, 10))).
-			Error("s.service.GetTelegramChannelOwner", logging.SilentError(err))
-	}
-	return res, err
-}
-
 // PublishMarketplaceBannerToChannel calls the underlying service's PublishMarketplaceBannerToChannel method
 func (s *ServiceWithObservability) PublishMarketplaceBannerToChannel(ctx context.Context, request PublishMarketplaceBannerToChannelRequest) error {
 	err := s.service.PublishMarketplaceBannerToChannel(ctx, request)
