@@ -33,7 +33,9 @@ type Environment struct {
 	}
 
 	Postgres struct {
-		DSN string `env:"POSTGRES_DSN,required=true"`
+		DSN      string `env:"POSTGRES_DSN,required=true"`
+		MinConns int    `env:"POSTGRES_MIN_CONNS,default=1"`
+		MaxConns int    `env:"POSTGRES_MAX_CONNS,default=10"`
 	}
 
 	Bot struct {
