@@ -29,6 +29,14 @@
         {
           "name": "VERIFIED_MARKETPLACE_NOTIFICATIONS_IS_ENABLED",
           "value": "true"
+        },
+        {
+          "name": "POSTGRES_MIN_CONNS",
+          "value": "1"
+        },
+        {
+          "name": "POSTGRES_MAX_CONNS",
+          "value": "15"
         }
       ],
       "mountPoints": [],

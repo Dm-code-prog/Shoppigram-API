@@ -77,8 +77,8 @@ func main() {
 	defer db.Close()
 	log.Debug("connected to database")
 
-	db.Config().MinConns = 5
-	db.Config().MaxConns = 25
+	db.Config().MinConns = int32(config.Postgres.MinConns)
+	db.Config().MaxConns = int32(config.Postgres.MaxConns)
 
 	var g run.Group
 	g.Add(run.SignalHandler(ctx, os.Interrupt, os.Kill, syscall.SIGTERM))
