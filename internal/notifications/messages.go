@@ -344,14 +344,11 @@ func (m *ChannelIntegrationFailureNotification) BuildMessage(language string) (s
 
 	finalMessage := fmt.Sprintf(
 		string(channelIntegrationSuccessMessageTemplate),
+		botName,
 		m.ChannelTitle,
 	)
 
 	return tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, finalMessage), nil
-}
-
-func getPathToFile(lang string, path string) string {
-	return "templates/" + lang + "/" + path
 }
 
 // BuildMessage creates a notification message for bot removal
@@ -367,4 +364,8 @@ func (m *BotRemovedFromChannelNotification) BuildMessage(language string) (strin
 	)
 
 	return tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, finalMessage), nil
+}
+
+func getPathToFile(lang string, path string) string {
+	return "templates/" + lang + "/" + path
 }

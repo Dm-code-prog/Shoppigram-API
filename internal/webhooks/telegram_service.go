@@ -9,12 +9,9 @@ import (
 	"go.uber.org/zap"
 )
 
-type (
-	TgRepository interface {
-		CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error
-		GetTelegramChannelOwner(ctx context.Context, chatId int64) (GetTelegramChannelOwnerResponse, error)
-	}
+const fallbackLanguage = "ru"
 
+type (
 	// CreateOrUpdateTelegramChannelRequest contains the data about a Telegram channel, Shoppigram bot is added to
 	CreateOrUpdateTelegramChannelRequest struct {
 		ExternalID      int64
@@ -31,7 +28,7 @@ type (
 
 	// GetTelegramChannelOwnerResponse contains channel's owner external id
 	GetTelegramChannelOwnerResponse struct {
-		ChatId int64 `json:"chat_id"`
+		ChatId int64
 	}
 
 	// NotifyChannelIntegrationSuccessRequest contains the data required to notify a user about a successful
@@ -66,7 +63,7 @@ type (
 
 	// TelegramService is the service for handling Telegram webhooks
 	TelegramService struct {
-		rep               TgRepository
+		repo              Repository
 		notifier          Notifier
 		log               *zap.Logger
 		shoppigramBotID   int64
@@ -92,9 +89,9 @@ type (
 )
 
 // NewTelegram returns a new instance of the TelegramService
-func NewTelegram(rep TgRepository, notifier Notifier, log *zap.Logger, shoppigramBotID int64, shoppigramBotName string) *TelegramService {
+func NewTelegram(repo Repository, notifier Notifier, log *zap.Logger, shoppigramBotID int64, shoppigramBotName string) *TelegramService {
 	return &TelegramService{
-		rep:               rep,
+		repo:              repo,
 		notifier:          notifier,
 		log:               log,
 		shoppigramBotID:   shoppigramBotID,
@@ -112,11 +109,11 @@ func NewTelegram(rep TgRepository, notifier Notifier, log *zap.Logger, shoppigra
 // In this case, each handler provides a function that determines if it can handle the update.
 func (s *TelegramService) HandleTelegramWebhook(ctx context.Context, update tgbotapi.Update) error {
 	switch {
-	case s.isUpdateTypeShoppigramBotAddedToChannelAsAdmin(update):
+	case s.isUpdateTypeAddedToChannelAsAdmin(update):
 		return s.handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx, update)
 	case s.isUpdateTypeStartCommand(update):
 		return s.handleUpdateTypeStartCommand(ctx, update)
-	case s.isUpdateTypeShoppigramBotRemovedFromChannelAsAdmin(update):
+	case s.isUpdateTypeRemovedFromChannelAsAdmin(update):
 		return s.handleUpdateTypeShoppigramBotRemovedFromChannelAsAdmin(ctx, update)
 	default:
 		b, err := json.MarshalIndent(update, "", "  ")
@@ -149,7 +146,7 @@ func (s *TelegramService) handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx
 		return nil
 	}
 
-	err := s.rep.CreateOrUpdateTelegramChannel(ctx, CreateOrUpdateTelegramChannelRequest{
+	err := s.repo.CreateOrUpdateTelegramChannel(ctx, CreateOrUpdateTelegramChannelRequest{
 		ExternalID:      event.Chat.ID,
 		Title:           event.Chat.Title,
 		Name:            event.Chat.UserName,
@@ -179,10 +176,10 @@ func (s *TelegramService) handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx
 func (s *TelegramService) handleUpdateTypeShoppigramBotRemovedFromChannelAsAdmin(ctx context.Context, update tgbotapi.Update) error {
 	event := update.MyChatMember
 	lang := event.From.LanguageCode
-	if "" == lang {
-		lang = "ru"
+	if lang == "" {
+		lang = fallbackLanguage
 	}
-	resp, err := s.rep.GetTelegramChannelOwner(ctx, event.Chat.ID)
+	resp, err := s.repo.GetTelegramChannelOwner(ctx, event.Chat.ID)
 	if err != nil {
 		return errors.Wrap(err, "s.channelStorage.GetTelegramChannelOwner")
 	}

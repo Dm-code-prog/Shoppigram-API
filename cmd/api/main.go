@@ -180,7 +180,7 @@ func main() {
 	adminsHandler := admins.MakeHandler(adminsService, authMw)
 
 	////////////////////////////////////// WEBHOOKS //////////////////////////////////////
-	tgRepo := webhooks.TgRepository(webhooks.NewPg(db))
+	tgRepo := webhooks.Repository(webhooks.NewPg(db))
 	webhookService := webhooks.NewTelegram(
 		tgRepo,
 		&notificationsWebhooksAdapter{notifier: notificationsService},

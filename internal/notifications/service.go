@@ -57,6 +57,26 @@ type (
 		AdminChatID int64
 	}
 
+	// SendMarketplaceBannerParams is a struct for request params to send a marketplace banner to a Telegram channel
+	// with a TWA link button markup
+	SendMarketplaceBannerParams struct {
+		WebAppLink    string
+		Message       string
+		ChannelChatID int64
+	}
+
+	// PinNotificationParams is a struct for request params to pin a message in a Telegram channel
+	PinNotificationParams struct {
+		ChatID    int64
+		MessageID int64
+	}
+
+	// NotifyGreetingsRequest contains the initial greeting message
+	NotifyGreetingsRequest struct {
+		UserExternalID int64
+		UserLanguage   string
+	}
+
 	// NotifyChannelIntegrationSuccessRequest contains the data required to notify a user about a successful
 	// channel integration with Shoppigram
 	NotifyChannelIntegrationSuccessRequest struct {
@@ -84,26 +104,6 @@ type (
 		ChannelExternalID int64
 		ChannelTitle      string
 		ChannelName       string
-	}
-
-	// SendMarketplaceBannerParams is a struct for request params to send a marketplace banner to a Telegram channel
-	// with a TWA link button markup
-	SendMarketplaceBannerParams struct {
-		WebAppLink    string
-		Message       string
-		ChannelChatID int64
-	}
-
-	// PinNotificationParams is a struct for request params to pin a message in a Telegram channel
-	PinNotificationParams struct {
-		ChatID    int64
-		MessageID int64
-	}
-
-	// NotifyGreetingsRequest contains the initial greeting message
-	NotifyGreetingsRequest struct {
-		UserExternalID int64
-		UserLanguage   string
 	}
 
 	adminNotitfication struct {
@@ -199,53 +199,12 @@ func (s *Service) Shutdown() error {
 	return nil
 }
 
-// sendMessageToChat sends message specified in MsgText to chat with id chatID
-func (s *Service) sendMessageToChat(chatID int64, msgTxt string) error {
-	msg := tgbotapi.NewMessage(chatID, msgTxt)
-	msg.ParseMode = tgbotapi.ModeMarkdownV2
-	_, err := s.bot.Send(msg)
-	if err != nil {
-		return errors.Wrap(err, "bot.Send")
-	}
-	return nil
-}
-
 // AddUserToNewOrderNotifications creates a new order notification
 // list entry for some marketplace
 func (s *Service) AddUserToNewOrderNotifications(ctx context.Context, req AddUserToNewOrderNotificationsRequest) error {
 	err := s.repo.AddUserToNewOrderNotifications(ctx, req)
 	if err != nil {
 		return errors.Wrap(err, "s.repo.AddUserToNewOrderNotifications")
-	}
-
-	return nil
-}
-
-// NotifyChannelIntegrationSuccess notifies a user about a successful
-// channel integration with Shoppigram
-func (s *Service) NotifyChannelIntegrationSuccess(_ context.Context, request NotifyChannelIntegrationSuccessRequest) error {
-	message := ChannelIntegrationSuccessNotification(request)
-	userLnag := s.checkAndGetLangCode(message.UserLanguage)
-	msgTxt, err := message.BuildMessage(userLnag)
-	if err != nil {
-		return errors.Wrap(err, "message.BuildMessageShoppigram")
-	}
-
-	msg := tgbotapi.NewMessage(request.UserExternalID, msgTxt)
-	msg.ParseMode = tgbotapi.ModeMarkdownV2
-
-	buttonText := getTranslation(userLnag, "try-new-features")
-	addTelegramButtonsToMessage(
-		&msg,
-		telegramButtonData{
-			buttonText,
-			"https://t.me/" + s.botName + "/app",
-		},
-	)
-
-	_, err = s.bot.Send(msg)
-	if err != nil {
-		return errors.Wrap(err, "bot.Send")
 	}
 
 	return nil
@@ -295,64 +254,6 @@ func (s *Service) PinNotification(_ context.Context, req PinNotificationParams) 
 	return nil
 }
 
-// NotifyChannelIntegrationFailure notifies a user about a failure
-// happened during channel integration with Shoppigram
-func (s *Service) NotifyChannelIntegrationFailure(_ context.Context, request NotifyChannelIntegrationFailureRequest) error {
-	message := ChannelIntegrationFailureNotification(request)
-	userLnag := s.checkAndGetLangCode(message.UserLanguage)
-	msgTxt, err := message.BuildMessage(userLnag)
-	if err != nil {
-		return errors.Wrap(err, "message.BuildMessageShoppigram")
-	}
-
-	msg := tgbotapi.NewMessage(request.UserExternalID, msgTxt)
-	msg.ParseMode = tgbotapi.ModeMarkdownV2
-
-	tgLink := createAddBotAsAdminLink(s.botName)
-	buttonText := getTranslation(userLnag, "try-again")
-	if err != nil {
-		return errors.Wrap(err, "getButtonText(\"try-again\")")
-	}
-	addTelegramButtonsToMessage(&msg, telegramButtonData{buttonText, tgLink})
-
-	_, err = s.bot.Send(msg)
-	if err != nil {
-		return errors.Wrap(err, "bot.Send")
-	}
-
-	return nil
-}
-
-// NotifyChannelIntegrationFailure notifies a user about a failure
-// happened during channel integration with Shoppigram
-func (s *Service) NotifyBotRemovedFromChannel(_ context.Context, request NotifyBotRemovedFromChannelRequest) error {
-
-	message := BotRemovedFromChannelNotification(request)
-	userLnag := s.checkAndGetLangCode(message.UserLanguage)
-	msgTxt, err := message.BuildMessage(userLnag)
-	if err != nil {
-		return errors.Wrap(err, "message.BuildMessageShoppigram")
-	}
-
-	msg := tgbotapi.NewMessage(request.UserExternalID, msgTxt)
-	msg.ParseMode = tgbotapi.ModeMarkdownV2
-
-	tgLink := createAddBotAsAdminLink(s.botName)
-	buttonText := getTranslation(userLnag, "add-bot-as-admin")
-	if err != nil {
-		return errors.Wrap(err, "getButtonText(\"add-bot-as-admin\")")
-	}
-
-	addTelegramButtonsToMessage(&msg, telegramButtonData{buttonText, tgLink})
-
-	_, err = s.bot.Send(msg)
-	if err != nil {
-		return errors.Wrap(err, "bot.Send")
-	}
-
-	return nil
-}
-
 func addTelegramButtonsToMessage(msg *tgbotapi.MessageConfig, messageData ...telegramButtonData) {
 	var rows [][]tgbotapi.InlineKeyboardButton
 
@@ -365,6 +266,16 @@ func addTelegramButtonsToMessage(msg *tgbotapi.MessageConfig, messageData ...tel
 	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
 		rows...,
 	)
+}
+
+func (s *Service) sendMessageToChat(chatID int64, msgTxt string) error {
+	msg := tgbotapi.NewMessage(chatID, msgTxt)
+	msg.ParseMode = tgbotapi.ModeMarkdownV2
+	_, err := s.bot.Send(msg)
+	if err != nil {
+		return errors.Wrap(err, "bot.Send")
+	}
+	return nil
 }
 
 func (s *Service) getTelegramLink(path string, pageData ...pageDataParam) (string, error) {
@@ -416,6 +327,6 @@ func getTranslation(lang, key string) string {
 	}
 }
 
-func createAddBotAsAdminLink(botName string) string {
+func createAddBotAsAdminLink() string {
 	return "https://t.me/" + botName + "?startchannel&admin=post_messages+edit_messages+pin_messages"
 }

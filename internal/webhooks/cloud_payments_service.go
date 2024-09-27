@@ -123,6 +123,8 @@ type (
 		GetOrder(ctx context.Context, id uuid.UUID) (Order, error)
 		SetOrderStateConfirmed(ctx context.Context, id uuid.UUID) error
 		SavePaymentExtraInfo(ctx context.Context, params SavePaymentExtraInfoParams) error
+		CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error
+		GetTelegramChannelOwner(ctx context.Context, chatId int64) (GetTelegramChannelOwnerResponse, error)
 	}
 
 	// CloudPaymentsService is the service for handling CloudPayments webhooks
