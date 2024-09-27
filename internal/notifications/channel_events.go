@@ -62,7 +62,10 @@ func (s *Service) NotifyChannelIntegrationFailure(_ context.Context, request Not
 
 	_, err = s.bot.Send(msg)
 	if err != nil {
-		return errors.Wrap(err, "bot.Send")
+		err := s.handleTelegramSendError(err, request.UserExternalID)
+		if err != nil {
+			return errors.Wrap(err, "s.handleTelegramSendError")
+		}
 	}
 
 	return nil
@@ -88,7 +91,10 @@ func (s *Service) NotifyBotRemovedFromChannel(_ context.Context, request NotifyB
 
 	_, err = s.bot.Send(msg)
 	if err != nil {
-		return errors.Wrap(err, "bot.Send")
+		err := s.handleTelegramSendError(err, request.UserExternalID)
+		if err != nil {
+			return errors.Wrap(err, "s.handleTelegramSendError")
+		}
 	}
 
 	return nil
