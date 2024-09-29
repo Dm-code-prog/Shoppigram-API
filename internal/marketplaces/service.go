@@ -2,6 +2,7 @@ package marketplaces
 
 import (
 	"context"
+	"github.com/shoppigram-com/marketplace-api/internal/logging"
 	telegramusers "github.com/shoppigram-com/marketplace-api/internal/users"
 	"log"
 	"time"
@@ -124,7 +125,7 @@ type (
 	DefaultService struct {
 		repo  Repository
 		log   *zap.Logger
-		cache *ristretto.Cache
+		cache *ristretto.Cache[string, GetProductsResponse]
 	}
 )
 
@@ -136,9 +137,14 @@ const (
 )
 
 // New creates a new product service
-func New(repo Repository, cache *ristretto.Cache) *DefaultService {
-	if cache == nil {
-		log.Fatal("cache *ristretto.Cache is nil, fatal")
+func New(repo Repository, maxCacheSize int64) *DefaultService {
+	cache, err := ristretto.NewCache[string, GetProductsResponse](&ristretto.Config[string, GetProductsResponse]{
+		NumCounters: 1e7,          // number of keys to track frequency of (10M).
+		MaxCost:     maxCacheSize, // maximum cost of the cache
+		BufferItems: 64,           // number of keys per Get buffer.
+	})
+	if err != nil {
+		log.Fatal("failed to create productsCache", logging.SilentError(err))
 	}
 
 	return &DefaultService{
@@ -152,7 +158,7 @@ func (s *DefaultService) GetProducts(ctx context.Context, request GetProductsReq
 	// Check if the request is cached
 	key := getProductsCacheKeyBase + request.WebAppID.String()
 	if res, ok := s.cache.Get(key); ok {
-		return res.(GetProductsResponse), nil
+		return res, nil
 	}
 
 	res, err := s.repo.GetProducts(ctx, request)

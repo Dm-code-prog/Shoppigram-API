@@ -37,6 +37,10 @@
         {
           "name": "POSTGRES_MAX_CONNS",
           "value": "15"
+        },
+        {
+          "name": "AWS_CLOUD_WATCH_NAMESPACE",
+          "value": "shoppigram/production/marketplace-api"
         }
       ],
       "mountPoints": [],

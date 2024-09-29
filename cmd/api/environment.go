@@ -44,6 +44,12 @@ type Environment struct {
 		Name  string `env:"BOT_NAME,required=true"`
 	}
 
+	AWS struct {
+		Cloudwatch struct {
+			Namespace string `env:"AWS_CLOUD_WATCH_NAMESPACE,required=true"`
+		}
+	}
+
 	DigitalOcean struct {
 		Spaces struct {
 			Endpoint string `env:"DIGITALOCEAN_SPACES_ENDPOINT,required=true"`

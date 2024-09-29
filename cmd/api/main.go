@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/shoppigram-com/marketplace-api/packages/cloudwatchcollector"
 	"github.com/shoppigram-com/marketplace-api/packages/health"
 	"net/http"
 	"os"
@@ -22,7 +23,6 @@ import (
 	"go.uber.org/zap/zapcore"
 
 	"github.com/Netflix/go-env"
-	"github.com/dgraph-io/ristretto"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/oklog/run"
@@ -69,6 +69,9 @@ func main() {
 	log, _ := zapConfig.Build(zap.AddStacktrace(zapcore.PanicLevel))
 	defer log.Sync()
 
+	cloudwatchcollector.Init(config.AWS.Cloudwatch.Namespace)
+	defer cloudwatchcollector.Shutdown()
+
 	db, err := pgxpool.New(ctx, config.Postgres.DSN)
 	if err != nil {
 		log.Fatal("failed to connect to database", logging.SilentError(err))
@@ -103,15 +106,6 @@ func main() {
 		_ = json.NewEncoder(w).Encode(map[string]string{"error": "the path you requested does not exist"})
 	})
 
-	productsCache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 1e7,                  // number of keys to track frequency of (10M).
-		MaxCost:     config.Cache.MaxSize, // maximum cost of the cache
-		BufferItems: 64,                   // number of keys per Get buffer.
-	})
-	if err != nil {
-		log.Fatal("failed to create productsCache", logging.SilentError(err))
-	}
-
 	////////////////////////////////////// TELEGRAM USERS //////////////////////////////////////
 	authMw := telegramusers.MakeAuthMiddleware(config.Bot.Token)
 	tgUsersRepo := telegramusers.NewPg(db)
@@ -124,7 +118,7 @@ func main() {
 	////////////////////////////////////// MARKETPLACES //////////////////////////////////////
 	marketplacesRepo := marketplaces.NewPg(db)
 	marketplacesService := marketplaces.NewServiceWithObservability(
-		marketplaces.New(marketplacesRepo, productsCache),
+		marketplaces.New(marketplacesRepo, config.Cache.MaxSize),
 		log.With(zap.String("service", "marketplaces")),
 	)
 	productsHandler := marketplaces.MakeProductsHandler(marketplacesService)
