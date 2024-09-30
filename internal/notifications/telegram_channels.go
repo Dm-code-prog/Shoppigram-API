@@ -1,7 +1,9 @@
 /**
 This file implements the logic for sending notifications
 about channel events, to be precise:
-
+	- When our bot was successfully integrated into a channel
+	- When our bot failed to be integrated into a channel
+	- When our bot was removed from a channel
 */
 
 package notifications
@@ -36,11 +38,7 @@ func (s *Service) NotifyChannelIntegrationSuccess(_ context.Context, request Not
 	)
 
 	_, err = s.bot.Send(msg)
-	if err != nil {
-		return errors.Wrap(err, "bot.Send")
-	}
-
-	return nil
+	return s.handleTelegramSendError(err, request.UserExternalID)
 }
 
 // NotifyChannelIntegrationFailure notifies a user about a failure
@@ -61,18 +59,11 @@ func (s *Service) NotifyChannelIntegrationFailure(_ context.Context, request Not
 	addTelegramButtonsToMessage(&msg, telegramButtonData{buttonText, tgLink})
 
 	_, err = s.bot.Send(msg)
-	if err != nil {
-		err := s.handleTelegramSendError(err, request.UserExternalID)
-		if err != nil {
-			return errors.Wrap(err, "s.handleTelegramSendError")
-		}
-	}
-
-	return nil
+	return s.handleTelegramSendError(err, request.UserExternalID)
 }
 
-// NotifyChannelIntegrationFailure notifies a user about a failure
-// happened during channel integration with Shoppigram
+// NotifyBotRemovedFromChannel notifies a user about the fact that
+// our bot was removed from a channel
 func (s *Service) NotifyBotRemovedFromChannel(_ context.Context, request NotifyBotRemovedFromChannelRequest) error {
 	message := BotRemovedFromChannelNotification(request)
 	userLnag := s.checkAndGetLangCode(message.UserLanguage)
@@ -90,12 +81,5 @@ func (s *Service) NotifyBotRemovedFromChannel(_ context.Context, request NotifyB
 	addTelegramButtonsToMessage(&msg, telegramButtonData{buttonText, tgLink})
 
 	_, err = s.bot.Send(msg)
-	if err != nil {
-		err := s.handleTelegramSendError(err, request.UserExternalID)
-		if err != nil {
-			return errors.Wrap(err, "s.handleTelegramSendError")
-		}
-	}
-
-	return nil
+	return s.handleTelegramSendError(err, request.UserExternalID)
 }

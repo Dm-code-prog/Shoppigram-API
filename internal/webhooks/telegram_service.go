@@ -9,7 +9,9 @@ import (
 	"go.uber.org/zap"
 )
 
-const fallbackLanguage = "ru"
+const (
+	fallbackLanguage = "ru"
+)
 
 type (
 	// CreateOrUpdateTelegramChannelRequest contains the data about a Telegram channel, Shoppigram bot is added to
@@ -109,12 +111,12 @@ func NewTelegram(repo Repository, notifier Notifier, log *zap.Logger, shoppigram
 // In this case, each handler provides a function that determines if it can handle the update.
 func (s *TelegramService) HandleTelegramWebhook(ctx context.Context, update tgbotapi.Update) error {
 	switch {
-	case s.isUpdateTypeAddedToChannelAsAdmin(update):
-		return s.handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx, update)
+	case s.isUpdateTypeAddedToChannel(update):
+		return s.handleAddedToChannel(ctx, update)
 	case s.isUpdateTypeStartCommand(update):
-		return s.handleUpdateTypeStartCommand(ctx, update)
-	case s.isUpdateTypeRemovedFromChannelAsAdmin(update):
-		return s.handleUpdateTypeShoppigramBotRemovedFromChannelAsAdmin(ctx, update)
+		return s.handleStartCommand(ctx, update)
+	case s.isUpdateTypeRemovedFromChannel(update):
+		return s.handleRemovedFromChannel(ctx, update)
 	default:
 		b, err := json.MarshalIndent(update, "", "  ")
 		if err != nil {
@@ -129,10 +131,12 @@ func (s *TelegramService) HandleTelegramWebhook(ctx context.Context, update tgbo
 	return nil
 }
 
-func (s *TelegramService) handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx context.Context, update tgbotapi.Update) error {
+func (s *TelegramService) handleAddedToChannel(ctx context.Context, update tgbotapi.Update) error {
 	event := update.MyChatMember
 
-	if !update.MyChatMember.NewChatMember.CanPinMessages && !update.MyChatMember.NewChatMember.CanEditMessages {
+	if !update.MyChatMember.NewChatMember.CanPinMessages ||
+		!update.MyChatMember.NewChatMember.CanEditMessages ||
+		!update.MyChatMember.NewChatMember.CanPostMessages {
 		err := s.notifier.NotifyChannelIntegrationFailure(ctx, NotifyChannelIntegrationFailureRequest{
 			UserExternalID:    event.From.ID,
 			UserLanguage:      event.From.LanguageCode,
@@ -173,7 +177,7 @@ func (s *TelegramService) handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx
 	return nil
 }
 
-func (s *TelegramService) handleUpdateTypeShoppigramBotRemovedFromChannelAsAdmin(ctx context.Context, update tgbotapi.Update) error {
+func (s *TelegramService) handleRemovedFromChannel(ctx context.Context, update tgbotapi.Update) error {
 	event := update.MyChatMember
 	lang := event.From.LanguageCode
 	if lang == "" {
@@ -197,7 +201,7 @@ func (s *TelegramService) handleUpdateTypeShoppigramBotRemovedFromChannelAsAdmin
 	return nil
 }
 
-func (s *TelegramService) handleUpdateTypeStartCommand(ctx context.Context, update tgbotapi.Update) error {
+func (s *TelegramService) handleStartCommand(ctx context.Context, update tgbotapi.Update) error {
 	// Send a button with the link to the mini app
 
 	// Send the message to the user
