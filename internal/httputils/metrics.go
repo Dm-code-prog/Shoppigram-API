@@ -18,6 +18,10 @@ func (r *responseInterceptor) WriteHeader(statusCode int) {
 }
 
 func (r *responseInterceptor) StatusCode() int {
+	if r.statusCode == 0 {
+		return http.StatusOK
+	}
+
 	return r.statusCode
 }
 
