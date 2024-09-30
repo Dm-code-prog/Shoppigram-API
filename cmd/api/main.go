@@ -97,7 +97,8 @@ func main() {
 		middleware.Recoverer,
 		middleware.Compress(5, "application/json"),
 		httputils.CORSMiddleware,
-		middleware.Throttle(500),
+		httputils.MakeMetricsMiddleware,
+		middleware.Throttle(100),
 	)
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {

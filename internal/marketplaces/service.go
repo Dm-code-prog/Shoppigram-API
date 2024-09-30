@@ -156,7 +156,7 @@ func New(repo Repository, maxCacheSize int64) *DefaultService {
 // GetProducts returns a list of products
 func (s *DefaultService) GetProducts(ctx context.Context, request GetProductsRequest) (GetProductsResponse, error) {
 	// Check if the request is cached
-	key := getProductsCacheKeyBase + request.WebAppID.String()
+	key := makeProductsCacheKey(request.WebAppID)
 	if res, ok := s.cache.Get(key); ok {
 		return res, nil
 	}
