@@ -2,7 +2,6 @@ package cloudwatchcollector
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"sort"
 	"strings"
@@ -44,9 +43,6 @@ func Init(namespace string) {
 			log.Fatalf("Failed to load AWS config: %v", err)
 		}
 		client := cloudwatch.NewFromConfig(cfg)
-
-		fmt.Println(cfg.Region)
-
 		collector = &metricsCollector{
 			client:     client,
 			namespace:  namespace,

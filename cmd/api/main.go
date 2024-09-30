@@ -97,7 +97,7 @@ func main() {
 		middleware.Recoverer,
 		middleware.Compress(5, "application/json"),
 		httputils.CORSMiddleware,
-		httputils.MakeMetricsMiddleware,
+		httputils.MakeObservabilityMiddleware,
 		middleware.Throttle(100),
 	)
 
