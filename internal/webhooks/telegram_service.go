@@ -202,9 +202,6 @@ func (s *TelegramService) handleRemovedFromChannel(ctx context.Context, update t
 }
 
 func (s *TelegramService) handleStartCommand(ctx context.Context, update tgbotapi.Update) error {
-	// Send a button with the link to the mini app
-
-	// Send the message to the user
 	err := s.notifier.NotifyGreetings(ctx, NotifyGreetingsRequest{
 		UserExternalID: update.Message.From.ID,
 		UserLanguage:   update.Message.From.LanguageCode,

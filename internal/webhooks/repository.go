@@ -68,7 +68,7 @@ func (p *Pg) SavePaymentExtraInfo(ctx context.Context, params SavePaymentExtraIn
 	return nil
 }
 
-// GetTelegramChannels gets a list of Telegram channels owned by a specific user
+// GetTelegramChannelOwner returns the owner of a Telegram channel
 func (p *Pg) GetTelegramChannelOwner(ctx context.Context, chatId int64) (GetTelegramChannelOwnerResponse, error) {
 	adminChatId, err := p.gen.GetTelegramChannelOwner(ctx, chatId)
 	if err != nil {
