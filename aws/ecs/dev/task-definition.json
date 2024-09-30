@@ -41,6 +41,10 @@
         {
           "name": "AWS_CLOUD_WATCH_NAMESPACE",
           "value": "shoppigram/dev/marketplace-api"
+        },
+        {
+          "name": "AWS_REGION",
+          "value": "eu-central-1"
         }
       ],
       "mountPoints": [],
