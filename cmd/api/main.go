@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/shoppigram-com/marketplace-api/packages/cloudwatchcollector"
 	"github.com/shoppigram-com/marketplace-api/packages/health"
 	"net/http"
 	"os"
@@ -22,7 +23,6 @@ import (
 	"go.uber.org/zap/zapcore"
 
 	"github.com/Netflix/go-env"
-	"github.com/dgraph-io/ristretto"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/oklog/run"
@@ -69,6 +69,9 @@ func main() {
 	log, _ := zapConfig.Build(zap.AddStacktrace(zapcore.PanicLevel))
 	defer log.Sync()
 
+	cloudwatchcollector.Init(config.AWS.Cloudwatch.Namespace)
+	defer cloudwatchcollector.Shutdown()
+
 	db, err := pgxpool.New(ctx, config.Postgres.DSN)
 	if err != nil {
 		log.Fatal("failed to connect to database", logging.SilentError(err))
@@ -77,8 +80,8 @@ func main() {
 	defer db.Close()
 	log.Debug("connected to database")
 
-	db.Config().MinConns = 5
-	db.Config().MaxConns = 25
+	db.Config().MinConns = int32(config.Postgres.MinConns)
+	db.Config().MaxConns = int32(config.Postgres.MaxConns)
 
 	var g run.Group
 	g.Add(run.SignalHandler(ctx, os.Interrupt, os.Kill, syscall.SIGTERM))
@@ -90,12 +93,12 @@ func main() {
 	}
 
 	r.Use(
-		httputils.MakeLoggingMiddleware(log),
 		middleware.Timeout(10*time.Second),
 		middleware.Recoverer,
 		middleware.Compress(5, "application/json"),
 		httputils.CORSMiddleware,
-		middleware.Throttle(500),
+		httputils.MakeObservabilityMiddleware,
+		middleware.Throttle(100),
 	)
 
 	r.NotFound(func(w http.ResponseWriter, r *http.Request) {
@@ -103,15 +106,6 @@ func main() {
 		w.WriteHeader(http.StatusNotFound)
 		_ = json.NewEncoder(w).Encode(map[string]string{"error": "the path you requested does not exist"})
 	})
-
-	productsCache, err := ristretto.NewCache(&ristretto.Config{
-		NumCounters: 1e7,                  // number of keys to track frequency of (10M).
-		MaxCost:     config.Cache.MaxSize, // maximum cost of the cache
-		BufferItems: 64,                   // number of keys per Get buffer.
-	})
-	if err != nil {
-		log.Fatal("failed to create productsCache", logging.SilentError(err))
-	}
 
 	////////////////////////////////////// TELEGRAM USERS //////////////////////////////////////
 	authMw := telegramusers.MakeAuthMiddleware(config.Bot.Token)
@@ -125,7 +119,7 @@ func main() {
 	////////////////////////////////////// MARKETPLACES //////////////////////////////////////
 	marketplacesRepo := marketplaces.NewPg(db)
 	marketplacesService := marketplaces.NewServiceWithObservability(
-		marketplaces.New(marketplacesRepo, productsCache),
+		marketplaces.New(marketplacesRepo, config.Cache.MaxSize),
 		log.With(zap.String("service", "marketplaces")),
 	)
 	productsHandler := marketplaces.MakeProductsHandler(marketplacesService)

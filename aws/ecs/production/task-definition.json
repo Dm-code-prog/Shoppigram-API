@@ -20,15 +20,31 @@
         },
         {
           "name": "NEW_ORDER_NOTIFICATIONS_IS_ENABLED",
-          "value": "false"
+          "value": "true"
         },
         {
           "name": "NEW_MARKETPLACE_NOTIFICATIONS_IS_ENABLED",
-          "value": "false"
+          "value": "true"
         },
         {
           "name": "VERIFIED_MARKETPLACE_NOTIFICATIONS_IS_ENABLED",
-          "value": "false"
+          "value": "true"
+        },
+        {
+          "name": "POSTGRES_MIN_CONNS",
+          "value": "1"
+        },
+        {
+          "name": "POSTGRES_MAX_CONNS",
+          "value": "15"
+        },
+        {
+          "name": "AWS_CLOUD_WATCH_NAMESPACE",
+          "value": "shoppigram/production/marketplace-api"
+        },
+        {
+          "name": "AWS_REGION",
+          "value": "eu-central-1"
         }
       ],
       "mountPoints": [],

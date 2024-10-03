@@ -33,13 +33,21 @@ type Environment struct {
 	}
 
 	Postgres struct {
-		DSN string `env:"POSTGRES_DSN,required=true"`
+		DSN      string `env:"POSTGRES_DSN,required=true"`
+		MinConns int    `env:"POSTGRES_MIN_CONNS,default=1"`
+		MaxConns int    `env:"POSTGRES_MAX_CONNS,default=10"`
 	}
 
 	Bot struct {
 		Token string `env:"BOT_TOKEN,required=true"`
 		ID    int64  `env:"BOT_ID,required=true"`
 		Name  string `env:"BOT_NAME,required=true"`
+	}
+
+	AWS struct {
+		Cloudwatch struct {
+			Namespace string `env:"AWS_CLOUD_WATCH_NAMESPACE,required=true"`
+		}
 	}
 
 	DigitalOcean struct {
