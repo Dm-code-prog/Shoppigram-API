@@ -3,8 +3,7 @@ package notifications
 import (
 	"context"
 	"embed"
-	"github.com/shoppigram-com/marketplace-api/internal/notifications/templates/en"
-	"github.com/shoppigram-com/marketplace-api/internal/notifications/templates/ru"
+	"github.com/shoppigram-com/marketplace-api/packages/cloudwatchcollector"
 	"strconv"
 	"strings"
 	"time"
@@ -32,6 +31,9 @@ const (
 
 	stateConfirmed = "confirmed"
 	stateDone      = "done"
+
+	metricsStatusOK = "OK"
+	metricsStatusKO = "KO"
 )
 
 type (
@@ -212,33 +214,35 @@ func (s *Service) AddUserToNewOrderNotifications(ctx context.Context, req AddUse
 
 // NotifyGreetings sends a greeting message to a user
 func (s *Service) NotifyGreetings(_ context.Context, request NotifyGreetingsRequest) error {
-	userLang := s.checkAndGetLangCode(request.UserLanguage)
-	messageText, err := BuildGreetigsMessage(userLang)
+	messageText, err := BuildGreetigsMessage(
+		checkAndGetLangCode(request.UserLanguage),
+	)
 	if err != nil {
-		return errors.Wrap(err, "BuildGreetigsMessage()")
+		return errors.Wrap(err, "BuildGreetigsMessage")
 	}
 	msg := tgbotapi.NewMessage(request.UserExternalID, messageText)
 	msg.ParseMode = tgbotapi.ModeMarkdownV2
-	_, err = s.bot.Send(msg)
-	if err != nil {
-		return errors.Wrap(err, "bot.Send")
-	}
-
-	return nil
+	_, err = s.SendMessage(msg)
+	return err
 }
 
 // SendMarketplaceBanner sends a marketplace banner to a Telegram channel
-func (s *Service) SendMarketplaceBanner(_ context.Context, params SendMarketplaceBannerParams) (message int64, err error) {
+func (s *Service) SendMarketplaceBanner(_ context.Context, params SendMarketplaceBannerParams) (int64, error) {
 	msg := tgbotapi.NewMessage(params.ChannelChatID, params.Message)
-	buttonText := getTranslation("ru", "go-to-the-store")
-	addTelegramButtonsToMessage(&msg, telegramButtonData{buttonText, params.WebAppLink})
+	addButtonsToMessage(
+		&msg,
+		telegramButtonData{
+			getTranslation("ru", "go-to-the-store"),
+			params.WebAppLink,
+		},
+	)
 
-	Message, err := s.bot.Send(msg)
+	m, err := s.SendMessage(msg)
 	if err != nil {
-		return 0, errors.Wrap(err, "bot.Send")
+		return 0, errors.Wrap(err, "SendMessage")
 	}
 
-	return int64(Message.MessageID), nil
+	return int64(m.MessageID), nil
 }
 
 // PinNotification pins a message in a Telegram channel
@@ -254,79 +258,33 @@ func (s *Service) PinNotification(_ context.Context, req PinNotificationParams) 
 	return nil
 }
 
-func addTelegramButtonsToMessage(msg *tgbotapi.MessageConfig, messageData ...telegramButtonData) {
-	var rows [][]tgbotapi.InlineKeyboardButton
-
-	for _, v := range messageData {
-		button := tgbotapi.NewInlineKeyboardButtonURL(v.text, v.link)
-		row := tgbotapi.NewInlineKeyboardRow(button)
-		rows = append(rows, row)
-	}
-
-	msg.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-		rows...,
-	)
-}
-
-func (s *Service) sendMessageToChat(chatID int64, msgTxt string) error {
-	msg := tgbotapi.NewMessage(chatID, msgTxt)
-	msg.ParseMode = tgbotapi.ModeMarkdownV2
-	_, err := s.bot.Send(msg)
+// SendMessage sends a message, handles errors and publishes metrics
+func (s *Service) SendMessage(msg tgbotapi.Chattable) (tgbotapi.Message, error) {
+	message, err := s.bot.Send(msg)
+	defer func() {
+		status := metricsStatusOK
+		if err != nil {
+			status = metricsStatusKO
+		}
+		cloudwatchcollector.Increment("telegram_bot_api_send_message", cloudwatchcollector.Dimensions{
+			"status": status,
+		})
+	}()
 	if err != nil {
-		return errors.Wrap(err, "bot.Send")
-	}
-	return nil
-}
+		var chatID int64
+		if m, ok := msg.(tgbotapi.MessageConfig); ok {
+			chatID = m.ChatID
+		}
 
-func (s *Service) getTelegramLink(path string, pageData ...pageDataParam) (string, error) {
-	pageDataParams := make(map[string]any)
-	for _, v := range pageData {
-		pageDataParams[v.key] = v.value
+		if strings.Contains(err.Error(), "chat not found") {
+			s.log.With(
+				zap.String("method", "bot.Send"),
+				zap.String("user_id", strconv.FormatInt(chatID, 10)),
+			).Warn("chat not found")
+			return tgbotapi.Message{}, errors.New("send message to Telegram: chat not found")
+		}
+		return tgbotapi.Message{}, errors.Wrap(err, "send message to Telegram")
 	}
 
-	tmaLink, err := TMALinkingScheme{
-		PageName: "/app/" + path,
-		PageData: pageDataParams,
-	}.ToBase64String()
-	if err != nil {
-		return "", errors.Wrap(err, "TMALinkingScheme.ToBase64String()")
-	}
-	fullLink := "https://t.me/" + s.botName + "/app?startapp=" + tmaLink
-	return fullLink, nil
-}
-
-func (s *Service) checkAndGetLangCode(lang string) string {
-	if isLanguageValid(lang) {
-		return lang
-	}
-	return fallbackLanguage
-}
-
-func (s *Service) handleTelegramSendError(err error, chatID int64) error {
-	if err == nil {
-		return nil
-	}
-	if strings.Contains(err.Error(), "chat not found") {
-		s.log.With(
-			zap.String("method", "bot.Send"),
-			zap.String("user_id", strconv.FormatInt(chatID, 10)),
-		).Warn("chat not found")
-		return nil
-	}
-	return errors.Wrap(err, "bot.Send")
-}
-
-func getTranslation(lang, key string) string {
-	switch lang {
-	case langRu:
-		return ru.Translations[key]
-	case langEn:
-		return en.Translations[key]
-	default:
-		return ru.Translations[key]
-	}
-}
-
-func createAddBotAsAdminLink() string {
-	return "https://t.me/" + botName + "?startchannel&admin=post_messages+edit_messages+pin_messages"
+	return message, nil
 }
