@@ -17,7 +17,7 @@ func makeTelegramWebhookEndpoint(s *TelegramService) endpoint.Endpoint {
 
 		err := s.HandleTelegramWebhook(ctx, data)
 		if err != nil {
-			return nil, errors.Wrap(ErrorBadRequest, "s.HandleTelegramWebhook(ctx, data)")
+			return nil, errors.Wrap(err, "s.HandleTelegramWebhook")
 		}
 
 		return nil, nil

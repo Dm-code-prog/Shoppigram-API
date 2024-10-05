@@ -118,12 +118,9 @@ func (s *TelegramService) HandleTelegramWebhook(ctx context.Context, update tgbo
 	case s.isUpdateTypeRemovedFromChannel(update):
 		return s.handleRemovedFromChannel(ctx, update)
 	default:
-		b, err := json.MarshalIndent(update, "", "  ")
-		if err != nil {
-			return errors.Wrap(err, "failed to marshal data")
-		}
+		b, _ := json.MarshalIndent(update, "", "  ")
 		s.log.Info(
-			"received Telegram webhook, but we don't have a handler for this type of update",
+			"received Telegram webhook, but we were unable to handle it",
 			zap.Any("webhook_data", json.RawMessage(b)),
 		)
 	}
