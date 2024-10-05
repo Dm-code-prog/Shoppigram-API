@@ -3,6 +3,7 @@ package webhooks
 import (
 	"context"
 	"encoding/json"
+	"github.com/shoppigram-com/marketplace-api/internal/logging"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
@@ -131,20 +132,23 @@ func (s *TelegramService) HandleTelegramWebhook(ctx context.Context, update tgbo
 func (s *TelegramService) handleAddedToChannel(ctx context.Context, update tgbotapi.Update) error {
 	event := update.MyChatMember
 
-	if !update.MyChatMember.NewChatMember.CanPinMessages ||
-		!update.MyChatMember.NewChatMember.CanEditMessages ||
-		!update.MyChatMember.NewChatMember.CanPostMessages {
-		err := s.notifier.NotifyChannelIntegrationFailure(ctx, NotifyChannelIntegrationFailureRequest{
+	handleFailure := func(err error) error {
+		_ = s.notifier.NotifyChannelIntegrationFailure(ctx, NotifyChannelIntegrationFailureRequest{
 			UserExternalID:    event.From.ID,
 			UserLanguage:      event.From.LanguageCode,
 			ChannelExternalID: event.Chat.ID,
 			ChannelTitle:      event.Chat.Title,
 			ChannelName:       event.Chat.UserName,
 		})
-		if err != nil {
-			return errors.Wrap(err, "s.notifier.NotifyChannelIntegrationSuccess")
-		}
+
+		s.log.Error("telegram channel integration failed", logging.SilentError(err))
 		return nil
+	}
+
+	if !update.MyChatMember.NewChatMember.CanPinMessages ||
+		!update.MyChatMember.NewChatMember.CanEditMessages ||
+		!update.MyChatMember.NewChatMember.CanPostMessages {
+		return handleFailure(errors.New("bot doesn't have required permissions"))
 	}
 
 	err := s.repo.CreateOrUpdateTelegramChannel(ctx, CreateOrUpdateTelegramChannelRequest{
@@ -157,7 +161,7 @@ func (s *TelegramService) handleAddedToChannel(ctx context.Context, update tgbot
 		IsPublic: event.Chat.UserName != "",
 	})
 	if err != nil {
-		return errors.Wrap(err, "s.channelStorage.CreateOrUpdateTelegramChannel")
+		return handleFailure(errors.Wrap(err, "s.channelStorage.CreateOrUpdateTelegramChannel"))
 	}
 
 	err = s.notifier.NotifyChannelIntegrationSuccess(ctx, NotifyChannelIntegrationSuccessRequest{
@@ -168,7 +172,7 @@ func (s *TelegramService) handleAddedToChannel(ctx context.Context, update tgbot
 		ChannelName:       event.Chat.UserName,
 	})
 	if err != nil {
-		return errors.Wrap(err, "s.notifier.NotifyChannelIntegrationSuccess")
+		return handleFailure(errors.Wrap(err, "s.notifier.NotifyChannelIntegrationSuccess"))
 	}
 
 	return nil
