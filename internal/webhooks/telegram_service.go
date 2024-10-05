@@ -24,6 +24,12 @@ type (
 		IsPublic        bool
 	}
 
+	// DeleteTelegramChannelRequest specifies the ID of the channel to delete
+	// from the database
+	DeleteTelegramChannelRequest struct {
+		ExternalID int64
+	}
+
 	// GetTelegramChannelOwnerRequest contains chat id of a channel
 	GetTelegramChannelOwnerRequest struct {
 		ChannelChatId int64
@@ -185,7 +191,14 @@ func (s *TelegramService) handleRemovedFromChannel(ctx context.Context, update t
 		lang = fallbackLanguage
 	}
 
-	err := s.notifier.NotifyBotRemovedFromChannel(ctx, NotifyBotRemovedFromChannelRequest{
+	err := s.repo.DeleteTelegramChannel(ctx, DeleteTelegramChannelRequest{
+		ExternalID: event.Chat.ID,
+	})
+	if err != nil {
+		return errors.Wrap(err, "s.channelStorage.DeleteTelegramChannel")
+	}
+
+	err = s.notifier.NotifyBotRemovedFromChannel(ctx, NotifyBotRemovedFromChannelRequest{
 		UserExternalID:    event.From.ID,
 		UserLanguage:      lang,
 		ChannelExternalID: event.Chat.ID,

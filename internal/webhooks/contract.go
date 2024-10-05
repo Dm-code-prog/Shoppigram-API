@@ -12,6 +12,7 @@ type Repository interface {
 	SetOrderStateConfirmed(ctx context.Context, id uuid.UUID) error
 	SavePaymentExtraInfo(ctx context.Context, params SavePaymentExtraInfoParams) error
 	CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error
+	DeleteTelegramChannel(ctx context.Context, req DeleteTelegramChannelRequest) error
 }
 
 var (

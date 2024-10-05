@@ -84,3 +84,13 @@ func (p *Pg) CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpda
 
 	return nil
 }
+
+// DeleteTelegramChannel deletes a Telegram channel
+func (p *Pg) DeleteTelegramChannel(ctx context.Context, req DeleteTelegramChannelRequest) error {
+	err := p.gen.DeleteTelegramChannel(ctx, req.ExternalID)
+	if err != nil {
+		return errors.Wrap(err, "p.gen.DeleteTelegramChannel")
+	}
+
+	return nil
+}

@@ -11,3 +11,8 @@ on conflict (external_id) do update
 select owner_external_id
 from telegram_channels
 where external_id = $1;
+
+-- name: DeleteTelegramChannel :exec
+delete
+from telegram_channels
+where external_id = $1;
