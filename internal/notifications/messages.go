@@ -2,7 +2,6 @@ package notifications
 
 import (
 	"fmt"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"os"
@@ -279,7 +278,7 @@ func (m *NewMarketplaceNotification) BuildMessageShoppigram(language string) (st
 		marketplaceBaseURL+m.ID.String(),
 	)
 
-	return tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, finalMessage), nil
+	return finalMessage, nil
 }
 
 // BuildMessageAdmin creates a notification message for a marketplace on verification
@@ -294,7 +293,7 @@ func (m *NewMarketplaceNotification) BuildMessageAdmin(language string) (string,
 		m.Name,
 	)
 
-	return tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, finalMessage), nil
+	return finalMessage, nil
 }
 
 // BuildMessage creates a notification message for a verified marketplace
@@ -309,7 +308,7 @@ func (m *VerifiedMarketplaceNotification) BuildMessage(language string) (string,
 		m.Name,
 		"https://t.me/"+botName+"/"+m.ShortName,
 	)
-	return tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, finalMessage), nil
+	return finalMessage, nil
 }
 
 // BuildMessage creates a notification message for a successful channel integration
@@ -324,7 +323,7 @@ func (m *ChannelIntegrationSuccessNotification) BuildMessage(language string) (s
 		m.ChannelTitle,
 	)
 
-	return tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, finalMessage), nil
+	return finalMessage, nil
 }
 
 func BuildGreetigsMessage(language string) (string, error) {
@@ -332,7 +331,7 @@ func BuildGreetigsMessage(language string) (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
-	return tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, string(greetingsMessage)), nil
+	return string(greetingsMessage), nil
 }
 
 // BuildMessage creates a notification message for a failed channel integration
@@ -348,7 +347,7 @@ func (m *ChannelIntegrationFailureNotification) BuildMessage(language string) (s
 		m.ChannelTitle,
 	)
 
-	return tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, finalMessage), nil
+	return finalMessage, nil
 }
 
 // BuildMessage creates a notification message for bot removal
@@ -363,7 +362,7 @@ func (m *BotRemovedFromChannelNotification) BuildMessage(language string) (strin
 		m.ChannelTitle,
 	)
 
-	return tgbotapi.EscapeText(tgbotapi.ModeMarkdownV2, finalMessage), nil
+	return finalMessage, nil
 }
 
 func getPathToFile(lang string, path string) string {
