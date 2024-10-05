@@ -184,12 +184,9 @@ func (s *TelegramService) handleRemovedFromChannel(ctx context.Context, update t
 	if lang == "" {
 		lang = fallbackLanguage
 	}
-	resp, err := s.repo.GetTelegramChannelOwner(ctx, event.Chat.ID)
-	if err != nil {
-		return errors.Wrap(err, "s.channelStorage.GetTelegramChannelOwner")
-	}
-	err = s.notifier.NotifyBotRemovedFromChannel(ctx, NotifyBotRemovedFromChannelRequest{
-		UserExternalID:    resp.ChatId,
+
+	err := s.notifier.NotifyBotRemovedFromChannel(ctx, NotifyBotRemovedFromChannelRequest{
+		UserExternalID:    event.From.ID,
 		UserLanguage:      lang,
 		ChannelExternalID: event.Chat.ID,
 		ChannelTitle:      event.Chat.Title,
