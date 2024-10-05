@@ -78,8 +78,8 @@ func (s *Service) NotifyBotRemovedFromChannel(_ context.Context, request NotifyB
 	addButtonsToMessage(
 		&msg,
 		telegramButtonData{
-			makeAddBotAsAdminToChannelLink(),
 			getTranslation(langCode, "add-bot-as-admin"),
+			makeAddBotAsAdminToChannelLink(),
 		},
 	)
 
