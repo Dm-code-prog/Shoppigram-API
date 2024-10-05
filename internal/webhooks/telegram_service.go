@@ -85,16 +85,6 @@ type (
 		UserExternalID int64
 		UserLanguage   string
 	}
-
-	// Notifier is the service for notifications
-	// The interface requires a method for notifying a user about a successful
-	// channel integration with Shoppigram
-	Notifier interface {
-		NotifyChannelIntegrationSuccess(ctx context.Context, request NotifyChannelIntegrationSuccessRequest) error
-		NotifyChannelIntegrationFailure(ctx context.Context, request NotifyChannelIntegrationFailureRequest) error
-		NotifyBotRemovedFromChannel(ctx context.Context, request NotifyBotRemovedFromChannelRequest) error
-		NotifyGreetings(ctx context.Context, request NotifyGreetingsRequest) error
-	}
 )
 
 // NewTelegram returns a new instance of the TelegramService
@@ -196,17 +186,6 @@ func (s *TelegramService) handleRemovedFromChannel(ctx context.Context, update t
 	})
 	if err != nil {
 		return errors.Wrap(err, "s.channelStorage.DeleteTelegramChannel")
-	}
-
-	err = s.notifier.NotifyBotRemovedFromChannel(ctx, NotifyBotRemovedFromChannelRequest{
-		UserExternalID:    event.From.ID,
-		UserLanguage:      lang,
-		ChannelExternalID: event.Chat.ID,
-		ChannelTitle:      event.Chat.Title,
-		ChannelName:       event.Chat.UserName,
-	})
-	if err != nil {
-		return errors.Wrap(err, "s.notifier.NotifyBotRemovedFromChannel")
 	}
 
 	return nil
