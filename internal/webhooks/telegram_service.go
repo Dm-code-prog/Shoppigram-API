@@ -141,8 +141,7 @@ func (s *TelegramService) handleAddedToChannel(ctx context.Context, update tgbot
 		return nil
 	}
 
-	if !update.MyChatMember.NewChatMember.CanPinMessages ||
-		!update.MyChatMember.NewChatMember.CanEditMessages ||
+	if !update.MyChatMember.NewChatMember.CanEditMessages ||
 		!update.MyChatMember.NewChatMember.CanPostMessages {
 		return handleFailure(errors.New("bot doesn't have required permissions"))
 	}
@@ -176,11 +175,6 @@ func (s *TelegramService) handleAddedToChannel(ctx context.Context, update tgbot
 
 func (s *TelegramService) handleRemovedFromChannel(ctx context.Context, update tgbotapi.Update) error {
 	event := update.MyChatMember
-	lang := event.From.LanguageCode
-	if lang == "" {
-		lang = fallbackLanguage
-	}
-
 	err := s.repo.DeleteTelegramChannel(ctx, DeleteTelegramChannelRequest{
 		ExternalID: event.Chat.ID,
 	})
