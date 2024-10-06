@@ -7,7 +7,7 @@ var Translations = map[string]string{
 	"view-store":            "Посмотреть магазин",
 	"continue-setting-up":   "Перейти к магазину",
 	"try-new-features":      "Попробовать новые функции",
-	"go-to-the-store":       "Перейти в магазин",
+	"go-to-the-store":       "Магазин",
 	"empty-comment":         "без комментария",
 	"payment-status-unpaid": "Не оплачено",
 	"payment-status-paid":   "Оплачено",
