@@ -1,10 +1,7 @@
-Marketplace waiting for review
-
-New marketplace has been created by @%s and needs to be reviewed.
-
+For Shoppigram team!!! New shop is waiting for a review.
+Created by: %s
 Name: %s
 Short name: %s
-Image link: %s
-
-Web app link: %s
+Logo: %s
+Shop link: %s
 	

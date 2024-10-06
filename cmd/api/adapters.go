@@ -37,10 +37,6 @@ func (a *notificationsWebhooksAdapter) NotifyChannelIntegrationFailure(ctx conte
 	return a.notifier.NotifyChannelIntegrationFailure(ctx, notifications.NotifyChannelIntegrationFailureRequest(req))
 }
 
-func (a *notificationsWebhooksAdapter) NotifyBotRemovedFromChannel(ctx context.Context, req webhooks.NotifyBotRemovedFromChannelRequest) error {
-	return a.notifier.NotifyBotRemovedFromChannel(ctx, notifications.NotifyBotRemovedFromChannelRequest(req))
-}
-
 func (a *notificationsWebhooksAdapter) NotifyGreetings(ctx context.Context, req webhooks.NotifyGreetingsRequest) error {
 	return a.notifier.NotifyGreetings(ctx, notifications.NotifyGreetingsRequest(req))
 }

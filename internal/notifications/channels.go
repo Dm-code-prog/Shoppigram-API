@@ -62,27 +62,3 @@ func (s *Service) NotifyChannelIntegrationFailure(_ context.Context, request Not
 	_, err = s.SendMessage(msg)
 	return err
 }
-
-// NotifyBotRemovedFromChannel notifies a user about the fact that
-// our bot was removed from a channel
-func (s *Service) NotifyBotRemovedFromChannel(_ context.Context, request NotifyBotRemovedFromChannelRequest) error {
-	message := BotRemovedFromChannelNotification(request)
-
-	langCode := checkAndGetLangCode(message.UserLanguage)
-	msgTxt, err := message.BuildMessage(langCode)
-	if err != nil {
-		return errors.Wrap(err, "message.BuildMessageShoppigram")
-	}
-
-	msg := tgbotapi.NewMessage(request.UserExternalID, msgTxt)
-	addButtonsToMessage(
-		&msg,
-		telegramButtonData{
-			getTranslation(langCode, "add-bot-as-admin"),
-			makeAddBotAsAdminToChannelLink(),
-		},
-	)
-
-	_, err = s.SendMessage(msg)
-	return err
-}

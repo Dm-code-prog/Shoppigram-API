@@ -85,21 +85,11 @@ type (
 		ChannelTitle      string
 		ChannelName       string
 	}
-
-	// ChannelIntegrationFailureNotification defines the structure of a failed channel integration notification
-	BotRemovedFromChannelNotification struct {
-		UserExternalID    int64
-		UserLanguage      string
-		ChannelExternalID int64
-		ChannelTitle      string
-		ChannelName       string
-	}
 )
 
 const (
 	pathToAdminChannelIntegrated              = "admin/channel_integrated.md"
 	pathToAdminChannelIntegrationFailure      = "admin/channel_integration_failure.md"
-	pathToAdminBotRemovedFromChannel          = "admin/bot_removed_from_channel.md"
 	pathToAdminGreetings                      = "admin/greetings_message.md"
 	pathToAdminMarketplaceSentForVerification = "admin/marketplace_sent_for_verification.md"
 	pathToAdminMarketplaceVerified            = "admin/marketplace_verified.md"
@@ -134,7 +124,7 @@ func (o *OrderNotification) MakeConfirmedNotificationForAdmin(language string) (
 `, p.Quantity, p.Name, formatFloat(p.Price), formatCurrency(o.WebAppCurrency)))
 	}
 
-	newOrderMessageTemplate, err := templates.ReadFile(getPathToFile(language, pathToOrderConfirmedAdmin))
+	template, err := templates.ReadFile(getPathToTemplate(language, pathToOrderConfirmedAdmin))
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
@@ -152,7 +142,7 @@ func (o *OrderNotification) MakeConfirmedNotificationForAdmin(language string) (
 	}
 
 	finalMessage := fmt.Sprintf(
-		string(newOrderMessageTemplate),
+		string(template),
 		o.WebAppName,
 		"@"+o.BuyerNickname,
 		o.ReadableOrderID,
@@ -180,7 +170,7 @@ func (o *OrderNotification) MakeConfirmedNotificationForBuyer(language string) (
 `, p.Quantity, p.Name, formatFloat(p.Price), formatCurrency(o.WebAppCurrency)))
 	}
 
-	newOrderMessageTemplate, err := templates.ReadFile(getPathToFile(language, pathToOrderConfirmedBuyer))
+	template, err := templates.ReadFile(getPathToTemplate(language, pathToOrderConfirmedBuyer))
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
@@ -193,7 +183,7 @@ func (o *OrderNotification) MakeConfirmedNotificationForBuyer(language string) (
 	}
 
 	finalMessage := fmt.Sprintf(
-		string(newOrderMessageTemplate),
+		string(template),
 		o.WebAppName,
 		o.ReadableOrderID,
 		formatFloat(subtotal)+" "+formatCurrency(currency),
@@ -206,7 +196,7 @@ func (o *OrderNotification) MakeConfirmedNotificationForBuyer(language string) (
 
 // MakeDoneNotificationForAdmin creates a notification message for a done order for an admin
 func (o *OrderNotification) MakeDoneNotificationForAdmin(language string) (string, error) {
-	newOrderMessageTemplate, err := templates.ReadFile(getPathToFile(language, pathToOrderDoneAdmin))
+	template, err := templates.ReadFile(getPathToTemplate(language, pathToOrderDoneAdmin))
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
@@ -222,7 +212,7 @@ func (o *OrderNotification) MakeDoneNotificationForAdmin(language string) (strin
 	}
 
 	finalMessage := fmt.Sprintf(
-		string(newOrderMessageTemplate),
+		string(template),
 		o.WebAppName,
 		"@"+o.BuyerNickname,
 		o.ReadableOrderID,
@@ -235,7 +225,7 @@ func (o *OrderNotification) MakeDoneNotificationForAdmin(language string) (strin
 }
 
 func (o *OrderNotification) MakeDoneNotificationForBuyer(language string) (string, error) {
-	newOrderMessageTemplate, err := templates.ReadFile(getPathToFile(language, pathToOrderDoneBuyer))
+	template, err := templates.ReadFile(getPathToTemplate(language, pathToOrderDoneBuyer))
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
@@ -251,7 +241,7 @@ func (o *OrderNotification) MakeDoneNotificationForBuyer(language string) (strin
 	}
 
 	finalMessage := fmt.Sprintf(
-		string(newOrderMessageTemplate),
+		string(template),
 		o.WebAppName,
 		o.ReadableOrderID,
 		formatFloat(subtotal)+" "+formatCurrency(o.WebAppCurrency),
@@ -264,13 +254,13 @@ func (o *OrderNotification) MakeDoneNotificationForBuyer(language string) (strin
 
 // BuildMessageShoppigram creates a notification message for a new marketplace
 func (m *NewMarketplaceNotification) BuildMessageShoppigram(language string) (string, error) {
-	newMarketplaceMessageTemplate, err := templates.ReadFile(getPathToFile(language, pathToShoppigramMarketplaceNeedsVerification))
+	template, err := templates.ReadFile(getPathToTemplate(language, pathToShoppigramMarketplaceNeedsVerification))
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
 
 	finalMessage := fmt.Sprintf(
-		string(newMarketplaceMessageTemplate),
+		string(template),
 		m.OwnerUsername,
 		m.Name,
 		m.ShortName,
@@ -283,13 +273,13 @@ func (m *NewMarketplaceNotification) BuildMessageShoppigram(language string) (st
 
 // BuildMessageAdmin creates a notification message for a marketplace on verification
 func (m *NewMarketplaceNotification) BuildMessageAdmin(language string) (string, error) {
-	marketplaceVerificationMessageTemplate, err := templates.ReadFile(getPathToFile(language, pathToAdminMarketplaceSentForVerification))
+	template, err := templates.ReadFile(getPathToTemplate(language, pathToAdminMarketplaceSentForVerification))
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
 
 	finalMessage := fmt.Sprintf(
-		string(marketplaceVerificationMessageTemplate),
+		string(template),
 		m.Name,
 	)
 
@@ -298,13 +288,13 @@ func (m *NewMarketplaceNotification) BuildMessageAdmin(language string) (string,
 
 // BuildMessage creates a notification message for a verified marketplace
 func (m *VerifiedMarketplaceNotification) BuildMessage(language string) (string, error) {
-	verifiedMarketplaceMessageTemplate, err := templates.ReadFile(getPathToFile(language, pathToAdminMarketplaceVerified))
+	template, err := templates.ReadFile(getPathToTemplate(language, pathToAdminMarketplaceVerified))
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
 
 	finalMessage := fmt.Sprintf(
-		string(verifiedMarketplaceMessageTemplate),
+		string(template),
 		m.Name,
 		"https://t.me/"+botName+"/"+m.ShortName,
 	)
@@ -313,13 +303,13 @@ func (m *VerifiedMarketplaceNotification) BuildMessage(language string) (string,
 
 // BuildMessage creates a notification message for a successful channel integration
 func (m *ChannelIntegrationSuccessNotification) BuildMessage(language string) (string, error) {
-	channelIntegrationSuccessMessageTemplate, err := templates.ReadFile(getPathToFile(language, pathToAdminChannelIntegrated))
+	template, err := templates.ReadFile(getPathToTemplate(language, pathToAdminChannelIntegrated))
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
 
 	finalMessage := fmt.Sprintf(
-		string(channelIntegrationSuccessMessageTemplate),
+		string(template),
 		m.ChannelTitle,
 	)
 
@@ -327,7 +317,7 @@ func (m *ChannelIntegrationSuccessNotification) BuildMessage(language string) (s
 }
 
 func BuildGreetigsMessage(language string) (string, error) {
-	greetingsMessage, err := templates.ReadFile(getPathToFile(language, pathToAdminGreetings))
+	greetingsMessage, err := templates.ReadFile(getPathToTemplate(language, pathToAdminGreetings))
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
@@ -336,13 +326,13 @@ func BuildGreetigsMessage(language string) (string, error) {
 
 // BuildMessage creates a notification message for a failed channel integration
 func (m *ChannelIntegrationFailureNotification) BuildMessage(language string) (string, error) {
-	channelIntegrationSuccessMessageTemplate, err := templates.ReadFile(getPathToFile(language, pathToAdminChannelIntegrationFailure))
+	template, err := templates.ReadFile(getPathToTemplate(language, pathToAdminChannelIntegrationFailure))
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
 	}
 
 	finalMessage := fmt.Sprintf(
-		string(channelIntegrationSuccessMessageTemplate),
+		string(template),
 		botName,
 		m.ChannelTitle,
 	)
@@ -350,21 +340,6 @@ func (m *ChannelIntegrationFailureNotification) BuildMessage(language string) (s
 	return finalMessage, nil
 }
 
-// BuildMessage creates a notification message for bot removal
-func (m *BotRemovedFromChannelNotification) BuildMessage(language string) (string, error) {
-	channelIntegrationSuccessMessageTemplate, err := templates.ReadFile(getPathToFile(language, pathToAdminBotRemovedFromChannel))
-	if err != nil {
-		return "", errors.Wrap(err, "templates.ReadFile")
-	}
-
-	finalMessage := fmt.Sprintf(
-		string(channelIntegrationSuccessMessageTemplate),
-		m.ChannelTitle,
-	)
-
-	return finalMessage, nil
-}
-
-func getPathToFile(lang string, path string) string {
+func getPathToTemplate(lang string, path string) string {
 	return "templates/" + lang + "/" + path
 }
