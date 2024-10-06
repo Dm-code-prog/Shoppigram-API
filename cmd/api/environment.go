@@ -17,19 +17,19 @@ type Environment struct {
 	NewOrderNotifications struct {
 		IsEnabled  bool `env:"NEW_ORDER_NOTIFICATIONS_IS_ENABLED,default=true"`
 		BatchSize  int  `env:"NEW_ORDER_NOTIFICATIONS_BATCH_SIZE,default=1"`
-		TimeoutSec int  `env:"NEW_ORDER_NOTIFICATIONS_TIMEOUT,default=60"`
+		TimeoutSec int  `env:"NEW_ORDER_NOTIFICATIONS_TIMEOUT,default=1"`
 	}
 
 	NewMarketplaceNotifications struct {
 		IsEnabled  bool `env:"NEW_MARKETPLACE_NOTIFICATIONS_IS_ENABLED,default=true"`
 		BatchSize  int  `env:"NEW_MARKETPLACE_NOTIFICATIONS_BATCH_SIZE,default=1"`
-		TimeoutSec int  `env:"NEW_MARKETPLACE_NOTIFICATIONS_TIMEOUT,default=60"`
+		TimeoutSec int  `env:"NEW_MARKETPLACE_NOTIFICATIONS_TIMEOUT,default=1"`
 	}
 
 	VerifiedMarketplaceNotifications struct {
 		IsEnabled  bool `env:"VERIFIED_MARKETPLACE_NOTIFICATIONS_IS_ENABLED,default=true"`
 		BatchSize  int  `env:"VERIFIED_MARKETPLACE_NOTIFICATIONS_BATCH_SIZE,default=1"`
-		TimeoutSec int  `env:"VERIFIED_MARKETPLACE_NOTIFICATIONS_TIMEOUT,default=60"`
+		TimeoutSec int  `env:"VERIFIED_MARKETPLACE_NOTIFICATIONS_TIMEOUT,default=1"`
 	}
 
 	Postgres struct {
