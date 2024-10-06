@@ -5,10 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/go-chi/chi/v5"
 	"github.com/go-kit/kit/endpoint"
 	kithttp "github.com/go-kit/kit/transport/http"
-	"github.com/google/uuid"
 	initdata "github.com/telegram-mini-apps/init-data-golang"
 )
 
@@ -19,7 +17,6 @@ type (
 const (
 	userKey     contextKeyT = "user_key"
 	initDataKey contextKeyT = "init_data_key"
-	webAppIDKey contextKeyT = "web_app_id"
 
 	initDataTTL = time.Hour * 12
 )
@@ -66,28 +63,6 @@ func GetInitDataFromContext(ctx context.Context) (string, error) {
 	return initData, nil
 }
 
-// PutWebAppIDToContext grabs the Web app ID from the path params and puts it into context
-func PutWebAppIDToContext(ctx context.Context, webAppID string) context.Context {
-	asUUID, err := uuid.Parse(webAppID)
-	if err != nil {
-		// ASK: Should we log it?
-		return ctx
-	}
-
-	ctx = context.WithValue(ctx, webAppIDKey, asUUID)
-	return ctx
-}
-
-// GetWebAppIDFromContext gets previously added to context Web app ID
-func GetWebAppIDFromContext(ctx context.Context) (uuid.UUID, error) {
-	webAppID, ok := ctx.Value(webAppIDKey).(uuid.UUID)
-	if !ok {
-		return uuid.Nil, ErrorWebAppNotFound
-	}
-
-	return webAppID, nil
-}
-
 // AuthServerBefore adds all values necessary to authenticate a Telegram user
 // to context
 //
@@ -97,10 +72,6 @@ var AuthServerBefore = []kithttp.ServerOption{
 	kithttp.ServerBefore(func(ctx context.Context, request *http.Request) context.Context {
 		xInitData := request.Header.Get("X-Init-Data")
 		return PutInitDataToContext(ctx, xInitData)
-	}),
-	kithttp.ServerBefore(func(ctx context.Context, request *http.Request) context.Context {
-		webAppID := chi.URLParam(request, "web_app_id")
-		return PutWebAppIDToContext(ctx, webAppID)
 	}),
 }
 

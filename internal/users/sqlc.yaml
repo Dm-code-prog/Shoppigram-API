@@ -5,6 +5,7 @@ sql:
       - ./queries/users.sql
     schema:
       - ../shared_sql/2024-04-11-aggregate.sql
+      - ../shared_sql/2024-10-06.sql
     gen:
       go:
         package: generated

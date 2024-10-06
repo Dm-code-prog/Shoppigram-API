@@ -83,7 +83,7 @@ type Product struct {
 
 type TelegramUser struct {
 	ID           uuid.UUID
-	ExternalID   int32
+	ExternalID   int64
 	IsBot        pgtype.Bool
 	FirstName    string
 	LastName     pgtype.Text

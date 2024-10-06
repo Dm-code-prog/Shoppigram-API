@@ -24,7 +24,7 @@ func NewPg(db *pgxpool.Pool) *Pg {
 // CreateOrUpdateTgUser creates or updates a user record
 func (p *Pg) CreateOrUpdateTgUser(ctx context.Context, request CreateOrUpdateTgUserRequest) (uuid.UUID, error) {
 	id, err := p.gen.CreateOrUpdateTgUser(ctx, generated.CreateOrUpdateTgUserParams{
-		ExternalID: int32(request.ExternalId),
+		ExternalID: request.ExternalId,
 		IsBot: pgtype.Bool{
 			Bool:  request.IsBot,
 			Valid: true,
