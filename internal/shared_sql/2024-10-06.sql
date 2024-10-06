@@ -6,11 +6,3 @@ alter table web_apps
 
 alter table orders
     alter column external_user_id type bigint;
-
-
-select *
-from telegram_users;
-
-select *
-from web_apps
-where owner_external_id = 7237487742::integer;
