@@ -185,7 +185,7 @@ func (p *Pg) GetOrders(ctx context.Context, req GetOrdersRequest) (GetOrdersResp
 	params := generated.GetOrdersParams{
 		Limit:           int32(req.Limit),
 		Offset:          int32(req.Offset),
-		OwnerExternalID: int32(req.ExternalUserID),
+		OwnerExternalID: req.ExternalUserID,
 		MarketplaceID:   req.MarketplaceID,
 		State:           req.State,
 	}

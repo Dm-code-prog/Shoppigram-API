@@ -41,8 +41,8 @@ FROM orders o
          JOIN
      telegram_users tu ON tu.external_id = o.external_user_id
          join web_apps wa on wa.id = o.web_app_id
-where tu.external_id = $3::integer
-  and wa.owner_external_id = $3::integer
+where tu.external_id = $3
+  and wa.owner_external_id = $3
   and (
     case when $4 != '' then state = $4::order_state else true end
     )
@@ -51,14 +51,14 @@ where tu.external_id = $3::integer
         when $5 != '00000000-0000-0000-0000-000000000000' then web_app_id = $5::uuid
         else true end
     )
-order by o.created_at desc
-limit $1 offset $2
+order by o.created_at desc limit $1
+offset $2
 `
 
 type GetOrdersParams struct {
 	Limit           int32
 	Offset          int32
-	OwnerExternalID int32
+	OwnerExternalID int64
 	State           interface{}
 	MarketplaceID   interface{}
 }

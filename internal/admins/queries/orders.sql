@@ -27,8 +27,8 @@ FROM orders o
          JOIN
      telegram_users tu ON tu.external_id = o.external_user_id
          join web_apps wa on wa.id = o.web_app_id
-where tu.external_id = @owner_external_id::integer
-  and wa.owner_external_id = @owner_external_id::integer
+where tu.external_id = @owner_external_id
+  and wa.owner_external_id = @owner_external_id
   and (
     case when @state != '' then state = @state::order_state else true end
     )
@@ -37,5 +37,5 @@ where tu.external_id = @owner_external_id::integer
         when @marketplace_id != '00000000-0000-0000-0000-000000000000' then web_app_id = @marketplace_id::uuid
         else true end
     )
-order by o.created_at desc
-limit $1 offset $2;
+order by o.created_at desc limit $1
+offset $2;
