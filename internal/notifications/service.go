@@ -221,7 +221,6 @@ func (s *Service) NotifyGreetings(_ context.Context, request NotifyGreetingsRequ
 		return errors.Wrap(err, "BuildGreetigsMessage")
 	}
 	msg := tgbotapi.NewMessage(request.UserExternalID, messageText)
-	msg.ParseMode = tgbotapi.ModeMarkdownV2
 	_, err = s.SendMessage(msg)
 	return err
 }
