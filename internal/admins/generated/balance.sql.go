@@ -28,7 +28,7 @@ type GetBalanceRow struct {
 	Currency ProductCurrency
 }
 
-func (q *Queries) GetBalance(ctx context.Context, ownerExternalID pgtype.Int4) ([]GetBalanceRow, error) {
+func (q *Queries) GetBalance(ctx context.Context, ownerExternalID pgtype.Int8) ([]GetBalanceRow, error) {
 	rows, err := q.db.Query(ctx, getBalance, ownerExternalID)
 	if err != nil {
 		return nil, err

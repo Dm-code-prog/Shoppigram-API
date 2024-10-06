@@ -33,8 +33,8 @@ func NewPg(db *pgxpool.Pool) *Pg {
 
 // GetMarketplaces gets all marketplaces created by user
 func (p *Pg) GetMarketplaces(ctx context.Context, req GetMarketplacesRequest) (GetMarketplacesResponse, error) {
-	rows, err := p.gen.GetMarketplaces(ctx, pgtype.Int4{
-		Int32: int32(req.ExternalUserID),
+	rows, err := p.gen.GetMarketplaces(ctx, pgtype.Int8{
+		Int64: req.ExternalUserID,
 		Valid: true,
 	})
 	if err != nil {
@@ -64,8 +64,8 @@ func (p *Pg) GetMarketplaces(ctx context.Context, req GetMarketplacesRequest) (G
 // CreateMarketplace stores the marketplace information in the database
 // It creates the ID for the marketplace and returns it
 func (p *Pg) CreateMarketplace(ctx context.Context, req CreateMarketplaceRequest) (CreateMarketplaceResponse, error) {
-	count, err := p.gen.CountUserMarketplaces(ctx, pgtype.Int4{
-		Int32: int32(req.ExternalUserID),
+	count, err := p.gen.CountUserMarketplaces(ctx, pgtype.Int8{
+		Int64: req.ExternalUserID,
 		Valid: true,
 	})
 	if err != nil {
@@ -79,7 +79,7 @@ func (p *Pg) CreateMarketplace(ctx context.Context, req CreateMarketplaceRequest
 	id, err := p.gen.CreateMarketplace(ctx, generated.CreateMarketplaceParams{
 		Name:            req.Name,
 		ShortName:       req.ShortName,
-		OwnerExternalID: pgtype.Int4{Int32: int32(req.ExternalUserID), Valid: true},
+		OwnerExternalID: pgtype.Int8{Int64: req.ExternalUserID, Valid: true},
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), pgerrcode.UniqueViolation) {
@@ -96,7 +96,7 @@ func (p *Pg) UpdateMarketplace(ctx context.Context, req UpdateMarketplaceRequest
 	execRes, err := p.gen.UpdateMarketplace(ctx, generated.UpdateMarketplaceParams{
 		ID:              req.ID,
 		Name:            req.Name,
-		OwnerExternalID: pgtype.Int4{Int32: int32(req.ExternalUserID), Valid: true},
+		OwnerExternalID: pgtype.Int8{Int64: req.ExternalUserID, Valid: true},
 	})
 	if err != nil {
 		return errors.Wrap(err, "p.gen.UpdateMarketplace")
@@ -231,7 +231,7 @@ func (p *Pg) GetOrders(ctx context.Context, req GetOrdersRequest) (GetOrdersResp
 
 // GetBalance returns balances in all currencies
 func (p *Pg) GetBalance(ctx context.Context, req GetBalanceRequest) (GetBalanceResponse, error) {
-	rows, err := p.gen.GetBalance(ctx, pgtype.Int4{Int32: int32(req.ExternalUserID), Valid: true})
+	rows, err := p.gen.GetBalance(ctx, pgtype.Int8{Int64: req.ExternalUserID, Valid: true})
 	if err != nil {
 		return GetBalanceResponse{}, errors.Wrap(err, "p.gen.GetBalance")
 	}
@@ -250,7 +250,7 @@ func (p *Pg) GetBalance(ctx context.Context, req GetBalanceRequest) (GetBalanceR
 // IsUserTheOwnerOfMarketplace checks if the user is the owner of the marketplace
 func (p *Pg) IsUserTheOwnerOfMarketplace(ctx context.Context, userID int64, webAppID uuid.UUID) (bool, error) {
 	ok, err := p.gen.IsUserTheOwnerOfWebApp(ctx, generated.IsUserTheOwnerOfWebAppParams{
-		OwnerExternalID: pgtype.Int4{Int32: int32(userID), Valid: true},
+		OwnerExternalID: pgtype.Int8{Int64: userID, Valid: true},
 		ID:              webAppID,
 	})
 	if err != nil {
@@ -263,7 +263,7 @@ func (p *Pg) IsUserTheOwnerOfMarketplace(ctx context.Context, userID int64, webA
 // IsUserTheOwnerOfProduct checks if the user is the owner of the product
 func (p *Pg) IsUserTheOwnerOfProduct(ctx context.Context, userID int64, productID uuid.UUID) (bool, error) {
 	ok, err := p.gen.IsUserTheOwnerOfProduct(ctx, generated.IsUserTheOwnerOfProductParams{
-		OwnerExternalID: pgtype.Int4{Int32: int32(userID), Valid: true},
+		OwnerExternalID: pgtype.Int8{Int64: userID, Valid: true},
 		ID:              productID,
 	})
 	if err != nil {

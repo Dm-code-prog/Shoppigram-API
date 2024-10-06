@@ -77,7 +77,7 @@ type (
 		Products []ProductItem
 		// p2p or online for now
 		Type           string
-		ExternalUserID int
+		ExternalUserID int64
 	}
 
 	// SaveOrderResponse is the response to SaveOrderRequest
@@ -189,7 +189,7 @@ func (s *DefaultService) CreateOrder(ctx context.Context, req CreateOrderRequest
 	res, err := s.repo.CreateOrder(ctx, SaveOrderRequest{
 		WebAppID:       req.WebAppID,
 		Products:       req.Products,
-		ExternalUserID: int(u.ExternalId),
+		ExternalUserID: u.ExternalId,
 		Type:           req.Type,
 	})
 	if err != nil {

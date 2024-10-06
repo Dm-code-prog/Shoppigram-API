@@ -100,7 +100,7 @@ type GetNotificationsForNewMarketplacesAfterCursorRow struct {
 	CreatedAt       pgtype.Timestamp
 	Username        pgtype.Text
 	LanguageCode    pgtype.Text
-	OwnerExternalID int32
+	OwnerExternalID int64
 }
 
 func (q *Queries) GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, arg GetNotificationsForNewMarketplacesAfterCursorParams) ([]GetNotificationsForNewMarketplacesAfterCursorRow, error) {
@@ -197,7 +197,7 @@ type GetNotificationsForUpdatedOrdersRow struct {
 	Currency            ProductCurrency
 	BuyerUsername       pgtype.Text
 	BuyerLanguageCode   pgtype.Text
-	BuyerExternalUserID int32
+	BuyerExternalUserID int64
 	AdminLanguageCode   pgtype.Text
 	State_2             string
 	PaymentType         string
@@ -271,7 +271,7 @@ type GetNotificationsForVerifiedMarketplacesAfterCursorRow struct {
 	Name            string
 	ShortName       string
 	VerifiedAt      pgtype.Timestamp
-	OwnerExternalID pgtype.Int4
+	OwnerExternalID pgtype.Int8
 	LanguageCode    pgtype.Text
 }
 

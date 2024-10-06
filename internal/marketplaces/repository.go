@@ -75,8 +75,8 @@ func (pg *Pg) CreateOrder(ctx context.Context, req SaveOrderRequest) (SaveOrderR
 				Bytes: req.WebAppID,
 				Valid: true,
 			},
-			ExternalUserID: pgtype.Int4{
-				Int32: int32(req.ExternalUserID),
+			ExternalUserID: pgtype.Int8{
+				Int64: req.ExternalUserID,
 				Valid: true,
 			},
 		})
@@ -93,8 +93,8 @@ func (pg *Pg) CreateOrder(ctx context.Context, req SaveOrderRequest) (SaveOrderR
 				Bytes: req.WebAppID,
 				Valid: true,
 			},
-			ExternalUserID: pgtype.Int4{
-				Int32: int32(req.ExternalUserID),
+			ExternalUserID: pgtype.Int8{
+				Int64: req.ExternalUserID,
 				Valid: true,
 			},
 		})
@@ -160,7 +160,7 @@ func (pg *Pg) CreateOrder(ctx context.Context, req SaveOrderRequest) (SaveOrderR
 func (pg *Pg) GetOrder(ctx context.Context, orderId uuid.UUID, userId int64) (GetOrderResponse, error) {
 	rows, err := pg.gen.GetOrder(ctx, generated.GetOrderParams{
 		ID:             orderId,
-		ExternalUserID: pgtype.Int4{Int32: int32(userId), Valid: userId != 0},
+		ExternalUserID: pgtype.Int8{Int64: userId, Valid: userId != 0},
 	})
 
 	if err != nil {

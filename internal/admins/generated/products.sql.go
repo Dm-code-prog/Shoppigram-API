@@ -85,7 +85,7 @@ where p.id = $2::uuid
 `
 
 type IsUserTheOwnerOfProductParams struct {
-	OwnerExternalID pgtype.Int4
+	OwnerExternalID pgtype.Int8
 	ID              uuid.UUID
 }
 
@@ -103,7 +103,7 @@ where id = $2
 `
 
 type IsUserTheOwnerOfWebAppParams struct {
-	OwnerExternalID pgtype.Int4
+	OwnerExternalID pgtype.Int8
 	ID              uuid.UUID
 }
 

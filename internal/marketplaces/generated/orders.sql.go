@@ -23,7 +23,7 @@ returning id,readable_id
 
 type CreateOnlineOrderParams struct {
 	WebAppID       pgtype.UUID
-	ExternalUserID pgtype.Int4
+	ExternalUserID pgtype.Int8
 }
 
 type CreateOnlineOrderRow struct {
@@ -49,7 +49,7 @@ returning id,readable_id
 
 type CreateP2POrderParams struct {
 	WebAppID       pgtype.UUID
-	ExternalUserID pgtype.Int4
+	ExternalUserID pgtype.Int8
 }
 
 type CreateP2POrderRow struct {
@@ -88,7 +88,7 @@ where o.id = $1
 
 type GetOrderParams struct {
 	ID             uuid.UUID
-	ExternalUserID pgtype.Int4
+	ExternalUserID pgtype.Int8
 }
 
 type GetOrderRow struct {

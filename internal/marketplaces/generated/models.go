@@ -145,7 +145,7 @@ type Order struct {
 	ID             uuid.UUID
 	ReadableID     pgtype.Int8
 	WebAppID       pgtype.UUID
-	ExternalUserID pgtype.Int4
+	ExternalUserID pgtype.Int8
 	CreatedAt      pgtype.Timestamp
 	UpdatedAt      pgtype.Timestamp
 	Type           OrderType
@@ -171,7 +171,7 @@ type Product struct {
 
 type TelegramUser struct {
 	ID           uuid.UUID
-	ExternalID   int32
+	ExternalID   int64
 	IsBot        pgtype.Bool
 	FirstName    string
 	LastName     pgtype.Text
@@ -186,7 +186,7 @@ type TelegramUser struct {
 type WebApp struct {
 	ID                    uuid.UUID
 	Name                  string
-	OwnerExternalID       pgtype.Int4
+	OwnerExternalID       pgtype.Int8
 	LogoUrl               pgtype.Text
 	IsVerified            pgtype.Bool
 	ShortName             string

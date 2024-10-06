@@ -59,7 +59,7 @@ type Order struct {
 	ID             uuid.UUID
 	ReadableID     pgtype.Int8
 	WebAppID       pgtype.UUID
-	ExternalUserID pgtype.Int4
+	ExternalUserID pgtype.Int8
 	CreatedAt      pgtype.Timestamp
 	UpdatedAt      pgtype.Timestamp
 }
@@ -98,7 +98,7 @@ type TelegramUser struct {
 type WebApp struct {
 	ID              uuid.UUID
 	Name            string
-	OwnerExternalID pgtype.Int4
+	OwnerExternalID pgtype.Int8
 	LogoUrl         pgtype.Text
 	IsVerified      pgtype.Bool
 	ShortName       string

@@ -20,7 +20,7 @@ where owner_external_id = $1
   and is_deleted = false
 `
 
-func (q *Queries) CountUserMarketplaces(ctx context.Context, ownerExternalID pgtype.Int4) (int64, error) {
+func (q *Queries) CountUserMarketplaces(ctx context.Context, ownerExternalID pgtype.Int8) (int64, error) {
 	row := q.db.QueryRow(ctx, countUserMarketplaces, ownerExternalID)
 	var count int64
 	err := row.Scan(&count)
@@ -37,7 +37,7 @@ returning id
 
 type CreateMarketplaceParams struct {
 	Name            string
-	OwnerExternalID pgtype.Int4
+	OwnerExternalID pgtype.Int8
 	ShortName       string
 }
 
@@ -76,7 +76,7 @@ type GetMarketplacesRow struct {
 	ShortName  string
 }
 
-func (q *Queries) GetMarketplaces(ctx context.Context, ownerExternalID pgtype.Int4) ([]GetMarketplacesRow, error) {
+func (q *Queries) GetMarketplaces(ctx context.Context, ownerExternalID pgtype.Int8) ([]GetMarketplacesRow, error) {
 	rows, err := q.db.Query(ctx, getMarketplaces, ownerExternalID)
 	if err != nil {
 		return nil, err
@@ -109,7 +109,7 @@ where id = $2
 `
 
 type IsUserTheOwnerOfMarketplaceParams struct {
-	OwnerExternalID pgtype.Int4
+	OwnerExternalID pgtype.Int8
 	ID              uuid.UUID
 }
 
@@ -141,7 +141,7 @@ where id = $2
 type UpdateMarketplaceParams struct {
 	Name            string
 	ID              uuid.UUID
-	OwnerExternalID pgtype.Int4
+	OwnerExternalID pgtype.Int8
 }
 
 func (q *Queries) UpdateMarketplace(ctx context.Context, arg UpdateMarketplaceParams) (pgconn.CommandTag, error) {

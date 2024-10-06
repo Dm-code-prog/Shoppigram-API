@@ -9,6 +9,7 @@ sql:
       - ../shared_sql/2024-07-26.sql
       - ../shared_sql/2024-09-24.sql
       - ./schemas/2024-08-03.sql
+      - ../shared_sql/2024-10-06.sql
     gen:
       go:
         package: generated

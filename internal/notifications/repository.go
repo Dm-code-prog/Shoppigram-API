@@ -237,7 +237,7 @@ func (p *Pg) GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Cont
 			Name:                r.Name,
 			ShortName:           r.ShortName,
 			VerifiedAt:          r.VerifiedAt.Time,
-			OwnerExternalUserID: int64(r.OwnerExternalID.Int32),
+			OwnerExternalUserID: r.OwnerExternalID.Int64,
 			OwnerLanguage:       r.LanguageCode.String,
 		})
 	}
