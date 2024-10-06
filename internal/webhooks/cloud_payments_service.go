@@ -118,13 +118,6 @@ type (
 		Response           []byte
 	}
 
-	// Repository provides access to the webhooks storage
-	Repository interface {
-		GetOrder(ctx context.Context, id uuid.UUID) (Order, error)
-		SetOrderStateConfirmed(ctx context.Context, id uuid.UUID) error
-		SavePaymentExtraInfo(ctx context.Context, params SavePaymentExtraInfoParams) error
-	}
-
 	// CloudPaymentsService is the service for handling CloudPayments webhooks
 	CloudPaymentsService struct {
 		repo                          Repository

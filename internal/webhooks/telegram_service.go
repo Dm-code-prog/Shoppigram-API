@@ -3,10 +3,15 @@ package webhooks
 import (
 	"context"
 	"encoding/json"
+	"github.com/shoppigram-com/marketplace-api/internal/logging"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
+)
+
+const (
+	fallbackLanguage = "ru"
 )
 
 type (
@@ -19,10 +24,20 @@ type (
 		IsPublic        bool
 	}
 
-	// ChannelStorage is an interface for storing and retrieving data about Telegram channels
-	// from our own storage
-	ChannelStorage interface {
-		CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error
+	// DeleteTelegramChannelRequest specifies the ID of the channel to delete
+	// from the database
+	DeleteTelegramChannelRequest struct {
+		ExternalID int64
+	}
+
+	// GetTelegramChannelOwnerRequest contains chat id of a channel
+	GetTelegramChannelOwnerRequest struct {
+		ChannelChatId int64
+	}
+
+	// GetTelegramChannelOwnerResponse contains channel's owner external id
+	GetTelegramChannelOwnerResponse struct {
+		ChatId int64
 	}
 
 	// NotifyChannelIntegrationSuccessRequest contains the data required to notify a user about a successful
@@ -35,9 +50,29 @@ type (
 		ChannelName       string
 	}
 
+	// NotifyChannelIntegrationFailureRequest contains the data required to notify a user about a failure
+	// during channel integration with Shoppigram
+	NotifyChannelIntegrationFailureRequest struct {
+		UserExternalID    int64
+		UserLanguage      string
+		ChannelExternalID int64
+		ChannelTitle      string
+		ChannelName       string
+	}
+
+	// NotifyBotRemovedFromChannelRequest contains the data required to notify a user about a removal
+	// of a Shoppigram bot from channel
+	NotifyBotRemovedFromChannelRequest struct {
+		UserExternalID    int64
+		UserLanguage      string
+		ChannelExternalID int64
+		ChannelTitle      string
+		ChannelName       string
+	}
+
 	// TelegramService is the service for handling Telegram webhooks
 	TelegramService struct {
-		channelStorage    ChannelStorage
+		repo              Repository
 		notifier          Notifier
 		log               *zap.Logger
 		shoppigramBotID   int64
@@ -50,20 +85,12 @@ type (
 		UserExternalID int64
 		UserLanguage   string
 	}
-
-	// Notifier is the service for notifications
-	// The interface requires a method for notifying a user about a successful
-	// channel integration with Shoppigram
-	Notifier interface {
-		NotifyChannelIntegrationSuccess(ctx context.Context, request NotifyChannelIntegrationSuccessRequest) error
-		NotifyGreetings(ctx context.Context, request NotifyGreetingsRequest) error
-	}
 )
 
 // NewTelegram returns a new instance of the TelegramService
-func NewTelegram(channelStorage ChannelStorage, notifier Notifier, log *zap.Logger, shoppigramBotID int64, shoppigramBotName string) *TelegramService {
+func NewTelegram(repo Repository, notifier Notifier, log *zap.Logger, shoppigramBotID int64, shoppigramBotName string) *TelegramService {
 	return &TelegramService{
-		channelStorage:    channelStorage,
+		repo:              repo,
 		notifier:          notifier,
 		log:               log,
 		shoppigramBotID:   shoppigramBotID,
@@ -81,17 +108,16 @@ func NewTelegram(channelStorage ChannelStorage, notifier Notifier, log *zap.Logg
 // In this case, each handler provides a function that determines if it can handle the update.
 func (s *TelegramService) HandleTelegramWebhook(ctx context.Context, update tgbotapi.Update) error {
 	switch {
-	case s.isUpdateTypeShoppigramBotAddedToChannelAsAdmin(update):
-		return s.handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx, update)
+	case s.isUpdateTypeAddedToChannel(update):
+		return s.handleAddedToChannel(ctx, update)
 	case s.isUpdateTypeStartCommand(update):
-		return s.handleUpdateTypeStartCommand(ctx, update)
+		return s.handleStartCommand(ctx, update)
+	case s.isUpdateTypeRemovedFromChannel(update):
+		return s.handleRemovedFromChannel(ctx, update)
 	default:
-		b, err := json.MarshalIndent(update, "", "  ")
-		if err != nil {
-			return errors.Wrap(err, "failed to marshal data")
-		}
+		b, _ := json.MarshalIndent(update, "", "  ")
 		s.log.Info(
-			"received Telegram webhook, but we don't have a handler for this type of update",
+			"received Telegram webhook, but we were unable to handle it",
 			zap.Any("webhook_data", json.RawMessage(b)),
 		)
 	}
@@ -99,10 +125,28 @@ func (s *TelegramService) HandleTelegramWebhook(ctx context.Context, update tgbo
 	return nil
 }
 
-func (s *TelegramService) handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx context.Context, update tgbotapi.Update) error {
+func (s *TelegramService) handleAddedToChannel(ctx context.Context, update tgbotapi.Update) error {
 	event := update.MyChatMember
 
-	err := s.channelStorage.CreateOrUpdateTelegramChannel(ctx, CreateOrUpdateTelegramChannelRequest{
+	handleFailure := func(err error) error {
+		_ = s.notifier.NotifyChannelIntegrationFailure(ctx, NotifyChannelIntegrationFailureRequest{
+			UserExternalID:    event.From.ID,
+			UserLanguage:      event.From.LanguageCode,
+			ChannelExternalID: event.Chat.ID,
+			ChannelTitle:      event.Chat.Title,
+			ChannelName:       event.Chat.UserName,
+		})
+
+		s.log.Error("telegram channel integration failed", logging.SilentError(err))
+		return nil
+	}
+
+	if !update.MyChatMember.NewChatMember.CanEditMessages ||
+		!update.MyChatMember.NewChatMember.CanPostMessages {
+		return handleFailure(errors.New("bot doesn't have required permissions"))
+	}
+
+	err := s.repo.CreateOrUpdateTelegramChannel(ctx, CreateOrUpdateTelegramChannelRequest{
 		ExternalID:      event.Chat.ID,
 		Title:           event.Chat.Title,
 		Name:            event.Chat.UserName,
@@ -112,7 +156,7 @@ func (s *TelegramService) handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx
 		IsPublic: event.Chat.UserName != "",
 	})
 	if err != nil {
-		return errors.Wrap(err, "s.channelStorage.CreateOrUpdateTelegramChannel")
+		return handleFailure(errors.Wrap(err, "s.channelStorage.CreateOrUpdateTelegramChannel"))
 	}
 
 	err = s.notifier.NotifyChannelIntegrationSuccess(ctx, NotifyChannelIntegrationSuccessRequest{
@@ -123,16 +167,25 @@ func (s *TelegramService) handleUpdateTypeShoppigramBotAddedToChannelAsAdmin(ctx
 		ChannelName:       event.Chat.UserName,
 	})
 	if err != nil {
-		return errors.Wrap(err, "s.notifier.NotifyChannelIntegrationSuccess")
+		return handleFailure(errors.Wrap(err, "s.notifier.NotifyChannelIntegrationSuccess"))
 	}
 
 	return nil
 }
 
-func (s *TelegramService) handleUpdateTypeStartCommand(ctx context.Context, update tgbotapi.Update) error {
-	// Send a button with the link to the mini app
+func (s *TelegramService) handleRemovedFromChannel(ctx context.Context, update tgbotapi.Update) error {
+	event := update.MyChatMember
+	err := s.repo.DeleteTelegramChannel(ctx, DeleteTelegramChannelRequest{
+		ExternalID: event.Chat.ID,
+	})
+	if err != nil {
+		return errors.Wrap(err, "s.channelStorage.DeleteTelegramChannel")
+	}
 
-	// Send the message to the user
+	return nil
+}
+
+func (s *TelegramService) handleStartCommand(ctx context.Context, update tgbotapi.Update) error {
 	err := s.notifier.NotifyGreetings(ctx, NotifyGreetingsRequest{
 		UserExternalID: update.Message.From.ID,
 		UserLanguage:   update.Message.From.LanguageCode,

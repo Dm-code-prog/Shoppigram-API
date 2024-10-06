@@ -154,6 +154,16 @@ type (
 		IsPublic        bool
 	}
 
+	// GetTelegramChannelOwnerRequest contains a channel id
+	GetTelegramChannelOwnerRequest struct {
+		ChannelChatId int64
+	}
+
+	// GetTelegramChannelsResponse contains the data about Telegram channels owned by a specific user
+	GetTelegramChannelOwnerResponse struct {
+		ChatId int64
+	}
+
 	// PublishMarketplaceBannerToChannelRequest contains the data about a banner to be published to a Telegram channel
 	PublishMarketplaceBannerToChannelRequest struct {
 		WebAppID          uuid.UUID
@@ -251,7 +261,6 @@ type (
 		IsUserTheOwnerOfProduct(ctx context.Context, externalUserID int64, productID uuid.UUID) (bool, error)
 		IsUserTheOwnerOfTelegramChannel(ctx context.Context, externalUserID, channelID int64) (bool, error)
 
-		CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error
 		GetTelegramChannels(ctx context.Context, ownerExternalID int64) (GetTelegramChannelsResponse, error)
 	}
 
@@ -286,7 +295,6 @@ type (
 		CreateMarketplaceLogoUploadURL(ctx context.Context, request CreateMarketplaceLogoUploadURLRequest) (CreateMarketplaceLogoUploadURLResponse, error)
 
 		GetTelegramChannels(ctx context.Context, ownerExternalID int64) (GetTelegramChannelsResponse, error)
-		CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error
 		PublishMarketplaceBannerToChannel(ctx context.Context, req PublishMarketplaceBannerToChannelRequest) error
 	}
 
@@ -582,16 +590,6 @@ func (s *DefaultService) GetTelegramChannels(ctx context.Context, ownerExternalI
 	}
 
 	return res, nil
-}
-
-// CreateOrUpdateTelegramChannel creates or updates a Telegram channel
-func (s *DefaultService) CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error {
-	err := s.repo.CreateOrUpdateTelegramChannel(ctx, req)
-	if err != nil {
-		return errors.Wrap(err, "s.repo.CreateOrUpdateTelegramChannel")
-	}
-
-	return nil
 }
 
 // PublishMarketplaceBannerToChannel publishes a banner to a Telegram channel

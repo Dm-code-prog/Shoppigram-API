@@ -264,6 +264,15 @@ type Product struct {
 	Category      pgtype.Text
 }
 
+type TelegramChannel struct {
+	ID              uuid.UUID
+	ExternalID      int64
+	Title           string
+	Name            pgtype.Text
+	IsPublic        bool
+	OwnerExternalID int64
+}
+
 type TelegramUser struct {
 	ID           uuid.UUID
 	ExternalID   int32

@@ -2,7 +2,7 @@ package webhooks
 
 import tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 
-func (s *TelegramService) isUpdateTypeShoppigramBotAddedToChannelAsAdmin(update tgbotapi.Update) bool {
+func (s *TelegramService) isUpdateTypeAddedToChannel(update tgbotapi.Update) bool {
 	if update.MyChatMember == nil {
 		return false
 	}
@@ -20,7 +20,24 @@ func (s *TelegramService) isUpdateTypeShoppigramBotAddedToChannelAsAdmin(update 
 		return false
 	}
 
-	if !event.NewChatMember.CanPostMessages {
+	return true
+}
+
+func (s *TelegramService) isUpdateTypeRemovedFromChannel(update tgbotapi.Update) bool {
+	if update.MyChatMember == nil {
+		return false
+	}
+	event := update.MyChatMember
+
+	if event.Chat.Type != "channel" {
+		return false
+	}
+
+	if event.NewChatMember.User.ID != s.shoppigramBotID {
+		return false
+	}
+
+	if event.NewChatMember.Status == "administrator" {
 		return false
 	}
 

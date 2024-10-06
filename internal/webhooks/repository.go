@@ -67,3 +67,30 @@ func (p *Pg) SavePaymentExtraInfo(ctx context.Context, params SavePaymentExtraIn
 	}
 	return nil
 }
+
+// CreateOrUpdateTelegramChannel creates or updates a Telegram channel
+// that was integrated with Shoppigram
+func (p *Pg) CreateOrUpdateTelegramChannel(ctx context.Context, req CreateOrUpdateTelegramChannelRequest) error {
+	err := p.gen.CreateOrUpdateTelegramChannel(ctx, generated.CreateOrUpdateTelegramChannelParams{
+		ExternalID:      req.ExternalID,
+		Name:            pgtype.Text{String: req.Name, Valid: req.Name != ""},
+		Title:           req.Title,
+		IsPublic:        req.IsPublic,
+		OwnerExternalID: req.OwnerExternalID,
+	})
+	if err != nil {
+		return errors.Wrap(err, "p.gen.CreateOrUpdateTelegramChannel")
+	}
+
+	return nil
+}
+
+// DeleteTelegramChannel deletes a Telegram channel
+func (p *Pg) DeleteTelegramChannel(ctx context.Context, req DeleteTelegramChannelRequest) error {
+	err := p.gen.DeleteTelegramChannel(ctx, req.ExternalID)
+	if err != nil {
+		return errors.Wrap(err, "p.gen.DeleteTelegramChannel")
+	}
+
+	return nil
+}

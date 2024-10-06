@@ -174,8 +174,9 @@ func main() {
 	adminsHandler := admins.MakeHandler(adminsService, authMw)
 
 	////////////////////////////////////// WEBHOOKS //////////////////////////////////////
+	tgRepo := webhooks.Repository(webhooks.NewPg(db))
 	webhookService := webhooks.NewTelegram(
-		&adminWebhooksAdapter{admin: adminsService},
+		tgRepo,
 		&notificationsWebhooksAdapter{notifier: notificationsService},
 		log.With(zap.String("service", "webhooks")),
 		config.Bot.ID,

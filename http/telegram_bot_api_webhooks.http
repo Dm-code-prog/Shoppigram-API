@@ -25,3 +25,17 @@ Content-Type: application/json
 
 
 ###
+
+
+POST https://api.telegram.org/bot7370515821:AAHsHO8MvaKBytjgOv4bd4cRvGYphZxNBoQ/setWebhook?url=https://dev-api.shoppigram.com/api/v1/telegram/webhooks&secret_token=ca61bd260963c6b2454d9acb830cf5ba492a3b22ad18ebf8c87dbe5b2f4fd010
+
+
+###
+
+POST https://api.telegram.org/bot7141486456:AAHA92VA8nT6YprjFcM9wrWiQRI4WCVmrRc/setWebhook?url=https://api.shoppigram.com/api/v1/telegram/webhooks&secret_token=ca61bd260963c6b2454d9acb830cf5ba492a3b22ad18ebf8c87dbe5b2f4fd010
+
+###
+
+POST https://api.telegram.org/bot7141486456:AAHA92VA8nT6YprjFcM9wrWiQRI4WCVmrRc/setMyDescription
+
+

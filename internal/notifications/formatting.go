@@ -3,7 +3,6 @@ package notifications
 import (
 	"strconv"
 	"strings"
-	"time"
 )
 
 func formatFloat(num float64) string {
@@ -42,22 +41,4 @@ func formatCurrency(currency string) string {
 	default:
 		return currency
 	}
-}
-
-func formatRussianTime(t time.Time) string {
-	loc, err := time.LoadLocation("Europe/Moscow")
-	if err != nil {
-		return ""
-	}
-	t = t.In(loc)
-	return t.Format("02.01.2006 15:04:05")
-}
-
-func isLanguageValid(lang string) bool {
-	for _, v := range validLangCodes {
-		if lang == v {
-			return true
-		}
-	}
-	return false
 }

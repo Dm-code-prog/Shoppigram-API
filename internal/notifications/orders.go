@@ -95,24 +95,23 @@ func (s *Service) runOrdersNotifier() error {
 			}
 
 			// Add buttons to the message
-			tgMessage := tgbotapi.NewMessage(admin.Id, message)
-			tgLink, err := s.getTelegramLink(n.WebAppID.String() + "/order/" + n.ID.String())
+			msg := tgbotapi.NewMessage(admin.Id, message)
+			tgLink, err := s.makeMiniAppLink(n.WebAppID.String() + "/order/" + n.ID.String())
 			if err != nil {
-				return errors.Wrap(err, "getTelegramLink()")
+				return errors.Wrap(err, "makeMiniAppLink()")
 			}
 
-			addTelegramButtonsToMessage(
-				&tgMessage,
+			addButtonsToMessage(
+				&msg,
 				telegramButtonData{
 					getTranslation(admin.Language, "order-management"),
 					tgLink,
 				},
 			)
 
-			_, err = s.bot.Send(tgMessage)
-			err = s.handleTelegramSendError(err, admin.Id)
+			_, err = s.SendMessage(msg)
 			if err != nil {
-				return errors.Wrap(err, "s.handleTelegramSendError")
+				return err
 			}
 		}
 
@@ -134,22 +133,21 @@ func (s *Service) runOrdersNotifier() error {
 			continue
 		}
 
-		tgMessage := tgbotapi.NewMessage(n.BuyerExternalID, message)
-		tgLink, err := s.getTelegramLink(n.WebAppID.String() + "/order/" + n.ID.String())
+		msg := tgbotapi.NewMessage(n.BuyerExternalID, message)
+		tgLink, err := s.makeMiniAppLink(n.WebAppID.String() + "/order/" + n.ID.String())
 		if err != nil {
-			return errors.Wrap(err, "getTelegramLink")
+			return errors.Wrap(err, "makeMiniAppLink")
 		}
 
-		addTelegramButtonsToMessage(
-			&tgMessage,
+		addButtonsToMessage(
+			&msg,
 			telegramButtonData{
 				getTranslation(n.BuyerLanguage, "view-order"),
 				tgLink,
 			},
 		)
 
-		_, err = s.bot.Send(tgMessage)
-		err = s.handleTelegramSendError(err, n.BuyerExternalID)
+		_, err = s.SendMessage(msg)
 		if err != nil {
 			return errors.Wrap(err, "s.handleTelegramSendError")
 		}
@@ -163,9 +161,7 @@ func (s *Service) runOrdersNotifier() error {
 			}
 
 			if customMessage != "" {
-				tgMessage := tgbotapi.NewMessage(n.BuyerExternalID, customMessage)
-				_, err = s.bot.Send(tgMessage)
-				err = s.handleTelegramSendError(err, n.BuyerExternalID)
+				_, err = s.SendMessage(tgbotapi.NewMessage(n.BuyerExternalID, customMessage))
 				if err != nil {
 					return errors.Wrap(err, "s.handleTelegramSendError")
 				}
@@ -182,8 +178,7 @@ func (s *Service) runOrdersNotifier() error {
 			}
 
 			tgForward := tgbotapi.NewForward(n.BuyerExternalID, forwardChat, int(messageID))
-			_, err = s.bot.Send(tgForward)
-			err = s.handleTelegramSendError(err, n.BuyerExternalID)
+			_, err = s.SendMessage(tgForward)
 			if err != nil {
 				return errors.Wrap(err, "s.handleTelegramSendError")
 			}

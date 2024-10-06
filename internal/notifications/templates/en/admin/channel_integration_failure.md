@@ -1,0 +1,1 @@
+Something went wrong. @%s was not integrated into your channel %s. Please try again. Make sure that bot is allowed to post and edit messages.

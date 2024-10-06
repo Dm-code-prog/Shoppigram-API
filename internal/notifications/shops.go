@@ -13,7 +13,6 @@ import (
 	"github.com/shoppigram-com/marketplace-api/internal/logging"
 	"go.uber.org/zap"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -52,24 +51,16 @@ func (s *Service) runNewMarketplaceNotifier() error {
 	if len(marketplaceNotifications) == 0 {
 		return nil
 	}
-	s.log.With(
-		zap.String("count", strconv.Itoa(len(marketplaceNotifications))),
-	).Info("sending notifications for new marketplaces")
+	s.log.
+		With(zap.String("count", strconv.Itoa(len(marketplaceNotifications)))).
+		Info("sending notifications for new marketplaces")
 
 	err = s.sendNewMarketplaceNotifications(marketplaceNotifications)
 	if err != nil {
-		if strings.Contains(err.Error(), "chat not found") {
-			s.log.With(
-				zap.String("method", "s.sendNewMarketplaceNotifications"),
-				zap.String("user_id", strconv.FormatInt(marketplaceNotifications[0].OwnerExternalID, 10)),
-			).Warn("chat not found, skipping notification sending")
-		} else {
-			return errors.Wrap(err, "s.sendNewMarketplaceNotifications")
-		}
+		return errors.Wrap(err, "s.sendNewMarketplaceNotifications")
 	}
 
 	lastElem := marketplaceNotifications[len(marketplaceNotifications)-1]
-
 	err = s.repo.UpdateNotifierCursor(s.ctx, Cursor{
 		CursorDate:      lastElem.CreatedAt,
 		LastProcessedID: lastElem.ID,
@@ -150,30 +141,33 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 	for _, n := range marketplaceNotifications {
 		n.ImageBaseUrl = s.bucketUrl
 
-		ownerLang := s.checkAndGetLangCode(n.OwnerLanguage)
+		ownerLang := checkAndGetLangCode(n.OwnerLanguage)
 		onVerificationMsgTxt, err := n.BuildMessageAdmin(ownerLang)
 		if err != nil {
 			return errors.Wrap(err, "a.BuildMessageShoppigram")
 		}
 
 		msg := tgbotapi.NewMessage(n.OwnerExternalID, onVerificationMsgTxt)
-		msg.ParseMode = tgbotapi.ModeMarkdownV2
 
-		tgLink, err := s.getTelegramLink(n.ID.String())
+		tgLink, err := s.makeMiniAppLink(n.ID.String())
 		if err != nil {
-			return errors.Wrap(err, "getTelegramLink()")
+			return errors.Wrap(err, "makeMiniAppLink()")
 		}
-		buttonTextContactSupport := getTranslation(ownerLang, "contact-support")
-		buttonTextViewStore := getTranslation(ownerLang, "view-store")
 
-		addTelegramButtonsToMessage(&msg,
-			telegramButtonData{buttonTextContactSupport, supportContactUrl},
-			telegramButtonData{buttonTextViewStore, tgLink},
+		addButtonsToMessage(&msg,
+			telegramButtonData{
+				getTranslation(ownerLang, "contact-support"),
+				supportContactUrl,
+			},
+			telegramButtonData{
+				getTranslation(ownerLang, "view-store"),
+				tgLink,
+			},
 		)
 
-		_, err = s.bot.Send(msg)
+		_, err = s.SendMessage(msg)
 		if err != nil {
-			return errors.Wrap(err, "bot.Send to chat:"+strconv.FormatInt(n.OwnerExternalID, 10))
+			return err
 		}
 
 		for _, r := range reviewers {
@@ -181,12 +175,13 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 			if err != nil {
 				return errors.Wrap(err, "a.BuildMessageShoppigram")
 			}
-			err = s.sendMessageToChat(r, msgTxt)
+
+			msg := tgbotapi.NewMessage(r, msgTxt)
+			_, err = s.SendMessage(msg)
 			if err != nil {
-				return errors.Wrap(err, "sendMessageToChat")
+				return err
 			}
 		}
-
 	}
 
 	return nil
@@ -194,27 +189,28 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 
 // sendVerifiedMarketplaceNotifications sends batch of notifications for verified marketplaces
 func (s *Service) sendVerifiedMarketplaceNotifications(marketplaceNotifications []VerifiedMarketplaceNotification) error {
-	for _, notification := range marketplaceNotifications {
-		ownerLang := s.checkAndGetLangCode(notification.OwnerLanguage)
-		msgTxt, err := notification.BuildMessage(ownerLang)
+	for _, n := range marketplaceNotifications {
+		ownerLang := checkAndGetLangCode(n.OwnerLanguage)
+		msgTxt, err := n.BuildMessage(ownerLang)
 		if err != nil {
 			return errors.Wrap(err, "a.BuildMessageShoppigram")
 		}
-
-		msg := tgbotapi.NewMessage(notification.OwnerExternalUserID, msgTxt)
-		msg.ParseMode = tgbotapi.ModeMarkdownV2
-
-		tgLinkPath := notification.ID.String()
-		tgLink, err := s.getTelegramLink(tgLinkPath)
+		tgLink, err := s.makeMiniAppLink(n.ID.String())
 		if err != nil {
-			return errors.Wrap(err, "getTelegramLink()")
+			return errors.Wrap(err, "makeMiniAppLink()")
 		}
 
-		buttonText := getTranslation(ownerLang, "continue-setting-up")
-		addTelegramButtonsToMessage(&msg, telegramButtonData{buttonText, tgLink})
-
-		_, err = s.bot.Send(msg)
-		return s.handleTelegramSendError(err, notification.OwnerExternalUserID)
+		msg := tgbotapi.NewMessage(n.OwnerExternalUserID, msgTxt)
+		addButtonsToMessage(
+			&msg,
+			telegramButtonData{
+				getTranslation(ownerLang, "continue-setting-up"),
+				tgLink,
+			})
+		_, err = s.SendMessage(msg)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
