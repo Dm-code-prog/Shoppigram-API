@@ -10,7 +10,7 @@ package notifications
 import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
-	"github.com/shoppigram-com/marketplace-api/internal/logging"
+	"github.com/shoppigram-com/marketplace-api/packages/logger"
 	"go.uber.org/zap"
 	"strconv"
 	"time"
@@ -25,7 +25,7 @@ func (s *Service) RunNewMarketplaceNotifier() error {
 		case <-ticker.C:
 			err := s.runNewMarketplaceNotifier()
 			if err != nil {
-				s.log.Error("runNewMarketplaceNotifier failed", logging.SilentError(err))
+				s.log.Error("runNewMarketplaceNotifier failed", logger.SilentError(err))
 				continue
 			}
 		case <-s.ctx.Done():
@@ -83,7 +83,7 @@ func (s *Service) RunVerifiedMarketplaceNotifier() error {
 		case <-ticker.C:
 			err := s.runVerifiedMarketplaceNotifierOnce()
 			if err != nil {
-				s.log.Error("runVerifiedMarketplaceNotifierOnce failed", logging.SilentError(err))
+				s.log.Error("runVerifiedMarketplaceNotifierOnce failed", logger.SilentError(err))
 				continue
 			}
 		case <-s.ctx.Done():

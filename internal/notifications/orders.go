@@ -10,7 +10,7 @@ package notifications
 import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
-	"github.com/shoppigram-com/marketplace-api/internal/logging"
+	"github.com/shoppigram-com/marketplace-api/packages/logger"
 	"time"
 )
 
@@ -23,7 +23,7 @@ func (s *Service) RunOrdersNotifier() error {
 		case <-ticker.C:
 			err := s.runOrdersNotifier()
 			if err != nil {
-				s.log.Error("Failed to send the notifications for order events", logging.SilentError(err))
+				s.log.Error("Failed to send the notifications for order events", logger.SilentError(err))
 				continue
 			}
 		case <-s.ctx.Done():
@@ -65,7 +65,7 @@ func (s *Service) runOrdersNotifier() error {
 			Name:            orderNotifier,
 		})
 		if err != nil {
-			s.log.Error("Failed to update the notifier cursor", logging.SilentError(err))
+			s.log.Error("Failed to update the notifier cursor", logger.SilentError(err))
 		}
 	}()
 

@@ -6,7 +6,7 @@ run	:
 	go run cmd/api/main.go cmd/api/environment.go cmd/api/adapters.go
 
 test:
-	go test ./... -race
+	act -W '.github/workflows/test.yml'
 
 sqlc:
 	for dir in ./internal/*/; do \

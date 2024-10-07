@@ -5,76 +5,47 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/shoppigram-com/marketplace-api/packages/cloudwatchcollector"
+	"github.com/shoppigram-com/marketplace-api/packages/cors"
 	"github.com/shoppigram-com/marketplace-api/packages/health"
+	"github.com/shoppigram-com/marketplace-api/packages/httpmetrics"
+	"github.com/shoppigram-com/marketplace-api/packages/logger"
 	"net/http"
 	"os"
 	"strings"
 	"syscall"
 	"time"
 
-	"github.com/shoppigram-com/marketplace-api/internal/marketplaces"
+	"github.com/shoppigram-com/marketplace-api/internal/app"
 
 	"github.com/shoppigram-com/marketplace-api/internal/webhooks"
-
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/shoppigram-com/marketplace-api/internal/admins"
-	"github.com/shoppigram-com/marketplace-api/internal/logging"
-	"github.com/shoppigram-com/marketplace-api/internal/notifications"
-	"go.uber.org/zap/zapcore"
 
 	"github.com/Netflix/go-env"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/oklog/run"
-	"github.com/shoppigram-com/marketplace-api/internal/httputils"
-	telegramusers "github.com/shoppigram-com/marketplace-api/internal/users"
+	"github.com/shoppigram-com/marketplace-api/internal/admin"
+	"github.com/shoppigram-com/marketplace-api/internal/auth"
+	"github.com/shoppigram-com/marketplace-api/internal/notifications"
 	"go.uber.org/zap"
 )
 
 func main() {
-	var (
-		logLevel  zapcore.Level
-		zapConfig zap.Config
-	)
-
-	ctx := context.Background()
-
 	var config Environment
 	if _, err := env.UnmarshalFromEnviron(&config); err != nil {
-		fmt.Println("failed to load environment variables", logging.SilentError(err))
-		return
+		fmt.Println("failed to load environment variables", logger.SilentError(err))
+		os.Exit(-1)
 	}
 
-	switch config.Zap.LogLevel {
-	case "DEBUG":
-		logLevel = zapcore.DebugLevel
-	case "INFO":
-		logLevel = zapcore.InfoLevel
-	case "WARN", "WARNING":
-		logLevel = zapcore.WarnLevel
-	case "ERROR":
-		logLevel = zapcore.ErrorLevel
-	default:
-		logLevel = zapcore.InfoLevel
-	}
-
-	if config.Zap.LogLevel == "DEBUG" {
-		zapConfig = zap.NewDevelopmentConfig()
-	} else {
-		zapConfig = zap.NewProductionConfig()
-	}
-
-	zapConfig.Level.SetLevel(logLevel)
-
-	log, _ := zapConfig.Build(zap.AddStacktrace(zapcore.PanicLevel))
-	defer log.Sync()
+	log := logger.New(config.Zap.LogLevel)
 
 	cloudwatchcollector.Init(config.AWS.Cloudwatch.Namespace)
 	defer cloudwatchcollector.Shutdown()
 
+	ctx := context.Background()
 	db, err := pgxpool.New(ctx, config.Postgres.DSN)
 	if err != nil {
-		log.Fatal("failed to connect to database", logging.SilentError(err))
+		log.Fatal("failed to connect to database", logger.SilentError(err))
 		return
 	}
 	defer db.Close()
@@ -96,8 +67,16 @@ func main() {
 		middleware.Timeout(10*time.Second),
 		middleware.Recoverer,
 		middleware.Compress(5, "application/json"),
-		httputils.CORSMiddleware,
-		httputils.MakeObservabilityMiddleware,
+		cors.MakeCORSMiddleware(
+			[]string{
+				"https://web-app.shoppigram.com",
+				"https://admin.shoppigram.com",
+				"https://dev-app.shoppigram.com",
+				"http://localhost:5173",
+			},
+			nil,
+		),
+		httpmetrics.MakeObservabilityMiddleware,
 		middleware.Throttle(100),
 	)
 
@@ -108,22 +87,22 @@ func main() {
 	})
 
 	////////////////////////////////////// TELEGRAM USERS //////////////////////////////////////
-	authMw := telegramusers.MakeAuthMiddleware(config.Bot.Token)
-	tgUsersRepo := telegramusers.NewPg(db)
-	tgUsersService := telegramusers.NewServiceWithObservability(
-		telegramusers.New(tgUsersRepo),
+	authMw := auth.MakeAuthMiddleware(config.Bot.Token)
+	tgUsersRepo := auth.NewPg(db)
+	tgUsersService := auth.NewServiceWithObservability(
+		auth.New(tgUsersRepo),
 		log.With(zap.String("service", "telegram_users")),
 	)
-	tgUsersHandler := telegramusers.MakeHandler(tgUsersService, authMw)
+	authHandler := auth.MakeHandler(tgUsersService, authMw)
 
 	////////////////////////////////////// MARKETPLACES //////////////////////////////////////
-	marketplacesRepo := marketplaces.NewPg(db)
-	marketplacesService := marketplaces.NewServiceWithObservability(
-		marketplaces.New(marketplacesRepo, config.Cache.MaxSize),
+	marketplacesRepo := app.NewPg(db)
+	marketplacesService := app.NewServiceWithObservability(
+		app.New(marketplacesRepo, config.Cache.MaxSize),
 		log.With(zap.String("service", "marketplaces")),
 	)
-	productsHandler := marketplaces.MakeProductsHandler(marketplacesService)
-	ordersHandler := marketplaces.MakeOrdersHandler(marketplacesService, authMw)
+	shopHandler := app.MakeShopHandler(marketplacesService)
+	ordersHandler := app.MakeOrdersHandler(marketplacesService, authMw)
 
 	////////////////////////////////////// NOTIFICATIONS //////////////////////////////////////
 	notificationsRepo := notifications.NewPg(
@@ -139,7 +118,6 @@ func main() {
 	}
 	insertPosition += len("https://")
 
-	//bucketUrl = config.DigitalOcean.Spaces.Endpoint
 	notificationsService := notifications.New(
 		notificationsRepo,
 		log.With(zap.String("service", "notifications")),
@@ -153,12 +131,37 @@ func main() {
 			config.DigitalOcean.Spaces.Endpoint[insertPosition:],
 	)
 
+	////////////////////////////////////// RUN NOTIFICATION JOBS //////////////////////////////////////
+	if config.NewOrderNotifications.IsEnabled {
+		g.Add(notificationsService.RunOrdersNotifier, func(err error) {
+			_ = notificationsService.Shutdown()
+		})
+	} else {
+		log.Warn("new order notifications job is disabled")
+	}
+
+	if config.NewMarketplaceNotifications.IsEnabled {
+		g.Add(notificationsService.RunNewMarketplaceNotifier, func(err error) {
+			_ = notificationsService.Shutdown()
+		})
+	} else {
+		log.Warn("new marketplace notifications job is disabled")
+	}
+
+	if config.VerifiedMarketplaceNotifications.IsEnabled {
+		g.Add(notificationsService.RunVerifiedMarketplaceNotifier, func(err error) {
+			_ = notificationsService.Shutdown()
+		})
+	} else {
+		log.Warn("verified marketplace notifications job is disabled")
+	}
+
 	////////////////////////////////////// ADMINS //////////////////////////////////////
-	adminsRepo := admins.NewPg(db)
-	adminsService := admins.NewServiceWithObservability(
-		admins.New(
+	adminsRepo := admin.NewPg(db)
+	adminsService := admin.NewServiceWithObservability(
+		admin.New(
 			adminsRepo,
-			admins.DOSpacesConfig{
+			admin.DOSpacesConfig{
 				Endpoint: config.DigitalOcean.Spaces.Endpoint,
 				Bucket:   config.DigitalOcean.Spaces.Bucket,
 				ID:       config.DigitalOcean.Spaces.Key,
@@ -171,7 +174,8 @@ func main() {
 		),
 		log.With(zap.String("service", "admins")),
 	)
-	adminsHandler := admins.MakeHandler(adminsService, authMw)
+	adminsHandler := admin.MakeHandler(adminsService, authMw)
+	adminsHandlerV2 := admin.MakeHandlerV2(adminsService, authMw)
 
 	////////////////////////////////////// WEBHOOKS //////////////////////////////////////
 	tgRepo := webhooks.Repository(webhooks.NewPg(db))
@@ -201,46 +205,32 @@ func main() {
 		config.CloudPayments.Password,
 	)
 
-	////////////////////////////////////// RUN NOTIFICATION JOBS //////////////////////////////////////
-	if config.NewOrderNotifications.IsEnabled {
-		g.Add(notificationsService.RunOrdersNotifier, func(err error) {
-			_ = notificationsService.Shutdown()
-		})
-	} else {
-		log.Warn("new order notifications job is disabled")
-	}
-
-	if config.NewMarketplaceNotifications.IsEnabled {
-		g.Add(notificationsService.RunNewMarketplaceNotifier, func(err error) {
-			_ = notificationsService.Shutdown()
-		})
-	} else {
-		log.Warn("new marketplace notifications job is disabled")
-	}
-
-	if config.VerifiedMarketplaceNotifications.IsEnabled {
-		g.Add(notificationsService.RunVerifiedMarketplaceNotifier, func(err error) {
-			_ = notificationsService.Shutdown()
-		})
-	} else {
-		log.Warn("verified marketplace notifications job is disabled")
-	}
-
-	////////////////////////////////////// RUN HTTP SERVER //////////////////////////////////////
-	r.Mount("/api/v1/public/products", productsHandler)
-	r.Mount("/api/v1/public/auth", tgUsersHandler)
+	////////////////////////////////////// HTTP SERVER V1 //////////////////////////////////////
+	r.Mount("/api/v1/public/products", shopHandler)
+	r.Mount("/api/v1/public/auth", authHandler)
 	r.Mount("/api/v1/public/orders", ordersHandler)
 	r.Mount("/api/v1/private/marketplaces", adminsHandler)
+
 	r.Mount("/api/v1/telegram/webhooks", webhooksHandler)
 	r.Mount("/api/v1/cloud-payments/webhooks", cloudPaymentsWebhookHandler)
+
+	////////////////////////////////////// RUN HTTP SERVER V2 //////////////////////////////////////
+
+	r.Mount("/api/v2/app/shops", shopHandler)
+	r.Mount("/api/v2/app/orders", ordersHandler)
+	r.Mount("/api/v2/auth", authHandler)
+	r.Mount("/api/v2/admin", adminsHandlerV2)
 
 	g.Add(func() error {
 		log.Info("starting HTTP server", zap.String("port", config.HTTP.Port))
 		return httpServer.ListenAndServe()
 	}, func(err error) {
+		if err != nil {
+			log.Error("HTTP server exited with error", logger.SilentError(err))
+		}
 		err = httpServer.Shutdown(ctx)
 		if err != nil {
-			log.Error("failed to shutdown HTTP server", logging.SilentError(err))
+			log.Error("failed to shutdown HTTP server", logger.SilentError(err))
 		}
 	})
 
@@ -251,14 +241,17 @@ func main() {
 		Handler: healthR,
 	}
 	g.Add(healthServer.ListenAndServe, func(err error) {
+		if err != nil {
+			log.Error("health server exited with error", logger.SilentError(err))
+		}
 		err = healthServer.Shutdown(ctx)
 		if err != nil {
-			log.Error("failed to shutdown health server", logging.SilentError(err))
+			log.Error("failed to shutdown health server", logger.SilentError(err))
 		}
 	})
 
 	if err := g.Run(); err != nil {
-		log.Fatal("api exited with error:", logging.SilentError(err))
+		log.Info("api exited with message:", logger.SilentError(err))
 		return
 	}
 }

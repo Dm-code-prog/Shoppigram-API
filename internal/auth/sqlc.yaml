@@ -2,15 +2,9 @@ version: "2"
 sql:
   - engine: postgresql
     queries:
-      - ./queries/notifications.sql
+      - ./queries/auth.sql
     schema:
-      - ./schemas/2024-04-29.sql
-      - ./schemas/2024-08-08.sql
-      - ./schemas/2024-09-14.sql
       - ../sql/2024-04-11-aggregate.sql
-      - ../sql/2024-07-26.sql
-      - ../sql/2024-08-04.sql
-      - ../sql/2024-08-11.sql
       - ../sql/2024-10-06.sql
     gen:
       go:

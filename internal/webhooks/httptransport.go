@@ -3,6 +3,7 @@ package webhooks
 import (
 	"context"
 	"encoding/json"
+	"github.com/shoppigram-com/marketplace-api/packages/logger"
 	"io"
 	"net/http"
 	"net/url"
@@ -14,16 +15,19 @@ import (
 	kithttp "github.com/go-kit/kit/transport/http"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
-	"github.com/shoppigram-com/marketplace-api/internal/logging"
 	"go.uber.org/zap"
 )
 
-type serverErrorLogger struct {
-	logger *zap.Logger
-}
+type (
+	serverErrorLogger struct {
+		logger *zap.Logger
+	}
 
-func (s serverErrorLogger) Handle(ctx context.Context, err error) {
-	s.logger.Error("server error", logging.SilentError(err))
+	contextKey string
+)
+
+func (s serverErrorLogger) Handle(_ context.Context, err error) {
+	s.logger.Error("server error", logger.SilentError(err))
 }
 
 // MakeTelegramHandler returns a handler for the Telegram webhooks service.
@@ -32,7 +36,7 @@ func MakeTelegramHandler(s *TelegramService, log *zap.Logger, secretToken string
 		kithttp.ServerErrorEncoder(encodeError),
 		kithttp.ServerBefore(func(ctx context.Context, request *http.Request) context.Context {
 			xTelegramBotApiSecretToken := request.Header.Get("X-Telegram-Bot-Api-Secret-Token")
-			return context.WithValue(ctx, "X-Telegram-Bot-Api-Secret-Token", xTelegramBotApiSecretToken)
+			return context.WithValue(ctx, contextKey("X-Telegram-Bot-Api-Secret-Token"), xTelegramBotApiSecretToken)
 		}),
 		kithttp.ServerErrorHandler(serverErrorLogger{logger: log}),
 	}
@@ -91,7 +95,7 @@ func makeTelegramWebhookAuthMiddleware(secretToken string) endpoint.Middleware {
 	}
 }
 
-func encodeError(_ context.Context, err error, w http.ResponseWriter) {
+func encodeError(_ context.Context, _ error, w http.ResponseWriter) {
 	w.WriteHeader(http.StatusInternalServerError)
 	_, _ = w.Write([]byte(ErrorInternalServerError.Error()))
 }

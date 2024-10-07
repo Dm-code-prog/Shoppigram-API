@@ -132,7 +132,7 @@ const (
 	eventTypeCheck = "check"
 	eventTypePay   = "pay"
 
-	orderStateConfirmed = "confirmed"
+	//orderStateConfirmed = "confirmed"
 
 	// cloudPaymentsResponseCodeSuccess 0 means success for all webhook types
 	cloudPaymentsResponseCodeSuccess                   = 0
@@ -302,7 +302,7 @@ func checkPayment(check CloudPaymentsCheckRequest, orderInfo Order, paymentMaxDu
 }
 
 func isCurrenciesEqual(cur1 string, cur2 string) bool {
-	return strings.ToLower(cur1) == strings.ToLower(cur2)
+	return strings.EqualFold(cur1, cur2)
 }
 
 func isPaymentExpired(orderCreated time.Time, paymentWasMade time.Time, maxDuration time.Duration) bool {

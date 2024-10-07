@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"github.com/shoppigram-com/marketplace-api/internal/admins"
+	"github.com/shoppigram-com/marketplace-api/internal/admin"
 	"github.com/shoppigram-com/marketplace-api/internal/notifications"
 	"github.com/shoppigram-com/marketplace-api/internal/webhooks"
 )
@@ -13,15 +13,15 @@ type notificationsAdminAdapter struct {
 	notifier *notifications.Service
 }
 
-func (a *notificationsAdminAdapter) AddUserToNewOrderNotifications(ctx context.Context, req admins.AddUserToNewOrderNotificationsParams) error {
+func (a *notificationsAdminAdapter) AddUserToNewOrderNotifications(ctx context.Context, req admin.AddUserToNewOrderNotificationsParams) error {
 	return a.notifier.AddUserToNewOrderNotifications(ctx, notifications.AddUserToNewOrderNotificationsRequest(req))
 }
 
-func (a *notificationsAdminAdapter) SendMarketplaceBanner(_ context.Context, params admins.SendMarketplaceBannerParams) (message int64, err error) {
+func (a *notificationsAdminAdapter) SendMarketplaceBanner(_ context.Context, params admin.SendMarketplaceBannerParams) (message int64, err error) {
 	return a.notifier.SendMarketplaceBanner(context.Background(), notifications.SendMarketplaceBannerParams(params))
 }
 
-func (a *notificationsAdminAdapter) PinNotification(ctx context.Context, req admins.PinNotificationParams) error {
+func (a *notificationsAdminAdapter) PinNotification(ctx context.Context, req admin.PinNotificationParams) error {
 	return a.notifier.PinNotification(ctx, notifications.PinNotificationParams(req))
 }
 
