@@ -19,14 +19,14 @@ func MakeShopHandler(bs Service) http.Handler {
 		kithttp.ServerErrorEncoder(encodeError),
 	}
 
-	getProductsHandler := kithttp.NewServer(
+	getShopH := kithttp.NewServer(
 		makeGetProductsEndpoint(bs),
 		decodeGetShopRequest,
 		encodeResponse,
 		opts...,
 	)
 
-	invalidateProductsCacheHandler := kithttp.NewServer(
+	invalidateShopCacheH := kithttp.NewServer(
 		makeInvalidateProductsCacheEndpoint(bs),
 		decodeInvalidateShopCacheRequest,
 		encodeResponse,
@@ -34,8 +34,8 @@ func MakeShopHandler(bs Service) http.Handler {
 	)
 
 	r := chi.NewRouter()
-	r.Get("/{web_app_id}", getProductsHandler.ServeHTTP)
-	r.Put("/{web_app_id}/invalidate", invalidateProductsCacheHandler.ServeHTTP)
+	r.Get("/{id}", getShopH.ServeHTTP)
+	r.Put("/{web_app_id}/invalidate", invalidateShopCacheH.ServeHTTP)
 
 	return r
 }
@@ -62,7 +62,7 @@ func MakeOrdersHandler(s Service, authMW endpoint.Middleware) http.Handler {
 	)
 
 	r := chi.NewRouter()
-	r.Post("/{id}", createOrderHandler.ServeHTTP)
+	r.Post("/{web_app_id}", createOrderHandler.ServeHTTP)
 	r.Get("/{order_id}", getOrdersHandler.ServeHTTP)
 	return r
 }
