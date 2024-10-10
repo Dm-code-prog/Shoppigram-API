@@ -8,7 +8,7 @@ import (
 	telegramusers "github.com/shoppigram-com/marketplace-api/internal/auth"
 )
 
-// makeGetProductsEndpoint constructs a GetProducts endpoint wrapping the service.
+// makeGetProductsEndpoint constructs a GetShop endpoint wrapping the service.
 //
 // Path: GET /api/v1/public/products/{web_app_id}
 func makeGetProductsEndpoint(s Service) endpoint.Endpoint {
@@ -17,15 +17,15 @@ func makeGetProductsEndpoint(s Service) endpoint.Endpoint {
 		if !ok {
 			return GetProductsResponse{}, ErrorInvalidWebAppID
 		}
-		v0, err := s.GetProducts(ctx, req)
+		v0, err := s.GetShop(ctx, req)
 		if err != nil {
-			return GetProductsResponse{}, errors.Wrap(err, "s.GetProducts")
+			return GetProductsResponse{}, errors.Wrap(err, "s.GetShop")
 		}
 		return v0, nil
 	}
 }
 
-// makeInvalidateProductsCacheEndpoint constructs a InvalidateProductsCache endpoint wrapping the service.
+// makeInvalidateProductsCacheEndpoint constructs a InvdlidateShopCache endpoint wrapping the service.
 //
 // Path: PUT /api/v1/public/products/{web_app_id}/invalidate
 func makeInvalidateProductsCacheEndpoint(s Service) endpoint.Endpoint {
@@ -34,7 +34,7 @@ func makeInvalidateProductsCacheEndpoint(s Service) endpoint.Endpoint {
 		if !ok {
 			return nil, ErrorInvalidWebAppID
 		}
-		s.InvalidateProductsCache(ctx, req)
+		s.InvdlidateShopCache(ctx, req)
 		return nil, nil
 	}
 }

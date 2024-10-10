@@ -22,13 +22,13 @@ func NewServiceWithObservability(service Service, log *zap.Logger) *ServiceWithO
 	}
 }
 
-// GetProducts calls the underlying service's GetProducts method
-func (s *ServiceWithObservability) GetProducts(ctx context.Context, request GetProductsRequest) (GetProductsResponse, error) {
-	res, err := s.service.GetProducts(ctx, request)
+// GetShop calls the underlying service's GetProducts method
+func (s *ServiceWithObservability) GetShop(ctx context.Context, request GetProductsRequest) (GetProductsResponse, error) {
+	res, err := s.service.GetShop(ctx, request)
 	if err != nil {
 		s.log.
 			With(zap.String("web_app_id", request.WebAppID.String())).
-			Error("s.service.GetProducts", logger.SilentError(err))
+			Error("s.service.GetShop", logger.SilentError(err))
 	}
 
 	return res, err
@@ -46,9 +46,9 @@ func (s *ServiceWithObservability) CreateOrder(ctx context.Context, request Crea
 	return res, err
 }
 
-// InvalidateProductsCache calls the underlying service's InvalidateProductsCache method
-func (s *ServiceWithObservability) InvalidateProductsCache(ctx context.Context, request InvalidateProductsCacheRequest) {
-	s.service.InvalidateProductsCache(ctx, request)
+// InvdlidateShopCache calls the underlying service's InvalidateProductsCache method
+func (s *ServiceWithObservability) InvdlidateShopCache(ctx context.Context, request InvalidateProductsCacheRequest) {
+	s.service.InvdlidateShopCache(ctx, request)
 }
 
 // GetOrder gets the products in order

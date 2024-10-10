@@ -62,24 +62,32 @@ func MakeOrdersHandler(s Service, authMW endpoint.Middleware) http.Handler {
 	)
 
 	r := chi.NewRouter()
-	r.Post("/{web_app_id}", createOrderHandler.ServeHTTP)
+	r.Post("/{id}", createOrderHandler.ServeHTTP)
 	r.Get("/{order_id}", getOrdersHandler.ServeHTTP)
 	return r
 }
 
+// decodeGetShopRequest decodes the request for the GetShop endpoint.
+// The ID can be either a UUID or a short name. The request is malformed if the ID is missing.
 func decodeGetShopRequest(_ context.Context, r *http.Request) (interface{}, error) {
-	webAppID := chi.URLParam(r, "web_app_id")
-	if webAppID == "" {
+	var (
+		webAppID        uuid.UUID
+		webAppShortName string
+	)
+
+	id := chi.URLParam(r, "id")
+	if id == "" {
 		return GetProductsRequest{}, ErrorInvalidWebAppID
 	}
 
-	webAppUUID, err := uuid.Parse(webAppID)
+	webAppID, err := uuid.Parse(id)
 	if err != nil {
-		return GetProductsRequest{}, errors.Wrap(ErrorInvalidWebAppID, "uuid.Parse")
+		webAppShortName = id
 	}
 
 	return GetProductsRequest{
-		WebAppID: webAppUUID,
+		WebAppID:        webAppID,
+		WebAppShortName: webAppShortName,
 	}, nil
 }
 

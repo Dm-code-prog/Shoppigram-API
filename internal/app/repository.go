@@ -19,7 +19,7 @@ const (
 )
 
 // Pg implements the Repository interface
-// using PostgreSQL as the backing store.
+// using PostgresSQL as the backing store.
 type Pg struct {
 	gen  *generated.Queries
 	pool *pgxpool.Pool
@@ -32,7 +32,10 @@ func NewPg(pool *pgxpool.Pool) *Pg {
 
 // GetProducts returns a list of products
 func (pg *Pg) GetProducts(ctx context.Context, request GetProductsRequest) (GetProductsResponse, error) {
-	m, err := pg.gen.GetMarketplaceWithProducts(ctx, request.WebAppID)
+	m, err := pg.gen.GetMarketplaceWithProducts(ctx, generated.GetMarketplaceWithProductsParams{
+		WebAppID:  request.WebAppID,
+		ShortName: request.WebAppShortName,
+	})
 	if err != nil {
 		return GetProductsResponse{}, errors.Wrap(err, "pg.gen.GetMarketplaceWithProducts")
 	}
@@ -57,10 +60,10 @@ func (pg *Pg) GetProducts(ctx context.Context, request GetProductsRequest) (GetP
 }
 
 // CreateOrder adds a new order to the database
-func (pg *Pg) CreateOrder(ctx context.Context, req SaveOrderRequest) (SaveOrderResponse, error) {
+func (pg *Pg) CreateOrder(ctx context.Context, req SaveOrderParams) (SaveOrderResult, error) {
 	tx, err := pg.pool.Begin(ctx)
 	if err != nil {
-		return SaveOrderResponse{}, errors.Wrap(err, "pg.pool.Begin")
+		return SaveOrderResult{}, errors.Wrap(err, "pg.pool.Begin")
 	}
 	defer func(tx pgx.Tx, ctx context.Context) {
 		_ = tx.Rollback(ctx)
@@ -85,7 +88,7 @@ func (pg *Pg) CreateOrder(ctx context.Context, req SaveOrderRequest) (SaveOrderR
 		})
 
 		if err != nil {
-			return SaveOrderResponse{}, errors.Wrap(err, "qtx.CreateOnlineOrder")
+			return SaveOrderResult{}, errors.Wrap(err, "qtx.CreateOnlineOrder")
 		}
 
 		id = res.ID
@@ -102,13 +105,13 @@ func (pg *Pg) CreateOrder(ctx context.Context, req SaveOrderRequest) (SaveOrderR
 			},
 		})
 		if err != nil {
-			return SaveOrderResponse{}, errors.Wrap(err, "qtx.CreateOrder")
+			return SaveOrderResult{}, errors.Wrap(err, "qtx.CreateOrder")
 		}
 
 		id = res.ID
 		readableID = int(res.ReadableID.Int64)
 	} else {
-		return SaveOrderResponse{}, ErrorInvalidOrderType
+		return SaveOrderResult{}, ErrorInvalidOrderType
 	}
 
 	var orderProducts []generated.SetOrderProductsParams
@@ -133,12 +136,12 @@ func (pg *Pg) CreateOrder(ctx context.Context, req SaveOrderRequest) (SaveOrderR
 		}
 	})
 	if batchErr != nil {
-		return SaveOrderResponse{}, batchErr
+		return SaveOrderResult{}, batchErr
 	}
 
 	orderAmount, err := qtx.GetOrderAmount(ctx, id)
 	if err != nil {
-		return SaveOrderResponse{}, errors.Wrap(err, "pg.gen.GetOrderAmount")
+		return SaveOrderResult{}, errors.Wrap(err, "pg.gen.GetOrderAmount")
 	}
 
 	if orderAmount == 0 {
@@ -147,16 +150,16 @@ func (pg *Pg) CreateOrder(ctx context.Context, req SaveOrderRequest) (SaveOrderR
 			State: stateDone,
 		})
 		if err != nil {
-			return SaveOrderResponse{}, errors.Wrap(err, "pg.gen.UpdateOrderState")
+			return SaveOrderResult{}, errors.Wrap(err, "pg.gen.UpdateOrderState")
 		}
 	}
 
 	err = tx.Commit(ctx)
 	if err != nil {
-		return SaveOrderResponse{}, errors.Wrap(err, "tx.Commit")
+		return SaveOrderResult{}, errors.Wrap(err, "tx.Commit")
 	}
 
-	return SaveOrderResponse{ReadableID: readableID, ID: id}, nil
+	return SaveOrderResult{ReadableID: readableID, ID: id}, nil
 }
 
 // GetOrder gets a list of products in order

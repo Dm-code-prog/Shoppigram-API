@@ -24,13 +24,15 @@ type (
 		LegacyPriceCurrency string    `json:"price_currency"`
 	}
 
-	// GetProductsRequest defines the request for the GetProducts endpoint
+	// GetProductsRequest defines the request for the GetShop endpoint
 	// Products are queried based on the WebAppID
+	// or the WebAppShortName
 	GetProductsRequest struct {
-		WebAppID uuid.UUID
+		WebAppID        uuid.UUID
+		WebAppShortName string
 	}
 
-	// GetProductsResponse defines the response body for the GetProducts endpoint
+	// GetProductsResponse defines the response body for the GetShop endpoint
 	GetProductsResponse struct {
 		WebAppID              uuid.UUID `json:"web_app_id,omitempty"`
 		WebAppName            string    `json:"web_app_name,omitempty"`
@@ -41,9 +43,10 @@ type (
 		Products              []Product `json:"products,omitempty"`
 	}
 
-	// InvalidateProductsCacheRequest defines the request for the InvalidateProductsCache endpoint
+	// InvalidateProductsCacheRequest defines the request for the InvdlidateShopCache endpoint
 	InvalidateProductsCacheRequest struct {
-		WebAppID uuid.UUID
+		WebAppID        uuid.UUID
+		WebAppShortName string
 	}
 
 	// ProductItem is a marketplace product
@@ -69,24 +72,6 @@ type (
 		ReadableID int       `json:"readable_id"`
 	}
 
-	// SaveOrderRequest is a request to save order info
-	// to the storage
-	SaveOrderRequest struct {
-		WebAppID uuid.UUID
-		Products []ProductItem
-		// p2p or online for now
-		Type           string
-		ExternalUserID int64
-	}
-
-	// SaveOrderResponse is the response to SaveOrderRequest
-	//
-	// It contains the readable order ID
-	SaveOrderResponse struct {
-		ID         uuid.UUID
-		ReadableID int
-	}
-
 	// GetOrderRequest defines the request for the GetOrder endpoint
 	GetOrderRequest struct {
 		OrderId        uuid.UUID
@@ -106,17 +91,35 @@ type (
 )
 
 type (
+	// SaveOrderParams is a request to save order info
+	// to the storage
+	SaveOrderParams struct {
+		WebAppID uuid.UUID
+		Products []ProductItem
+		// p2p or online for now
+		Type           string
+		ExternalUserID int64
+	}
+
+	// SaveOrderResult is the response to SaveOrderParams
+	//
+	// It contains the readable order ID
+	SaveOrderResult struct {
+		ID         uuid.UUID
+		ReadableID int
+	}
+
 	// Repository provides access to the product storage
 	Repository interface {
 		GetProducts(ctx context.Context, request GetProductsRequest) (GetProductsResponse, error)
-		CreateOrder(context.Context, SaveOrderRequest) (SaveOrderResponse, error)
+		CreateOrder(context.Context, SaveOrderParams) (SaveOrderResult, error)
 		GetOrder(ctx context.Context, orderID uuid.UUID, externalUserId int64) (GetOrderResponse, error)
 	}
 
 	Service interface {
-		GetProducts(ctx context.Context, request GetProductsRequest) (GetProductsResponse, error)
+		GetShop(ctx context.Context, request GetProductsRequest) (GetProductsResponse, error)
+		InvdlidateShopCache(ctx context.Context, req InvalidateProductsCacheRequest)
 		CreateOrder(ctx context.Context, req CreateOrderRequest) (CreateOrderResponse, error)
-		InvalidateProductsCache(ctx context.Context, req InvalidateProductsCacheRequest)
 		GetOrder(ctx context.Context, req GetOrderRequest) (GetOrderResponse, error)
 	}
 
@@ -128,7 +131,7 @@ type (
 )
 
 const (
-	getProductsCacheKeyBase = "products.GetProducts:"
+	getProductsCacheKeyBase = "products.GetShop:"
 
 	orderTypeP2P    = "p2p"
 	orderTypeOnline = "online"
@@ -151,21 +154,20 @@ func New(repo Repository, maxCacheSize int64) *DefaultService {
 	}
 }
 
-// GetProducts returns a list of products
-func (s *DefaultService) GetProducts(ctx context.Context, request GetProductsRequest) (GetProductsResponse, error) {
-	// Check if the request is cached
-	key := makeProductsCacheKey(request.WebAppID)
-	if res, ok := s.cache.Get(key); ok {
+// GetShop returns the products of a marketplace along with the shop info
+func (s *DefaultService) GetShop(ctx context.Context, request GetProductsRequest) (GetProductsResponse, error) {
+	cacheKey := makeProductsCacheKey(request.WebAppID, request.WebAppShortName)
+	if res, ok := s.cache.Get(cacheKey); ok {
 		return res, nil
 	}
 
 	res, err := s.repo.GetProducts(ctx, request)
 	if err != nil {
-		return GetProductsResponse{}, errors.Wrap(err, "s.repo.GetProducts")
+		return GetProductsResponse{}, errors.Wrap(err, "s.repo.GetShop")
 	}
 
 	// Cache the response
-	s.cache.SetWithTTL(key, res, 0, 15*time.Minute)
+	s.cache.SetWithTTL(cacheKey, res, 0, 15*time.Minute)
 
 	return res, nil
 }
@@ -184,7 +186,7 @@ func (s *DefaultService) CreateOrder(ctx context.Context, req CreateOrderRequest
 		req.Type = orderTypeP2P
 	}
 
-	res, err := s.repo.CreateOrder(ctx, SaveOrderRequest{
+	res, err := s.repo.CreateOrder(ctx, SaveOrderParams{
 		WebAppID:       req.WebAppID,
 		Products:       req.Products,
 		ExternalUserID: u.ExternalId,
@@ -206,14 +208,20 @@ func (s *DefaultService) GetOrder(ctx context.Context, req GetOrderRequest) (Get
 	return resp, nil
 }
 
-// InvalidateProductsCache invalidates the cache for the given web app id
+// InvdlidateShopCache invalidates the cache for the given shop
 // The next time GetProducts is called with the same web app id, the cache will be missed
 // and request will hit the database
-func (s *DefaultService) InvalidateProductsCache(_ context.Context, req InvalidateProductsCacheRequest) {
-	key := makeProductsCacheKey(req.WebAppID)
-	s.cache.Del(key)
+func (s *DefaultService) InvdlidateShopCache(_ context.Context, req InvalidateProductsCacheRequest) {
+	s.cache.Del(
+		makeProductsCacheKey(req.WebAppID, req.WebAppShortName),
+	)
 }
 
-func makeProductsCacheKey(webAppID uuid.UUID) string {
-	return getProductsCacheKeyBase + webAppID.String()
+// makeProductsCacheKey creates a cache key for the GetShop endpoint
+// The key is based on the web app id or the web app short name
+func makeProductsCacheKey(webAppID uuid.UUID, webAppShortname string) string {
+	if webAppID != uuid.Nil {
+		return getProductsCacheKeyBase + webAppID.String()
+	}
+	return getProductsCacheKeyBase + webAppShortname
 }
