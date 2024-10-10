@@ -296,7 +296,7 @@ func (m *VerifiedMarketplaceNotification) BuildMessage(language string) (string,
 	finalMessage := fmt.Sprintf(
 		string(template),
 		m.Name,
-		"https://t.me/"+botName+"/"+m.ShortName,
+		makeShopURL(m.ShortName),
 	)
 	return finalMessage, nil
 }
@@ -342,4 +342,8 @@ func (m *ChannelIntegrationFailureNotification) BuildMessage(language string) (s
 
 func getPathToTemplate(lang string, path string) string {
 	return "templates/" + lang + "/" + path
+}
+
+func makeShopURL(shortName string) string {
+	return fmt.Sprintf("https://t.me/%s/app?startapp=%s", botName, shortName)
 }
