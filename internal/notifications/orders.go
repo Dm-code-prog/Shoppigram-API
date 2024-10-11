@@ -96,9 +96,9 @@ func (s *Service) runOrdersNotifier() error {
 
 			// Add buttons to the message
 			msg := tgbotapi.NewMessage(admin.Id, message)
-			tgLink, err := s.makeMiniAppLink(n.WebAppID.String() + "/order/" + n.ID.String())
+			tgLink, err := s.makeAdminAppURL(n.WebAppID.String() + "/order/" + n.ID.String())
 			if err != nil {
-				return errors.Wrap(err, "makeMiniAppLink()")
+				return errors.Wrap(err, "makeAdminAppURL()")
 			}
 
 			addButtonsToMessage(
@@ -134,9 +134,9 @@ func (s *Service) runOrdersNotifier() error {
 		}
 
 		msg := tgbotapi.NewMessage(n.BuyerExternalID, message)
-		tgLink, err := s.makeMiniAppLink(n.WebAppID.String() + "/order/" + n.ID.String())
+		tgLink, err := s.makeAdminAppURL(n.WebAppID.String() + "/order/" + n.ID.String())
 		if err != nil {
-			return errors.Wrap(err, "makeMiniAppLink")
+			return errors.Wrap(err, "makeAdminAppURL")
 		}
 
 		addButtonsToMessage(

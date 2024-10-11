@@ -8,6 +8,7 @@ about changes to marketplaces, to be precise:
 package notifications
 
 import (
+	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
 	"github.com/shoppigram-com/marketplace-api/packages/logger"
@@ -149,9 +150,9 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 
 		msg := tgbotapi.NewMessage(n.OwnerExternalID, onVerificationMsgTxt)
 
-		tgLink, err := s.makeMiniAppLink(n.ID.String())
+		tgLink, err := s.makeAdminAppURL(n.ID.String())
 		if err != nil {
-			return errors.Wrap(err, "makeMiniAppLink()")
+			return errors.Wrap(err, "makeAdminAppURL()")
 		}
 
 		addButtonsToMessage(&msg,
@@ -195,9 +196,9 @@ func (s *Service) sendVerifiedMarketplaceNotifications(marketplaceNotifications 
 		if err != nil {
 			return errors.Wrap(err, "a.BuildMessageShoppigram")
 		}
-		tgLink, err := s.makeMiniAppLink(n.ID.String())
+		tgLink, err := s.makeAdminAppURL(n.ID.String())
 		if err != nil {
-			return errors.Wrap(err, "makeMiniAppLink()")
+			return errors.Wrap(err, "makeAdminAppURL()")
 		}
 
 		msg := tgbotapi.NewMessage(n.OwnerExternalUserID, msgTxt)
@@ -214,4 +215,8 @@ func (s *Service) sendVerifiedMarketplaceNotifications(marketplaceNotifications 
 	}
 
 	return nil
+}
+
+func makeShopURL(botName, shortName string) string {
+	return fmt.Sprintf("https://t.me/%s/shop?startapp=shop_%s", botName, shortName)
 }

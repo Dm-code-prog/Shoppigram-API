@@ -2,6 +2,7 @@ package admin
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"time"
 
@@ -603,7 +604,7 @@ func (s *DefaultService) PublishMarketplaceBannerToChannel(ctx context.Context, 
 	}
 
 	messageID, err := s.notifier.SendMarketplaceBanner(ctx, SendMarketplaceBannerParams{
-		WebAppLink:    "https://t.me/" + s.botName + "/" + shortName,
+		WebAppLink:    makeShopURL(s.botName, shortName),
 		Message:       req.Message,
 		ChannelChatID: req.ExternalChannelID,
 	})
@@ -643,4 +644,8 @@ func isValidImageExtension(ext string) bool {
 	}
 
 	return false
+}
+
+func makeShopURL(botName, shortName string) string {
+	return fmt.Sprintf("https://t.me/%s/shop?startapp=shop_%s", botName, shortName)
 }

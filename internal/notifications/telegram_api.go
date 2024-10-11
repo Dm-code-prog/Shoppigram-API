@@ -44,7 +44,7 @@ func addButtonsToMessage(msg *tgbotapi.MessageConfig, messageData ...telegramBut
 	)
 }
 
-func (s *Service) makeMiniAppLink(path string, pageData ...pageDataParam) (string, error) {
+func (s *Service) makeAdminAppURL(path string, pageData ...pageDataParam) (string, error) {
 	pageDataParams := make(map[string]any)
 	for _, v := range pageData {
 		pageDataParams[v.key] = v.value
