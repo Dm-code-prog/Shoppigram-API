@@ -3,15 +3,11 @@ package webhooks
 import (
 	"context"
 	"encoding/json"
-	"github.com/shoppigram-com/marketplace-api/internal/logging"
+	"github.com/shoppigram-com/marketplace-api/packages/logger"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
-)
-
-const (
-	fallbackLanguage = "ru"
 )
 
 type (
@@ -137,7 +133,7 @@ func (s *TelegramService) handleAddedToChannel(ctx context.Context, update tgbot
 			ChannelName:       event.Chat.UserName,
 		})
 
-		s.log.Error("telegram channel integration failed", logging.SilentError(err))
+		s.log.Error("telegram channel integration failed", logger.SilentError(err))
 		return nil
 	}
 

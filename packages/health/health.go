@@ -6,15 +6,12 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"sync"
 )
 
 // Health ...
 type Health struct {
 	port     int
 	endpoint string
-	ctx      context.Context
-	wg       sync.WaitGroup
 	logger   *log.Logger
 	srv      *http.Server
 }

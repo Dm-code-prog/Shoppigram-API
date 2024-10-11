@@ -1,0 +1,1 @@
+create unique index on web_apps (short_name);

@@ -296,7 +296,7 @@ func (m *VerifiedMarketplaceNotification) BuildMessage(language string) (string,
 	finalMessage := fmt.Sprintf(
 		string(template),
 		m.Name,
-		"https://t.me/"+botName+"/"+m.ShortName,
+		makeShopURL(botName, m.ShortName),
 	)
 	return finalMessage, nil
 }

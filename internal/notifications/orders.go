@@ -10,7 +10,7 @@ package notifications
 import (
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pkg/errors"
-	"github.com/shoppigram-com/marketplace-api/internal/logging"
+	"github.com/shoppigram-com/marketplace-api/packages/logger"
 	"time"
 )
 
@@ -23,7 +23,7 @@ func (s *Service) RunOrdersNotifier() error {
 		case <-ticker.C:
 			err := s.runOrdersNotifier()
 			if err != nil {
-				s.log.Error("Failed to send the notifications for order events", logging.SilentError(err))
+				s.log.Error("Failed to send the notifications for order events", logger.SilentError(err))
 				continue
 			}
 		case <-s.ctx.Done():
@@ -65,7 +65,7 @@ func (s *Service) runOrdersNotifier() error {
 			Name:            orderNotifier,
 		})
 		if err != nil {
-			s.log.Error("Failed to update the notifier cursor", logging.SilentError(err))
+			s.log.Error("Failed to update the notifier cursor", logger.SilentError(err))
 		}
 	}()
 
@@ -96,9 +96,9 @@ func (s *Service) runOrdersNotifier() error {
 
 			// Add buttons to the message
 			msg := tgbotapi.NewMessage(admin.Id, message)
-			tgLink, err := s.makeMiniAppLink(n.WebAppID.String() + "/order/" + n.ID.String())
+			tgLink, err := s.makeAdminAppURL(n.WebAppID.String() + "/order/" + n.ID.String())
 			if err != nil {
-				return errors.Wrap(err, "makeMiniAppLink()")
+				return errors.Wrap(err, "makeAdminAppURL()")
 			}
 
 			addButtonsToMessage(
@@ -134,9 +134,9 @@ func (s *Service) runOrdersNotifier() error {
 		}
 
 		msg := tgbotapi.NewMessage(n.BuyerExternalID, message)
-		tgLink, err := s.makeMiniAppLink(n.WebAppID.String() + "/order/" + n.ID.String())
+		tgLink, err := s.makeAdminAppURL(n.WebAppID.String() + "/order/" + n.ID.String())
 		if err != nil {
-			return errors.Wrap(err, "makeMiniAppLink")
+			return errors.Wrap(err, "makeAdminAppURL")
 		}
 
 		addButtonsToMessage(
