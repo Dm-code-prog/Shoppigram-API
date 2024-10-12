@@ -8,7 +8,7 @@ import (
 	telegramusers "github.com/shoppigram-com/marketplace-api/internal/auth"
 )
 
-// makeGetShopEndpoint constructs a GetShop endpoint wrapping the service.
+// makeGetShopEndpoint constructs a GetShops endpoint wrapping the service.
 //
 // Path: GET /api/v1/public/products/{web_app_id}
 func makeGetShopEndpoint(s Service) endpoint.Endpoint {
@@ -19,7 +19,7 @@ func makeGetShopEndpoint(s Service) endpoint.Endpoint {
 		}
 		v0, err := s.GetShop(ctx, req)
 		if err != nil {
-			return GetShopResponse{}, errors.Wrap(err, "s.GetShop")
+			return GetShopResponse{}, errors.Wrap(err, "s.GetShops")
 		}
 		return v0, nil
 	}

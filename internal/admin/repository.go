@@ -31,23 +31,25 @@ func NewPg(db *pgxpool.Pool) *Pg {
 	return &Pg{gen: generated.New(db)}
 }
 
-// GetMarketplaces gets all marketplaces created by user
-func (p *Pg) GetMarketplaces(ctx context.Context, req GetMarketplacesRequest) (GetMarketplacesResponse, error) {
-	rows, err := p.gen.GetMarketplaces(ctx, pgtype.Int8{
+// GetShops returns user's shops
+func (p *Pg) GetShops(ctx context.Context, req GetShopsRequest) (GetShopsResponse, error) {
+	shops := make([]Shop, 0)
+
+	rows, err := p.gen.GetShops(ctx, pgtype.Int8{
 		Int64: req.ExternalUserID,
 		Valid: true,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return GetMarketplacesResponse{}, errors.Wrap(ErrorAdminNotFound, "p.gen.GetMarketplaces")
+			return GetShopsResponse{
+				Shops: shops,
+			}, nil
 		}
-		return GetMarketplacesResponse{}, errors.Wrap(err, "p.gen.GetMarketplaces")
+		return GetShopsResponse{}, errors.Wrap(err, "p.gen.GetShops")
 	}
 
-	marketplaces := make([]Marketplace, len(rows))
-
 	for i, v := range rows {
-		marketplaces[i] = Marketplace{
+		shops[i] = Shop{
 			ID:         v.ID,
 			Name:       v.Name,
 			LogoURL:    v.LogoUrl.String,
@@ -56,50 +58,51 @@ func (p *Pg) GetMarketplaces(ctx context.Context, req GetMarketplacesRequest) (G
 		}
 	}
 
-	return GetMarketplacesResponse{
-		Marketplaces: marketplaces,
+	return GetShopsResponse{
+		Shops: shops,
 	}, nil
 }
 
-// CreateMarketplace stores the marketplace information in the database
-// It creates the ID for the marketplace and returns it
-func (p *Pg) CreateMarketplace(ctx context.Context, req CreateMarketplaceRequest) (CreateMarketplaceResponse, error) {
-	count, err := p.gen.CountUserMarketplaces(ctx, pgtype.Int8{
+// CreateShop creates a new shop in database
+func (p *Pg) CreateShop(ctx context.Context, req CreateShopRequest) (CreateShopResponse, error) {
+	count, err := p.gen.CountUserShops(ctx, pgtype.Int8{
 		Int64: req.ExternalUserID,
 		Valid: true,
 	})
 	if err != nil {
-		return CreateMarketplaceResponse{}, errors.Wrap(err, "p.gen.CountUserMarketplaces")
+		return CreateShopResponse{}, errors.Wrap(err, "p.gen.CountUserMarketplaces")
 	}
 
-	if count > maxMarketplacesThreshold {
-		return CreateMarketplaceResponse{}, ErrorMaxMarketplacesExceeded
+	if count > maxShops {
+		return CreateShopResponse{}, ErrorMaxMarketplacesExceeded
 	}
 
-	id, err := p.gen.CreateMarketplace(ctx, generated.CreateMarketplaceParams{
+	id, err := p.gen.CreateShop(ctx, generated.CreateShopParams{
 		Name:            req.Name,
 		ShortName:       req.ShortName,
 		OwnerExternalID: pgtype.Int8{Int64: req.ExternalUserID, Valid: true},
+		Currency:        generated.ProductCurrency(req.Currency),
+		Type:            generated.WebAppType(req.Type),
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), pgerrcode.UniqueViolation) {
-			return CreateMarketplaceResponse{}, ErrorNotUniqueShortName
+			return CreateShopResponse{}, ErrorNotUniqueShortName
 		}
-		return CreateMarketplaceResponse{}, errors.Wrap(err, "p.gen.CreateMarketplace")
+		return CreateShopResponse{}, errors.Wrap(err, "p.gen.CreateShop")
 	}
 
-	return CreateMarketplaceResponse{ID: id}, err
+	return CreateShopResponse{ID: id}, err
 }
 
-// UpdateMarketplace updates the name of the marketplace in the database
-func (p *Pg) UpdateMarketplace(ctx context.Context, req UpdateMarketplaceRequest) error {
-	execRes, err := p.gen.UpdateMarketplace(ctx, generated.UpdateMarketplaceParams{
+// UpdateShop updates the shop in the database
+func (p *Pg) UpdateShop(ctx context.Context, req UpdateShopRequest) error {
+	execRes, err := p.gen.UpdateShop(ctx, generated.UpdateShopParams{
 		ID:              req.ID,
 		Name:            req.Name,
 		OwnerExternalID: pgtype.Int8{Int64: req.ExternalUserID, Valid: true},
 	})
 	if err != nil {
-		return errors.Wrap(err, "p.gen.UpdateMarketplace")
+		return errors.Wrap(err, "p.gen.UpdateShop")
 	}
 
 	if execRes.RowsAffected() == 0 {
@@ -109,9 +112,9 @@ func (p *Pg) UpdateMarketplace(ctx context.Context, req UpdateMarketplaceRequest
 	return nil
 }
 
-// DeleteMarketplace soft deletes marketplace
-func (p *Pg) DeleteMarketplace(ctx context.Context, req DeleteMarketplaceRequest) error {
-	err := p.gen.SoftDeleteMarketplace(ctx, req.WebAppId)
+// SoftDeleteShop marks the shop as deleted
+func (p *Pg) SoftDeleteShop(ctx context.Context, req DeleteShopRequest) error {
+	err := p.gen.SoftDeleteShop(ctx, req.WebAppId)
 	if err != nil {
 		return errors.Wrap(err, "p.gen.SoftDeleteMarketplace")
 	}
@@ -127,7 +130,7 @@ func (p *Pg) CreateProduct(ctx context.Context, req CreateProductRequest) (Creat
 		return CreateProductResponse{}, errors.Wrap(err, "p.gen.CountMarketplaceProducts")
 	}
 
-	if count > maxMarketplaceProducts {
+	if count > maxProducts {
 		return CreateProductResponse{}, ErrorMaxProductsExceeded
 	}
 
@@ -205,7 +208,7 @@ func (p *Pg) GetOrders(ctx context.Context, req GetOrdersRequest) (GetOrdersResp
 	orders := make([]Order, len(rows))
 
 	for i, v := range rows {
-		products := make([]Product, 0)
+		products := make([]OrderProduct, 0)
 		err := json.Unmarshal(v.Products, &products)
 		if err != nil {
 			return GetOrdersResponse{}, errors.Wrap(err, "json.Unmarshal")
@@ -247,8 +250,8 @@ func (p *Pg) GetBalance(ctx context.Context, req GetBalanceRequest) (GetBalanceR
 	return GetBalanceResponse{Balances: balances}, nil
 }
 
-// IsUserTheOwnerOfMarketplace checks if the user is the owner of the marketplace
-func (p *Pg) IsUserTheOwnerOfMarketplace(ctx context.Context, userID int64, webAppID uuid.UUID) (bool, error) {
+// IsShopOwner checks if the user is the owner of the shop
+func (p *Pg) IsShopOwner(ctx context.Context, userID int64, webAppID uuid.UUID) (bool, error) {
 	ok, err := p.gen.IsUserTheOwnerOfWebApp(ctx, generated.IsUserTheOwnerOfWebAppParams{
 		OwnerExternalID: pgtype.Int8{Int64: userID, Valid: true},
 		ID:              webAppID,
@@ -260,8 +263,8 @@ func (p *Pg) IsUserTheOwnerOfMarketplace(ctx context.Context, userID int64, webA
 	return ok, nil
 }
 
-// IsUserTheOwnerOfProduct checks if the user is the owner of the product
-func (p *Pg) IsUserTheOwnerOfProduct(ctx context.Context, userID int64, productID uuid.UUID) (bool, error) {
+// IsProductOwner checks if the user is the owner of the product
+func (p *Pg) IsProductOwner(ctx context.Context, userID int64, productID uuid.UUID) (bool, error) {
 	ok, err := p.gen.IsUserTheOwnerOfProduct(ctx, generated.IsUserTheOwnerOfProductParams{
 		OwnerExternalID: pgtype.Int8{Int64: userID, Valid: true},
 		ID:              productID,
@@ -270,13 +273,14 @@ func (p *Pg) IsUserTheOwnerOfProduct(ctx context.Context, userID int64, productI
 		if errors.Is(err, pgx.ErrNoRows) {
 			return false, ErrorOpNotAllowed
 		}
-		return false, errors.Wrap(err, "p.gen.IsUserTheOwnerOfProduct")
+		return false, errors.Wrap(err, "p.gen.IsProductOwner")
 	}
 
 	return ok, nil
 }
 
-func (p *Pg) IsUserTheOwnerOfTelegramChannel(ctx context.Context, externalUserID, channelID int64) (bool, error) {
+// IsTelegramChannelOwner checks if the user is the owner of the Telegram channel
+func (p *Pg) IsTelegramChannelOwner(ctx context.Context, externalUserID, channelID int64) (bool, error) {
 	ok, err := p.gen.IsUserTheOwnerOfTelegramChannel(ctx, generated.IsUserTheOwnerOfTelegramChannelParams{
 		OwnerExternalID: externalUserID,
 		ExternalID:      channelID,
@@ -288,11 +292,12 @@ func (p *Pg) IsUserTheOwnerOfTelegramChannel(ctx context.Context, externalUserID
 	return ok, nil
 }
 
-func (p *Pg) GetMarketplaceShortName(ctx context.Context, id uuid.UUID) (string, error) {
-	return p.gen.GetMarketplaceShortName(ctx, id)
+// GetShortName returns the short name of the marketplace
+func (p *Pg) GetShortName(ctx context.Context, id uuid.UUID) (string, error) {
+	return p.gen.GetShortname(ctx, id)
 }
 
-// GetTelegramChannels gets a list of Telegram channels owned by a specific user
+// GetTelegramChannels gets a user's Telegram channels
 func (p *Pg) GetTelegramChannels(ctx context.Context, ownerExternalID int64) (GetTelegramChannelsResponse, error) {
 	rows, err := p.gen.GetTelegramChannels(ctx, ownerExternalID)
 	if err != nil {

@@ -38,7 +38,7 @@ type (
 // Types for requests and responses
 type (
 
-	// GetShopRequest defines the request for the GetShop endpoint
+	// GetShopRequest defines the request for the GetShops endpoint
 	// Products are queried based on the WebAppID
 	// or the WebAppShortName
 	GetShopRequest struct {
@@ -46,7 +46,7 @@ type (
 		WebAppShortName string
 	}
 
-	// GetShopResponse defines the response body for the GetShop endpoint
+	// GetShopResponse defines the response body for the GetShops endpoint
 	GetShopResponse struct {
 		WebAppID              uuid.UUID `json:"web_app_id,omitempty"`
 		WebAppName            string    `json:"web_app_name,omitempty"`

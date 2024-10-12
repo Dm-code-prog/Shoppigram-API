@@ -23,7 +23,7 @@ type (
 )
 
 const (
-	getProductsCacheKeyBase = "products.GetShop:"
+	getProductsCacheKeyBase = "products.GetShops:"
 
 	orderTypeP2P    orderType = "p2p"
 	orderTypeOnline orderType = "online"
@@ -55,7 +55,7 @@ func (s *DefaultService) GetShop(ctx context.Context, request GetShopRequest) (G
 
 	res, err := s.repo.GetShop(ctx, request)
 	if err != nil {
-		return GetShopResponse{}, errors.Wrap(err, "s.repo.GetShop")
+		return GetShopResponse{}, errors.Wrap(err, "s.repo.GetShops")
 	}
 
 	// Cache the response
@@ -109,7 +109,7 @@ func (s *DefaultService) InvalidateShopCache(_ context.Context, req InvalidateSh
 	)
 }
 
-// makeProductsCacheKey creates a cache key for the GetShop endpoint
+// makeProductsCacheKey creates a cache key for the GetShops endpoint
 // The key is based on the web app id or the web app short name
 func makeProductsCacheKey(webAppID uuid.UUID, webAppShortname string) string {
 	if webAppID != uuid.Nil {

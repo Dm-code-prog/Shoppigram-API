@@ -8,7 +8,7 @@ import (
 	telegramusers "github.com/shoppigram-com/marketplace-api/internal/auth"
 )
 
-// makeGetMarketplacesEndpoint constructs a GetMarketplaces endpoint wrapping the service.
+// makeGetMarketplacesEndpoint constructs a GetShops endpoint wrapping the service.
 //
 // Path: GET /api/v1/private/marketplaces
 func makeGetMarketplacesEndpoint(s Service) endpoint.Endpoint {
@@ -18,18 +18,18 @@ func makeGetMarketplacesEndpoint(s Service) endpoint.Endpoint {
 			return nil, err
 		}
 
-		v0, err := s.GetMarketplaces(ctx, GetMarketplacesRequest{
+		v0, err := s.GetShops(ctx, GetShopsRequest{
 			ExternalUserID: usr.ExternalId,
 		})
 		if err != nil {
-			return nil, errors.Wrap(err, "s.GetMarketplaces")
+			return nil, errors.Wrap(err, "s.GetShops")
 		}
 		return v0, nil
 	}
 }
 
 // makeCreateMarketplaceEndpoint creates a new endpoint for access to
-// CreateMarketplace service method
+// CreateShop service method
 //
 // Path: POST /api/v1/private/marketplaces
 func makeCreateMarketplaceEndpoint(s Service) endpoint.Endpoint {
@@ -39,15 +39,15 @@ func makeCreateMarketplaceEndpoint(s Service) endpoint.Endpoint {
 			return nil, err
 		}
 
-		request, ok := req.(CreateMarketplaceRequest)
+		request, ok := req.(CreateShopRequest)
 		if !ok {
 			return nil, ErrorBadRequest
 		}
 
 		request.ExternalUserID = usr.ExternalId
-		response, err := s.CreateMarketplace(ctx, request)
+		response, err := s.CreateShop(ctx, request)
 		if err != nil {
-			return nil, errors.Wrap(err, "s.CreateMarketplace")
+			return nil, errors.Wrap(err, "s.CreateShop")
 		}
 
 		return response, nil
@@ -55,17 +55,17 @@ func makeCreateMarketplaceEndpoint(s Service) endpoint.Endpoint {
 }
 
 // makeDeleteMarketplaceEndpoint creates a new endpoint for access to
-// DeleteMarketplace service method
+// SoftDeleteShop service method
 //
 // Path: DELETE /api/v1/private/marketplaces
 func makeDeleteMarketplaceEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
-		request, ok := req.(DeleteMarketplaceRequest)
+		request, ok := req.(DeleteShopRequest)
 		if !ok {
 			return nil, ErrorBadRequest
 		}
 
-		err := s.DeleteMarketplace(ctx, request)
+		err := s.DeleteShop(ctx, request)
 		if err != nil {
 			return nil, errors.Wrap(err, "s.DeleteProduct")
 		}
@@ -75,7 +75,7 @@ func makeDeleteMarketplaceEndpoint(s Service) endpoint.Endpoint {
 }
 
 // makeUpdateMarketplaceEndpoint creates a new endpoint for access to
-// UpdateMarketplace service method
+// UpdateShop service method
 //
 // Path: PUT /api/v1/private/marketplaces/<web_app_id>
 func makeUpdateMarketplaceEndpoint(s Service) endpoint.Endpoint {
@@ -85,15 +85,15 @@ func makeUpdateMarketplaceEndpoint(s Service) endpoint.Endpoint {
 			return nil, err
 		}
 
-		request, ok := req.(UpdateMarketplaceRequest)
+		request, ok := req.(UpdateShopRequest)
 		if !ok {
 			return nil, ErrorBadRequest
 		}
 
 		request.ExternalUserID = usr.ExternalId
-		err = s.UpdateMarketplace(ctx, request)
+		err = s.UpdateShop(ctx, request)
 		if err != nil {
-			return nil, errors.Wrap(err, "s.UpdateMarketplace")
+			return nil, errors.Wrap(err, "s.UpdateShop")
 		}
 
 		return nil, nil
@@ -249,7 +249,7 @@ func makeCreateProductImageUploadURLEndpoint(s Service) endpoint.Endpoint {
 }
 
 // makeCreateMarketplaceLogoUploadURLEndpoint creates a new endpoint for access to
-// CreateMarketplaceLogoUploadURL service method
+// CreateShopLogoUploadURL service method
 //
 // Path: POST /api/v1/private/marketplaces/upload-logo-url/<web_app_id>
 func makeCreateMarketplaceLogoUploadURLEndpoint(s Service) endpoint.Endpoint {
@@ -259,13 +259,13 @@ func makeCreateMarketplaceLogoUploadURLEndpoint(s Service) endpoint.Endpoint {
 			return nil, err
 		}
 
-		request, ok := req.(CreateMarketplaceLogoUploadURLRequest)
+		request, ok := req.(CreateShopLogoUploadURLRequest)
 		if !ok {
 			return nil, ErrorBadRequest
 		}
 
 		request.ExternalUserID = usr.ExternalId
-		response, err := s.CreateMarketplaceLogoUploadURL(ctx, request)
+		response, err := s.CreateShopLogoUploadURL(ctx, request)
 		if err != nil {
 			return nil, errors.Wrap(err, "s.CreateUploadURL")
 		}
@@ -275,7 +275,7 @@ func makeCreateMarketplaceLogoUploadURLEndpoint(s Service) endpoint.Endpoint {
 }
 
 // makePublishMarketplaceBannerToChannelEndpoint creates a new endpoint for access to
-// PublishMarketplaceBannerToChannel service method
+// PublishShopBannerToChannel service method
 //
 // Path: POST /api/v1/private/marketplaces/publish-to-channel/<web_app_id>
 func makePublishMarketplaceBannerToChannelEndpoint(s Service) endpoint.Endpoint {
@@ -285,15 +285,15 @@ func makePublishMarketplaceBannerToChannelEndpoint(s Service) endpoint.Endpoint 
 			return nil, err
 		}
 
-		request, ok := req.(PublishMarketplaceBannerToChannelRequest)
+		request, ok := req.(PublishShopBannerToChannelRequest)
 		if !ok {
 			return nil, ErrorBadRequest
 		}
 
 		request.ExternalUserID = usr.ExternalId
-		err = s.PublishMarketplaceBannerToChannel(ctx, request)
+		err = s.PublishShopBannerToChannel(ctx, request)
 		if err != nil {
-			return nil, errors.Wrap(err, "s.PublishMarketplaceBannerToChannel")
+			return nil, errors.Wrap(err, "s.PublishShopBannerToChannel")
 		}
 
 		return nil, nil

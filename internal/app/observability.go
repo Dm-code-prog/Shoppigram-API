@@ -28,7 +28,7 @@ func (s *ServiceWithObservability) GetShop(ctx context.Context, request GetShopR
 	if err != nil {
 		s.log.
 			With(zap.String("web_app_id", request.WebAppID.String())).
-			Error("s.service.GetShop", logger.SilentError(err))
+			Error("s.service.GetShops", logger.SilentError(err))
 	}
 
 	return res, err
