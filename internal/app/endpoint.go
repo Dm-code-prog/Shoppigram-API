@@ -8,38 +8,38 @@ import (
 	telegramusers "github.com/shoppigram-com/marketplace-api/internal/auth"
 )
 
-// makeGetProductsEndpoint constructs a GetShop endpoint wrapping the service.
+// makeGetShopEndpoint constructs a GetShops endpoint wrapping the service.
 //
 // Path: GET /api/v1/public/products/{web_app_id}
-func makeGetProductsEndpoint(s Service) endpoint.Endpoint {
+func makeGetShopEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, request any) (any, error) {
-		req, ok := request.(GetProductsRequest)
+		req, ok := request.(GetShopRequest)
 		if !ok {
-			return GetProductsResponse{}, ErrorInvalidWebAppID
+			return GetShopResponse{}, ErrorInvalidWebAppID
 		}
 		v0, err := s.GetShop(ctx, req)
 		if err != nil {
-			return GetProductsResponse{}, errors.Wrap(err, "s.GetShop")
+			return GetShopResponse{}, errors.Wrap(err, "s.GetShops")
 		}
 		return v0, nil
 	}
 }
 
-// makeInvalidateProductsCacheEndpoint constructs a InvdlidateShopCache endpoint wrapping the service.
+// makeInvalidateShopCacheEndpoint constructs a InvalidateShopCache endpoint wrapping the service.
 //
 // Path: PUT /api/v1/public/products/{web_app_id}/invalidate
-func makeInvalidateProductsCacheEndpoint(s Service) endpoint.Endpoint {
+func makeInvalidateShopCacheEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, request any) (any, error) {
-		req, ok := request.(InvalidateProductsCacheRequest)
+		req, ok := request.(InvalidateShopCacheRequest)
 		if !ok {
 			return nil, ErrorInvalidWebAppID
 		}
-		s.InvdlidateShopCache(ctx, req)
+		s.InvalidateShopCache(ctx, req)
 		return nil, nil
 	}
 }
 
-// makeGetProductsEndpoint constructs a CreateOrder endpoint wrapping the service.
+// makeGetShopEndpoint constructs a CreateOrder endpoint wrapping the service.
 //
 // Path: PUT /api/v1/public/orders/{web_app_id}
 func makeCreateOrderEndpoint(svc Service) endpoint.Endpoint {

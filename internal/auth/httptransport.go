@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/go-kit/kit/endpoint"
+	"github.com/shoppigram-com/marketplace-api/packages/gokithelper"
 	"net/http"
 
 	"github.com/pkg/errors"
@@ -24,7 +25,7 @@ func MakeHandler(bs Service, authMw endpoint.Middleware) http.Handler {
 
 	createOrUpdateTgUserHandler := kithttp.NewServer(
 		createOrUpdateTgUser,
-		decodeCreateOrUpdateTgUserRequest,
+		gokithelper.DecodeEmptyRequest,
 		encodeResponse,
 		opts...,
 	)
@@ -33,10 +34,6 @@ func MakeHandler(bs Service, authMw endpoint.Middleware) http.Handler {
 	r.Put("/telegram", createOrUpdateTgUserHandler.ServeHTTP)
 
 	return r
-}
-
-func decodeCreateOrUpdateTgUserRequest(_ context.Context, _ *http.Request) (interface{}, error) {
-	return nil, nil
 }
 
 func encodeResponse(_ context.Context, w http.ResponseWriter, response interface{}) error {

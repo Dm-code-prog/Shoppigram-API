@@ -141,6 +141,48 @@ func (ns NullProductCurrency) Value() (driver.Value, error) {
 	return string(ns.ProductCurrency), nil
 }
 
+type WebAppType string
+
+const (
+	WebAppTypeShop  WebAppType = "shop"
+	WebAppTypePanel WebAppType = "panel"
+)
+
+func (e *WebAppType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = WebAppType(s)
+	case string:
+		*e = WebAppType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for WebAppType: %T", src)
+	}
+	return nil
+}
+
+type NullWebAppType struct {
+	WebAppType WebAppType
+	Valid      bool // Valid is true if WebAppType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullWebAppType) Scan(value interface{}) error {
+	if value == nil {
+		ns.WebAppType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.WebAppType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullWebAppType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.WebAppType), nil
+}
+
 type NewOrderNotificationsList struct {
 	WebAppID      pgtype.UUID
 	AdminUsername pgtype.Text
@@ -183,6 +225,7 @@ type Product struct {
 	PriceCurrency string
 	ImageUrl      pgtype.Text
 	Category      pgtype.Text
+	IsDeleted     bool
 }
 
 type ProductCustomMediaForward struct {
@@ -194,12 +237,29 @@ type ProductCustomMediaForward struct {
 	OnOrderState OrderState
 }
 
+type ProductExternalLink struct {
+	ID        uuid.UUID
+	ProductID uuid.UUID
+	Url       string
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
+}
+
 type ProductsCustomMessage struct {
 	ID           uuid.UUID
 	CreatedAt    pgtype.Timestamp
 	ProductID    uuid.UUID
 	Message      string
 	OnOrderState OrderState
+}
+
+type TelegramChannel struct {
+	ID              uuid.UUID
+	ExternalID      int64
+	Title           string
+	Name            pgtype.Text
+	IsPublic        bool
+	OwnerExternalID int64
 }
 
 type TelegramUser struct {
@@ -230,4 +290,5 @@ type WebApp struct {
 	Currency              ProductCurrency
 	CommissionPercent     pgtype.Numeric
 	CommissionFixed       pgtype.Numeric
+	Type                  WebAppType
 }

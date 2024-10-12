@@ -17,7 +17,7 @@ func (a *notificationsAdminAdapter) AddUserToNewOrderNotifications(ctx context.C
 	return a.notifier.AddUserToNewOrderNotifications(ctx, notifications.AddUserToNewOrderNotificationsRequest(req))
 }
 
-func (a *notificationsAdminAdapter) SendMarketplaceBanner(_ context.Context, params admin.SendMarketplaceBannerParams) (message int64, err error) {
+func (a *notificationsAdminAdapter) SendMarketplaceBanner(_ context.Context, params admin.SendShopBannerParams) (message int64, err error) {
 	return a.notifier.SendMarketplaceBanner(context.Background(), notifications.SendMarketplaceBannerParams(params))
 }
 

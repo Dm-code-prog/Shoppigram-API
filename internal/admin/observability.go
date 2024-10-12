@@ -23,51 +23,51 @@ func NewServiceWithObservability(service Service, log *zap.Logger) *ServiceWithO
 	}
 }
 
-// GetMarketplaces calls the underlying service's GetMarketplaces method
-func (s *ServiceWithObservability) GetMarketplaces(ctx context.Context, request GetMarketplacesRequest) (GetMarketplacesResponse, error) {
-	res, err := s.service.GetMarketplaces(ctx, request)
+// GetShops calls the underlying service's GetShops method
+func (s *ServiceWithObservability) GetShops(ctx context.Context, request GetShopsRequest) (GetShopsResponse, error) {
+	res, err := s.service.GetShops(ctx, request)
 	if err != nil {
 		s.log.
 			With(zap.String("external_user_id", strconv.FormatInt(request.ExternalUserID, 10))).
-			Error("s.service.GetMarketplaces", logger.SilentError(err))
+			Error("s.service.GetShops", logger.SilentError(err))
 	}
 
 	return res, err
 }
 
-// CreateMarketplace calls the underlying service's CreateMarketplace method
-func (s *ServiceWithObservability) CreateMarketplace(ctx context.Context, request CreateMarketplaceRequest) (CreateMarketplaceResponse, error) {
-	res, err := s.service.CreateMarketplace(ctx, request)
+// CreateShop calls the underlying service's CreateShop method
+func (s *ServiceWithObservability) CreateShop(ctx context.Context, request CreateShopRequest) (CreateShopResponse, error) {
+	res, err := s.service.CreateShop(ctx, request)
 	if err != nil {
 		s.log.
 			With(zap.String("external_user_id", strconv.FormatInt(request.ExternalUserID, 10))).
-			Error("s.service.CreateMarketplace", logger.SilentError(err))
+			Error("s.service.CreateShop", logger.SilentError(err))
 	}
 
 	return res, err
 }
 
-// UpdateMarketplace calls the underlying service's UpdateMarketplace method
-func (s *ServiceWithObservability) UpdateMarketplace(ctx context.Context, request UpdateMarketplaceRequest) error {
-	err := s.service.UpdateMarketplace(ctx, request)
+// UpdateShop calls the underlying service's UpdateShop method
+func (s *ServiceWithObservability) UpdateShop(ctx context.Context, request UpdateShopRequest) error {
+	err := s.service.UpdateShop(ctx, request)
 	if err != nil {
 		s.log.
 			With(zap.String("external_user_id", strconv.FormatInt(request.ExternalUserID, 10))).
 			With(zap.String("web_app_id", request.ID.String())).
-			Error("s.service.UpdateMarketplace", logger.SilentError(err))
+			Error("s.service.UpdateShop", logger.SilentError(err))
 	}
 
 	return err
 }
 
-// DeleteMarketplace calls the underlying service's DeleteMarketplace method
-func (s *ServiceWithObservability) DeleteMarketplace(ctx context.Context, request DeleteMarketplaceRequest) error {
-	err := s.service.DeleteMarketplace(ctx, request)
+// DeleteShop calls the underlying service's DeleteShop method
+func (s *ServiceWithObservability) DeleteShop(ctx context.Context, request DeleteShopRequest) error {
+	err := s.service.DeleteShop(ctx, request)
 	if err != nil {
 		s.log.
 			With(zap.String("external_user_id", strconv.FormatInt(request.ExternalUserID, 10))).
 			With(zap.String("web_app_id", request.WebAppId.String())).
-			Error("s.service.DeleteMarketplace", logger.SilentError(err))
+			Error("s.service.SoftDeleteShop", logger.SilentError(err))
 	}
 
 	return err
@@ -145,13 +145,13 @@ func (s *ServiceWithObservability) CreateProductImageUploadURL(ctx context.Conte
 	return res, err
 }
 
-// CreateMarketplaceLogoUploadURL calls the underlying service's CreateMarketplaceLogoUploadURL method
-func (s *ServiceWithObservability) CreateMarketplaceLogoUploadURL(ctx context.Context, request CreateMarketplaceLogoUploadURLRequest) (CreateMarketplaceLogoUploadURLResponse, error) {
-	res, err := s.service.CreateMarketplaceLogoUploadURL(ctx, request)
+// CreateShopLogoUploadURL calls the underlying service's CreateMarketplaceLogoUploadURL method
+func (s *ServiceWithObservability) CreateShopLogoUploadURL(ctx context.Context, request CreateShopLogoUploadURLRequest) (CreateShopLogoUploadURLResponse, error) {
+	res, err := s.service.CreateShopLogoUploadURL(ctx, request)
 	if err != nil {
 		s.log.
 			With(zap.String("web_app_id", request.WebAppID.String())).
-			Error("s.service.CreateMarketplaceLogoUploadURL", logger.SilentError(err))
+			Error("s.service.CreateShopLogoUploadURL", logger.SilentError(err))
 	}
 
 	return res, err
@@ -169,14 +169,14 @@ func (s *ServiceWithObservability) GetTelegramChannels(ctx context.Context, owne
 	return res, err
 }
 
-// PublishMarketplaceBannerToChannel calls the underlying service's PublishMarketplaceBannerToChannel method
-func (s *ServiceWithObservability) PublishMarketplaceBannerToChannel(ctx context.Context, request PublishMarketplaceBannerToChannelRequest) error {
-	err := s.service.PublishMarketplaceBannerToChannel(ctx, request)
+// PublishShopBannerToChannel calls the underlying service's PublishMarketplaceBannerToChannel method
+func (s *ServiceWithObservability) PublishShopBannerToChannel(ctx context.Context, request PublishShopBannerToChannelRequest) error {
+	err := s.service.PublishShopBannerToChannel(ctx, request)
 	if err != nil {
 		s.log.
 			With(zap.String("web_app_id", request.WebAppID.String())).
 			With(zap.String("channel_id", strconv.FormatInt(request.ExternalChannelID, 10))).
-			Error("s.service.PublishMarketplaceBannerToChannel", logger.SilentError(err))
+			Error("s.service.PublishShopBannerToChannel", logger.SilentError(err))
 	}
 
 	return err

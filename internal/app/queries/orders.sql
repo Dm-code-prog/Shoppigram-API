@@ -53,3 +53,11 @@ update orders
 set state = @state::order_state
 where id = $1;
 
+-- name: DoesWebAppSupportOrders :one
+select exists(select 1
+              from web_apps
+              where id = $1
+                and is_deleted = false
+                and is_verified = true
+                and type = 'shop'::web_app_type);
+

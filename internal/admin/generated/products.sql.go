@@ -114,6 +114,17 @@ func (q *Queries) IsUserTheOwnerOfWebApp(ctx context.Context, arg IsUserTheOwner
 	return column_1, err
 }
 
+const removeProductExternalLinks = `-- name: RemoveProductExternalLinks :exec
+delete
+from product_external_links
+where product_id = $1
+`
+
+func (q *Queries) RemoveProductExternalLinks(ctx context.Context, productID uuid.UUID) error {
+	_, err := q.db.Exec(ctx, removeProductExternalLinks, productID)
+	return err
+}
+
 const updateProduct = `-- name: UpdateProduct :execresult
 update products
 set name           = $1,

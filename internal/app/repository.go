@@ -30,28 +30,29 @@ func NewPg(pool *pgxpool.Pool) *Pg {
 	return &Pg{gen: generated.New(pool), pool: pool}
 }
 
-// GetProducts returns a list of products
-func (pg *Pg) GetProducts(ctx context.Context, request GetProductsRequest) (GetProductsResponse, error) {
+// GetShop returns a list of products
+func (pg *Pg) GetShop(ctx context.Context, request GetShopRequest) (GetShopResponse, error) {
 	m, err := pg.gen.GetMarketplaceWithProducts(ctx, generated.GetMarketplaceWithProductsParams{
 		WebAppID:  request.WebAppID,
 		ShortName: request.WebAppShortName,
 	})
 	if err != nil {
-		return GetProductsResponse{}, errors.Wrap(err, "pg.gen.GetMarketplaceWithProducts")
+		return GetShopResponse{}, errors.Wrap(err, "pg.gen.GetMarketplaceWithProducts")
 	}
 
 	var products []Product
 	if m.Products != nil {
 		err = json.Unmarshal(m.Products, &products)
 		if err != nil {
-			return GetProductsResponse{}, errors.Wrap(err, "json.Unmarshal")
+			return GetShopResponse{}, errors.Wrap(err, "json.Unmarshal")
 		}
 	}
 
-	return GetProductsResponse{
+	return GetShopResponse{
 		WebAppID:              m.ID,
 		WebAppName:            m.Name,
 		WebAppShortName:       m.ShortName,
+		WebAppType:            string(m.Type),
 		WebAppIsVerified:      m.IsVerified.Bool,
 		OnlinePaymentsEnabled: m.OnlinePaymentsEnabled,
 		Products:              products,
@@ -70,6 +71,14 @@ func (pg *Pg) CreateOrder(ctx context.Context, req SaveOrderParams) (SaveOrderRe
 	}(tx, ctx)
 	qtx := pg.gen.WithTx(tx)
 
+	ok, err := qtx.DoesWebAppSupportOrders(ctx, req.WebAppID)
+	if err != nil {
+		return SaveOrderResult{}, errors.Wrap(err, "qtx.DoesWebAppSupportOrders")
+	}
+
+	if !ok {
+		return SaveOrderResult{}, ErrorOrderIsNotSupported
+	}
 	var (
 		id         uuid.UUID
 		readableID int
@@ -176,7 +185,7 @@ func (pg *Pg) GetOrder(ctx context.Context, orderId uuid.UUID, userId int64) (Ge
 	products := make([]Product, len(rows))
 
 	if len(rows) == 0 {
-		return GetOrderResponse{}, ErrorGetOrderNotPremited
+		return GetOrderResponse{}, ErrorGetOrderNotPermitted
 	}
 	WebAppName := rows[0].WebAppName
 	WebAppShortName := rows[0].WebAppShortName

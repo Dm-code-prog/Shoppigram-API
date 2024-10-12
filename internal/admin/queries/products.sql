@@ -9,6 +9,16 @@ values (@web_app_id::uuid,
         '')
 returning id;
 
+-- name: SetProductExternalLinks :batchexec
+insert into product_external_links (product_id, url)
+values ($1,
+        $2);
+
+-- name: RemoveProductExternalLinks :exec
+delete
+from product_external_links
+where product_id = $1;
+
 -- name: CountMarketplaceProducts :one
 select count(*)
 from products

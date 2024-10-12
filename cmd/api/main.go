@@ -42,17 +42,22 @@ func main() {
 	cloudwatchcollector.Init(config.AWS.Cloudwatch.Namespace)
 	defer cloudwatchcollector.Shutdown()
 
+	pgConf, err := pgxpool.ParseConfig(config.Postgres.DSN)
+	if err != nil {
+		log.Fatal("failed to parse postgres dsn", logger.SilentError(err))
+	}
+
+	pgConf.MaxConns = int32(config.Postgres.MaxConns)
+	pgConf.MinConns = int32(config.Postgres.MinConns)
+
 	ctx := context.Background()
-	db, err := pgxpool.New(ctx, config.Postgres.DSN)
+	db, err := pgxpool.NewWithConfig(ctx, pgConf)
 	if err != nil {
 		log.Fatal("failed to connect to database", logger.SilentError(err))
-		return
 	}
+
 	defer db.Close()
 	log.Debug("connected to database")
-
-	db.Config().MinConns = int32(config.Postgres.MinConns)
-	db.Config().MaxConns = int32(config.Postgres.MaxConns)
 
 	var g run.Group
 	g.Add(run.SignalHandler(ctx, os.Interrupt, os.Kill, syscall.SIGTERM))

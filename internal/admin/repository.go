@@ -23,83 +23,91 @@ const (
 // Pg implements the Repository interface
 // using PostgreSQL as the backing store.
 type Pg struct {
-	gen *generated.Queries
+	pool *pgxpool.Pool
+	gen  *generated.Queries
 }
 
 // NewPg creates a new Pg
 func NewPg(db *pgxpool.Pool) *Pg {
-	return &Pg{gen: generated.New(db)}
+	return &Pg{
+		gen:  generated.New(db),
+		pool: db,
+	}
 }
 
-// GetMarketplaces gets all marketplaces created by user
-func (p *Pg) GetMarketplaces(ctx context.Context, req GetMarketplacesRequest) (GetMarketplacesResponse, error) {
-	rows, err := p.gen.GetMarketplaces(ctx, pgtype.Int8{
+// GetShops returns user's shops
+func (p *Pg) GetShops(ctx context.Context, req GetShopsRequest) (GetShopsResponse, error) {
+	shops := make([]Shop, 0)
+
+	rows, err := p.gen.GetShops(ctx, pgtype.Int8{
 		Int64: req.ExternalUserID,
 		Valid: true,
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return GetMarketplacesResponse{}, errors.Wrap(ErrorAdminNotFound, "p.gen.GetMarketplaces")
+			return GetShopsResponse{
+				Shops: shops,
+			}, nil
 		}
-		return GetMarketplacesResponse{}, errors.Wrap(err, "p.gen.GetMarketplaces")
+		return GetShopsResponse{}, errors.Wrap(err, "p.gen.GetShops")
 	}
 
-	marketplaces := make([]Marketplace, len(rows))
-
-	for i, v := range rows {
-		marketplaces[i] = Marketplace{
+	for _, v := range rows {
+		shops = append(shops, Shop{
 			ID:         v.ID,
 			Name:       v.Name,
-			LogoURL:    v.LogoUrl.String,
 			IsVerified: v.IsVerified.Bool,
 			ShortName:  v.ShortName,
-		}
+			Type:       shopType(v.Type),
+			Currency:   string(v.Currency),
+		})
 	}
 
-	return GetMarketplacesResponse{
-		Marketplaces: marketplaces,
+	return GetShopsResponse{
+		Shops: shops,
 	}, nil
 }
 
-// CreateMarketplace stores the marketplace information in the database
-// It creates the ID for the marketplace and returns it
-func (p *Pg) CreateMarketplace(ctx context.Context, req CreateMarketplaceRequest) (CreateMarketplaceResponse, error) {
-	count, err := p.gen.CountUserMarketplaces(ctx, pgtype.Int8{
+// CreateShop creates a new shop in database
+func (p *Pg) CreateShop(ctx context.Context, req CreateShopRequest) (CreateShopResponse, error) {
+	count, err := p.gen.CountUserShops(ctx, pgtype.Int8{
 		Int64: req.ExternalUserID,
 		Valid: true,
 	})
 	if err != nil {
-		return CreateMarketplaceResponse{}, errors.Wrap(err, "p.gen.CountUserMarketplaces")
+		return CreateShopResponse{}, errors.Wrap(err, "p.gen.CountUserMarketplaces")
 	}
 
-	if count > maxMarketplacesThreshold {
-		return CreateMarketplaceResponse{}, ErrorMaxMarketplacesExceeded
+	if count > maxShops {
+		return CreateShopResponse{}, ErrorMaxMarketplacesExceeded
 	}
 
-	id, err := p.gen.CreateMarketplace(ctx, generated.CreateMarketplaceParams{
+	id, err := p.gen.CreateShop(ctx, generated.CreateShopParams{
 		Name:            req.Name,
 		ShortName:       req.ShortName,
 		OwnerExternalID: pgtype.Int8{Int64: req.ExternalUserID, Valid: true},
+		Currency:        generated.ProductCurrency(req.Currency),
+		Type:            generated.WebAppType(req.Type),
 	})
 	if err != nil {
 		if strings.Contains(err.Error(), pgerrcode.UniqueViolation) {
-			return CreateMarketplaceResponse{}, ErrorNotUniqueShortName
+			return CreateShopResponse{}, ErrorNotUniqueShortName
 		}
-		return CreateMarketplaceResponse{}, errors.Wrap(err, "p.gen.CreateMarketplace")
+		return CreateShopResponse{}, errors.Wrap(err, "p.gen.CreateShop")
 	}
 
-	return CreateMarketplaceResponse{ID: id}, err
+	return CreateShopResponse{ID: id}, err
 }
 
-// UpdateMarketplace updates the name of the marketplace in the database
-func (p *Pg) UpdateMarketplace(ctx context.Context, req UpdateMarketplaceRequest) error {
-	execRes, err := p.gen.UpdateMarketplace(ctx, generated.UpdateMarketplaceParams{
+// UpdateShop updates the shop in the database
+func (p *Pg) UpdateShop(ctx context.Context, req UpdateShopRequest) error {
+	execRes, err := p.gen.UpdateShop(ctx, generated.UpdateShopParams{
 		ID:              req.ID,
 		Name:            req.Name,
 		OwnerExternalID: pgtype.Int8{Int64: req.ExternalUserID, Valid: true},
 	})
 	if err != nil {
-		return errors.Wrap(err, "p.gen.UpdateMarketplace")
+		return errors.Wrap(err, "p.gen.UpdateShop")
 	}
 
 	if execRes.RowsAffected() == 0 {
@@ -109,9 +117,9 @@ func (p *Pg) UpdateMarketplace(ctx context.Context, req UpdateMarketplaceRequest
 	return nil
 }
 
-// DeleteMarketplace soft deletes marketplace
-func (p *Pg) DeleteMarketplace(ctx context.Context, req DeleteMarketplaceRequest) error {
-	err := p.gen.SoftDeleteMarketplace(ctx, req.WebAppId)
+// SoftDeleteShop marks the shop as deleted
+func (p *Pg) SoftDeleteShop(ctx context.Context, req DeleteShopRequest) error {
+	err := p.gen.SoftDeleteShop(ctx, req.WebAppId)
 	if err != nil {
 		return errors.Wrap(err, "p.gen.SoftDeleteMarketplace")
 	}
@@ -122,16 +130,25 @@ func (p *Pg) DeleteMarketplace(ctx context.Context, req DeleteMarketplaceRequest
 // CreateProduct saves a product to the database
 // and returns the ID that it assigned to it
 func (p *Pg) CreateProduct(ctx context.Context, req CreateProductRequest) (CreateProductResponse, error) {
-	count, err := p.gen.CountMarketplaceProducts(ctx, req.WebAppID)
+	tx, err := p.pool.Begin(ctx)
+	if err != nil {
+		return CreateProductResponse{}, errors.Wrap(err, "pg.pool.Begin")
+	}
+	defer func(tx pgx.Tx, ctx context.Context) {
+		_ = tx.Rollback(ctx)
+	}(tx, ctx)
+	qtx := p.gen.WithTx(tx)
+
+	count, err := qtx.CountMarketplaceProducts(ctx, req.WebAppID)
 	if err != nil {
 		return CreateProductResponse{}, errors.Wrap(err, "p.gen.CountMarketplaceProducts")
 	}
 
-	if count > maxMarketplaceProducts {
+	if count > maxProducts {
 		return CreateProductResponse{}, ErrorMaxProductsExceeded
 	}
 
-	id, err := p.gen.CreateProduct(ctx, generated.CreateProductParams{
+	id, err := qtx.CreateProduct(ctx, generated.CreateProductParams{
 		WebAppID:    req.WebAppID,
 		Name:        req.Name,
 		Price:       req.Price,
@@ -142,12 +159,31 @@ func (p *Pg) CreateProduct(ctx context.Context, req CreateProductRequest) (Creat
 		return CreateProductResponse{}, errors.Wrap(err, "p.gen.CreateProduct")
 	}
 
+	err = setProductExternalLinks(ctx, qtx, id, req.ExternalLinks)
+	if err != nil {
+		return CreateProductResponse{}, errors.Wrap(err, "setProductExternalLinks")
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return CreateProductResponse{}, errors.Wrap(err, "tx.Commit")
+	}
+
 	return CreateProductResponse{ID: id}, err
 }
 
 // UpdateProduct updates the product of a marketplace in the database
 func (p *Pg) UpdateProduct(ctx context.Context, req UpdateProductRequest) error {
-	execRes, err := p.gen.UpdateProduct(ctx, generated.UpdateProductParams{
+	tx, err := p.pool.Begin(ctx)
+	if err != nil {
+		return errors.Wrap(err, "pg.pool.Begin")
+	}
+	defer func(tx pgx.Tx, ctx context.Context) {
+		_ = tx.Rollback(ctx)
+	}(tx, ctx)
+	qtx := p.gen.WithTx(tx)
+
+	execRes, err := qtx.UpdateProduct(ctx, generated.UpdateProductParams{
 		ID:          req.ID,
 		WebAppID:    req.WebAppID,
 		Name:        req.Name,
@@ -161,6 +197,16 @@ func (p *Pg) UpdateProduct(ctx context.Context, req UpdateProductRequest) error 
 
 	if execRes.RowsAffected() == 0 {
 		return ErrorOpNotAllowed
+	}
+
+	err = setProductExternalLinks(ctx, qtx, req.ID, req.ExternalLinks)
+	if err != nil {
+		return errors.Wrap(err, "setProductExternalLinks")
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return errors.Wrap(err, "tx.Commit")
 	}
 
 	return nil
@@ -205,7 +251,7 @@ func (p *Pg) GetOrders(ctx context.Context, req GetOrdersRequest) (GetOrdersResp
 	orders := make([]Order, len(rows))
 
 	for i, v := range rows {
-		products := make([]Product, 0)
+		products := make([]OrderProduct, 0)
 		err := json.Unmarshal(v.Products, &products)
 		if err != nil {
 			return GetOrdersResponse{}, errors.Wrap(err, "json.Unmarshal")
@@ -247,8 +293,8 @@ func (p *Pg) GetBalance(ctx context.Context, req GetBalanceRequest) (GetBalanceR
 	return GetBalanceResponse{Balances: balances}, nil
 }
 
-// IsUserTheOwnerOfMarketplace checks if the user is the owner of the marketplace
-func (p *Pg) IsUserTheOwnerOfMarketplace(ctx context.Context, userID int64, webAppID uuid.UUID) (bool, error) {
+// IsShopOwner checks if the user is the owner of the shop
+func (p *Pg) IsShopOwner(ctx context.Context, userID int64, webAppID uuid.UUID) (bool, error) {
 	ok, err := p.gen.IsUserTheOwnerOfWebApp(ctx, generated.IsUserTheOwnerOfWebAppParams{
 		OwnerExternalID: pgtype.Int8{Int64: userID, Valid: true},
 		ID:              webAppID,
@@ -260,8 +306,8 @@ func (p *Pg) IsUserTheOwnerOfMarketplace(ctx context.Context, userID int64, webA
 	return ok, nil
 }
 
-// IsUserTheOwnerOfProduct checks if the user is the owner of the product
-func (p *Pg) IsUserTheOwnerOfProduct(ctx context.Context, userID int64, productID uuid.UUID) (bool, error) {
+// IsProductOwner checks if the user is the owner of the product
+func (p *Pg) IsProductOwner(ctx context.Context, userID int64, productID uuid.UUID) (bool, error) {
 	ok, err := p.gen.IsUserTheOwnerOfProduct(ctx, generated.IsUserTheOwnerOfProductParams{
 		OwnerExternalID: pgtype.Int8{Int64: userID, Valid: true},
 		ID:              productID,
@@ -270,13 +316,14 @@ func (p *Pg) IsUserTheOwnerOfProduct(ctx context.Context, userID int64, productI
 		if errors.Is(err, pgx.ErrNoRows) {
 			return false, ErrorOpNotAllowed
 		}
-		return false, errors.Wrap(err, "p.gen.IsUserTheOwnerOfProduct")
+		return false, errors.Wrap(err, "p.gen.IsProductOwner")
 	}
 
 	return ok, nil
 }
 
-func (p *Pg) IsUserTheOwnerOfTelegramChannel(ctx context.Context, externalUserID, channelID int64) (bool, error) {
+// IsTelegramChannelOwner checks if the user is the owner of the Telegram channel
+func (p *Pg) IsTelegramChannelOwner(ctx context.Context, externalUserID, channelID int64) (bool, error) {
 	ok, err := p.gen.IsUserTheOwnerOfTelegramChannel(ctx, generated.IsUserTheOwnerOfTelegramChannelParams{
 		OwnerExternalID: externalUserID,
 		ExternalID:      channelID,
@@ -288,11 +335,12 @@ func (p *Pg) IsUserTheOwnerOfTelegramChannel(ctx context.Context, externalUserID
 	return ok, nil
 }
 
-func (p *Pg) GetMarketplaceShortName(ctx context.Context, id uuid.UUID) (string, error) {
-	return p.gen.GetMarketplaceShortName(ctx, id)
+// GetShortName returns the short name of the marketplace
+func (p *Pg) GetShortName(ctx context.Context, id uuid.UUID) (string, error) {
+	return p.gen.GetShortname(ctx, id)
 }
 
-// GetTelegramChannels gets a list of Telegram channels owned by a specific user
+// GetTelegramChannels gets a user's Telegram channels
 func (p *Pg) GetTelegramChannels(ctx context.Context, ownerExternalID int64) (GetTelegramChannelsResponse, error) {
 	rows, err := p.gen.GetTelegramChannels(ctx, ownerExternalID)
 	if err != nil {
@@ -311,4 +359,41 @@ func (p *Pg) GetTelegramChannels(ctx context.Context, ownerExternalID int64) (Ge
 	}
 
 	return GetTelegramChannelsResponse{Channels: channels}, nil
+}
+
+func setProductExternalLinks(
+	ctx context.Context,
+	qtx *generated.Queries,
+	productID uuid.UUID,
+	externalLinks []ProductExternalLink,
+) error {
+	// Remove existing external links for the product
+	err := qtx.RemoveProductExternalLinks(ctx, productID)
+	if err != nil {
+		return errors.Wrap(err, "qtx.RemoveProductExternalLinks")
+	}
+
+	// Prepare new external links
+	var extLinks []generated.SetProductExternalLinksParams
+	for _, link := range externalLinks {
+		extLinks = append(extLinks, generated.SetProductExternalLinksParams{
+			ProductID: productID,
+			Url:       link.URL,
+		})
+	}
+
+	// Insert new external links using batch execution
+	var batchErr error
+	br := qtx.SetProductExternalLinks(ctx, extLinks)
+	br.Exec(func(i int, err error) {
+		if err != nil {
+			batchErr = errors.Wrap(err, "qtx.SetProductExternalLinks")
+		}
+	})
+
+	if batchErr != nil {
+		return batchErr
+	}
+
+	return nil
 }

@@ -2,14 +2,10 @@ version: "2"
 sql:
   - engine: postgresql
     queries:
-      - ./queries/orders.sql
-      - ./queries/telegram_channels.sql
+      - ./queries
     schema:
-      - ../sql/2024-04-11-aggregate.sql
-      - ../sql/2024-07-26.sql
-      - ../sql/2024-09-24.sql
-      - ./schemas/2024-08-03.sql
-      - ../sql/2024-10-06.sql
+      - ../sql
+      - ./schemas
     gen:
       go:
         package: generated

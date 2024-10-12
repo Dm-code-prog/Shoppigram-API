@@ -64,6 +64,22 @@ func (q *Queries) CreateP2POrder(ctx context.Context, arg CreateP2POrderParams) 
 	return i, err
 }
 
+const doesWebAppSupportOrders = `-- name: DoesWebAppSupportOrders :one
+select exists(select 1
+              from web_apps
+              where id = $1
+                and is_deleted = false
+                and is_verified = true
+                and type = 'shop'::web_app_type)
+`
+
+func (q *Queries) DoesWebAppSupportOrders(ctx context.Context, id uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, doesWebAppSupportOrders, id)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
+}
+
 const getOrder = `-- name: GetOrder :many
 select p.id,
        p.name,
