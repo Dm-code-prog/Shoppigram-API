@@ -150,6 +150,8 @@ update web_apps
 set name = $1
 where id = $2
   and owner_external_id = $3
+  and is_deleted = false
+returning id
 `
 
 type UpdateShopParams struct {
