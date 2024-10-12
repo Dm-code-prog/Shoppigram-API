@@ -48,14 +48,14 @@ func (p *Pg) GetShops(ctx context.Context, req GetShopsRequest) (GetShopsRespons
 		return GetShopsResponse{}, errors.Wrap(err, "p.gen.GetShops")
 	}
 
-	for i, v := range rows {
-		shops[i] = Shop{
+	for _, v := range rows {
+		shops = append(shops, Shop{
 			ID:         v.ID,
 			Name:       v.Name,
 			LogoURL:    v.LogoUrl.String,
 			IsVerified: v.IsVerified.Bool,
 			ShortName:  v.ShortName,
-		}
+		})
 	}
 
 	return GetShopsResponse{
