@@ -31,7 +31,7 @@ func MakeShopHandler(bs Service) http.Handler {
 
 	r := chi.NewRouter()
 	r.Get("/{id}", getShopH.ServeHTTP)
-	r.Put("/{web_app_id}/invalidate", invalidateShopCacheH.ServeHTTP)
+	r.Put("/{id}/invalidate", invalidateShopCacheH.ServeHTTP)
 
 	return r
 }
