@@ -13,10 +13,10 @@ type (
 	Shop struct {
 		ID                    uuid.UUID `json:"id"`
 		Name                  string    `json:"name"`
-		LogoURL               string    `json:"logo_url"`
 		ShortName             string    `json:"short_name"`
 		IsVerified            bool      `json:"is_verified"`
 		Type                  shopType  `json:"type"`
+		Currency              string    `json:"currency"`
 		OnlinePaymentsEnabled bool      `json:"online_payments_enabled"`
 	}
 

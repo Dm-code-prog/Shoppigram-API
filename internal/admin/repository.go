@@ -52,9 +52,10 @@ func (p *Pg) GetShops(ctx context.Context, req GetShopsRequest) (GetShopsRespons
 		shops = append(shops, Shop{
 			ID:         v.ID,
 			Name:       v.Name,
-			LogoURL:    v.LogoUrl.String,
 			IsVerified: v.IsVerified.Bool,
 			ShortName:  v.ShortName,
+			Type:       shopType(v.Type),
+			Currency:   string(v.Currency),
 		})
 	}
 
