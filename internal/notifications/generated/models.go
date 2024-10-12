@@ -237,6 +237,14 @@ type ProductCustomMediaForward struct {
 	OnOrderState OrderState
 }
 
+type ProductExternalLink struct {
+	ID        uuid.UUID
+	ProductID uuid.UUID
+	Url       string
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
+}
+
 type ProductsCustomMessage struct {
 	ID           uuid.UUID
 	CreatedAt    pgtype.Timestamp

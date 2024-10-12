@@ -28,21 +28,26 @@ SELECT wa.id,
                                'description', p.description,
                                'category', p.category,
                                'price', p.price,
-                               'price_currency', p.price_currency::text
+                               'price_currency', p.price_currency::text,
+                               'external_links', COALESCE(
+                                       (SELECT json_agg(json_build_object('url', pel.url))
+                                        FROM product_external_links pel
+                                        WHERE pel.product_id = p.id),
+                                       '[]'::json)
                        )
                                ) FILTER (WHERE p.id IS NOT NULL),
                        '[]'::json
        )::json AS products
 FROM web_apps wa
-         LEFT JOIN products p ON wa.id = p.web_app_id and p.is_deleted = false
+         LEFT JOIN products p ON wa.id = p.web_app_id AND p.is_deleted = false
 WHERE (
-    case when $1::uuid != '00000000-0000-0000-0000-000000000000' then wa.id = $1::uuid else true end
+    CASE WHEN $1::uuid != '00000000-0000-0000-0000-000000000000' THEN wa.id = $1::uuid ELSE TRUE END
     )
-  and (
-    case when $2::text != '' then wa.short_name = $2::text else true end
+  AND (
+    CASE WHEN $2::text != '' THEN wa.short_name = $2::text ELSE TRUE END
     )
   AND wa.is_deleted = false
-GROUP BY wa.id, wa.name, wa.short_name, wa.is_verified, wa.online_payments_enabled, wa.currency
+GROUP BY wa.id, wa.name, wa.short_name, wa.is_verified, wa.online_payments_enabled, wa.currency, wa.type
 `
 
 type GetMarketplaceWithProductsParams struct {

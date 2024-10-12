@@ -8,15 +8,24 @@ import (
 type (
 	orderType string
 
+	// ProductExternalLink is a link to a product
+	// on an external website
+	//
+	// Used for panels
+	ProductExternalLink struct {
+		URL string `json:"url"`
+	}
+
 	// Product defines the structure for a product
 	Product struct {
-		ID                  uuid.UUID `json:"id"`
-		Name                string    `json:"name"`
-		Description         string    `json:"description,omitempty"`
-		Quantity            int32     `json:"quantity,omitempty"`
-		Category            string    `json:"category,omitempty"`
-		Price               float64   `json:"price"`
-		LegacyPriceCurrency string    `json:"price_currency"`
+		ID                  uuid.UUID             `json:"id"`
+		Name                string                `json:"name"`
+		Description         string                `json:"description,omitempty"`
+		Quantity            int32                 `json:"quantity,omitempty"`
+		Category            string                `json:"category,omitempty"`
+		Price               float64               `json:"price"`
+		LegacyPriceCurrency string                `json:"price_currency"`
+		ExternalLinks       []ProductExternalLink `json:"external_links"`
 	}
 
 	// OrderProduct is a product in an order

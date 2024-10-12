@@ -212,6 +212,14 @@ type Product struct {
 	IsDeleted     bool
 }
 
+type ProductExternalLink struct {
+	ID        uuid.UUID
+	ProductID uuid.UUID
+	Url       string
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
+}
+
 type TelegramChannel struct {
 	ID              uuid.UUID
 	ExternalID      int64
