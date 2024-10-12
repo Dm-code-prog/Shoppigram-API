@@ -5,6 +5,7 @@ SELECT wa.id,
        wa.is_verified,
        wa.online_payments_enabled,
        wa.currency,
+       wa.type,
        COALESCE(
                        json_agg(
                        json_build_object(

@@ -13,136 +13,28 @@ import (
 )
 
 type (
-	// Product defines the structure for a Marketplace product
-	Product struct {
-		ID                  uuid.UUID `json:"id"`
-		Name                string    `json:"name"`
-		Description         string    `json:"description,omitempty"`
-		Quantity            int32     `json:"quantity,omitempty"`
-		Category            string    `json:"category,omitempty"`
-		Price               float64   `json:"price"`
-		LegacyPriceCurrency string    `json:"price_currency"`
-	}
-
-	// GetProductsRequest defines the request for the GetShop endpoint
-	// Products are queried based on the WebAppID
-	// or the WebAppShortName
-	GetProductsRequest struct {
-		WebAppID        uuid.UUID
-		WebAppShortName string
-	}
-
-	// GetProductsResponse defines the response body for the GetShop endpoint
-	GetProductsResponse struct {
-		WebAppID              uuid.UUID `json:"web_app_id,omitempty"`
-		WebAppName            string    `json:"web_app_name,omitempty"`
-		WebAppShortName       string    `json:"web_app_short_name,omitempty"`
-		WebAppIsVerified      bool      `json:"web_app_is_verified,omitempty"`
-		Currency              string    `json:"currency"`
-		OnlinePaymentsEnabled bool      `json:"online_payments_enabled"`
-		Products              []Product `json:"products,omitempty"`
-	}
-
-	// InvalidateProductsCacheRequest defines the request for the InvdlidateShopCache endpoint
-	InvalidateProductsCacheRequest struct {
-		WebAppID        uuid.UUID
-		WebAppShortName string
-	}
-
-	// ProductItem is a marketplace product
-	// that is identified by the ID and quantity
-	ProductItem struct {
-		ID       uuid.UUID `json:"id"`
-		Quantity int32     `json:"quantity"`
-	}
-
-	// CreateOrderRequest specifies the products
-	// of a web app marketplace that make up
-	// the order and user information
-	CreateOrderRequest struct {
-		WebAppID uuid.UUID
-		// p2p or online for now
-		Type     string        `json:"type"`
-		Products []ProductItem `json:"products"`
-	}
-
-	// CreateOrderResponse returns the ID of the newly created order
-	CreateOrderResponse struct {
-		ID         uuid.UUID `json:"id"`
-		ReadableID int       `json:"readable_id"`
-	}
-
-	// GetOrderRequest defines the request for the GetOrder endpoint
-	GetOrderRequest struct {
-		OrderId        uuid.UUID
-		ExternalUserId int64
-	}
-
-	// GetOrderResponse contains the data about all products in order
-	GetOrderResponse struct {
-		Products        []Product `json:"products"`
-		TotalPrice      float64   `json:"total_price"`
-		Currency        string    `json:"currency"`
-		WebAppName      string    `json:"web_app_name"`
-		WebAppShortName string    `json:"web_app_short_name"`
-		ReadableOrderID int       `json:"readable_order_id"`
-		SellerUsername  string    `json:"seller_username"`
-	}
-)
-
-type (
-	// SaveOrderParams is a request to save order info
-	// to the storage
-	SaveOrderParams struct {
-		WebAppID uuid.UUID
-		Products []ProductItem
-		// p2p or online for now
-		Type           string
-		ExternalUserID int64
-	}
-
-	// SaveOrderResult is the response to SaveOrderParams
-	//
-	// It contains the readable order ID
-	SaveOrderResult struct {
-		ID         uuid.UUID
-		ReadableID int
-	}
-
-	// Repository provides access to the product storage
-	Repository interface {
-		GetProducts(ctx context.Context, request GetProductsRequest) (GetProductsResponse, error)
-		CreateOrder(context.Context, SaveOrderParams) (SaveOrderResult, error)
-		GetOrder(ctx context.Context, orderID uuid.UUID, externalUserId int64) (GetOrderResponse, error)
-	}
-
-	Service interface {
-		GetShop(ctx context.Context, request GetProductsRequest) (GetProductsResponse, error)
-		InvdlidateShopCache(ctx context.Context, req InvalidateProductsCacheRequest)
-		CreateOrder(ctx context.Context, req CreateOrderRequest) (CreateOrderResponse, error)
-		GetOrder(ctx context.Context, req GetOrderRequest) (GetOrderResponse, error)
-	}
-
-	// DefaultService provides product operations
+	// DefaultService implements the Service interface
+	// and provides the business logic for shops and orders
+	// at the consumer level
 	DefaultService struct {
 		repo  Repository
-		cache *ristretto.Cache[string, GetProductsResponse]
+		cache *ristretto.Cache[string, GetShopResponse]
 	}
 )
 
 const (
 	getProductsCacheKeyBase = "products.GetShop:"
 
-	orderTypeP2P    = "p2p"
-	orderTypeOnline = "online"
+	orderTypeP2P    orderType = "p2p"
+	orderTypeOnline orderType = "online"
 )
 
-// New creates a new product service
+// New creates a new Service
 func New(repo Repository, maxCacheSize int64) *DefaultService {
-	cache, err := ristretto.NewCache[string, GetProductsResponse](&ristretto.Config[string, GetProductsResponse]{
-		NumCounters: 1e7,          // number of keys to track frequency of (10M).
-		MaxCost:     maxCacheSize, // maximum cost of the cache
-		BufferItems: 64,           // number of keys per Get buffer.
+	cache, err := ristretto.NewCache[string, GetShopResponse](&ristretto.Config[string, GetShopResponse]{
+		NumCounters: 100000,
+		MaxCost:     maxCacheSize,
+		BufferItems: 64,
 	})
 	if err != nil {
 		log.Fatal("failed to create productsCache", logger.SilentError(err))
@@ -155,15 +47,15 @@ func New(repo Repository, maxCacheSize int64) *DefaultService {
 }
 
 // GetShop returns the products of a marketplace along with the shop info
-func (s *DefaultService) GetShop(ctx context.Context, request GetProductsRequest) (GetProductsResponse, error) {
+func (s *DefaultService) GetShop(ctx context.Context, request GetShopRequest) (GetShopResponse, error) {
 	cacheKey := makeProductsCacheKey(request.WebAppID, request.WebAppShortName)
 	if res, ok := s.cache.Get(cacheKey); ok {
 		return res, nil
 	}
 
-	res, err := s.repo.GetProducts(ctx, request)
+	res, err := s.repo.GetShop(ctx, request)
 	if err != nil {
-		return GetProductsResponse{}, errors.Wrap(err, "s.repo.GetShop")
+		return GetShopResponse{}, errors.Wrap(err, "s.repo.GetShop")
 	}
 
 	// Cache the response
@@ -208,10 +100,10 @@ func (s *DefaultService) GetOrder(ctx context.Context, req GetOrderRequest) (Get
 	return resp, nil
 }
 
-// InvdlidateShopCache invalidates the cache for the given shop
-// The next time GetProducts is called with the same web app id, the cache will be missed
+// InvalidateShopCache invalidates the cache for the given shop
+// The next time GetShop is called with the same web app id, the cache will be missed
 // and request will hit the database
-func (s *DefaultService) InvdlidateShopCache(_ context.Context, req InvalidateProductsCacheRequest) {
+func (s *DefaultService) InvalidateShopCache(_ context.Context, req InvalidateShopCacheRequest) {
 	s.cache.Del(
 		makeProductsCacheKey(req.WebAppID, req.WebAppShortName),
 	)
