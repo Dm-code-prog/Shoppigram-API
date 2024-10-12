@@ -20,6 +20,14 @@ type (
 		OnlinePaymentsEnabled bool      `json:"online_payments_enabled"`
 	}
 
+	// ProductExternalLink is a link to a product
+	// on an external website
+	//
+	// Used for panels
+	ProductExternalLink struct {
+		URL string `json:"url"`
+	}
+
 	// TelegramChannel contains the data about a Telegram channel
 	TelegramChannel struct {
 		ID         uuid.UUID `json:"id"`
@@ -103,10 +111,11 @@ type (
 	CreateProductRequest struct {
 		WebAppID       uuid.UUID
 		ExternalUserID int64
-		Name           string  `json:"name"`
-		Description    string  `json:"description"`
-		Price          float64 `json:"price"`
-		Category       string  `json:"category,omitempty"`
+		Name           string                `json:"name"`
+		Description    string                `json:"description"`
+		Price          float64               `json:"price"`
+		Category       string                `json:"category,omitempty"`
+		ExternalLinks  []ProductExternalLink `json:"external_links"`
 	}
 
 	// CreateProductResponse returns the ID of the created product
@@ -120,10 +129,11 @@ type (
 		ID             uuid.UUID `json:"id"`
 		WebAppID       uuid.UUID
 		ExternalUserID int64
-		Name           string  `json:"name"`
-		Description    string  `json:"description"`
-		Price          float64 `json:"price"`
-		Category       string  `json:"category,omitempty"`
+		Name           string                `json:"name"`
+		Description    string                `json:"description"`
+		Price          float64               `json:"price"`
+		Category       string                `json:"category,omitempty"`
+		ExternalLinks  []ProductExternalLink `json:"external_links"`
 	}
 
 	// DeleteProductRequest specifies a product in a marketplace that needs to be deleted

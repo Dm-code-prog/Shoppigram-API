@@ -23,12 +23,16 @@ const (
 // Pg implements the Repository interface
 // using PostgreSQL as the backing store.
 type Pg struct {
-	gen *generated.Queries
+	pool *pgxpool.Pool
+	gen  *generated.Queries
 }
 
 // NewPg creates a new Pg
 func NewPg(db *pgxpool.Pool) *Pg {
-	return &Pg{gen: generated.New(db)}
+	return &Pg{
+		gen:  generated.New(db),
+		pool: db,
+	}
 }
 
 // GetShops returns user's shops
@@ -126,7 +130,16 @@ func (p *Pg) SoftDeleteShop(ctx context.Context, req DeleteShopRequest) error {
 // CreateProduct saves a product to the database
 // and returns the ID that it assigned to it
 func (p *Pg) CreateProduct(ctx context.Context, req CreateProductRequest) (CreateProductResponse, error) {
-	count, err := p.gen.CountMarketplaceProducts(ctx, req.WebAppID)
+	tx, err := p.pool.Begin(ctx)
+	if err != nil {
+		return CreateProductResponse{}, errors.Wrap(err, "pg.pool.Begin")
+	}
+	defer func(tx pgx.Tx, ctx context.Context) {
+		_ = tx.Rollback(ctx)
+	}(tx, ctx)
+	qtx := p.gen.WithTx(tx)
+
+	count, err := qtx.CountMarketplaceProducts(ctx, req.WebAppID)
 	if err != nil {
 		return CreateProductResponse{}, errors.Wrap(err, "p.gen.CountMarketplaceProducts")
 	}
@@ -135,7 +148,7 @@ func (p *Pg) CreateProduct(ctx context.Context, req CreateProductRequest) (Creat
 		return CreateProductResponse{}, ErrorMaxProductsExceeded
 	}
 
-	id, err := p.gen.CreateProduct(ctx, generated.CreateProductParams{
+	id, err := qtx.CreateProduct(ctx, generated.CreateProductParams{
 		WebAppID:    req.WebAppID,
 		Name:        req.Name,
 		Price:       req.Price,
@@ -146,12 +159,31 @@ func (p *Pg) CreateProduct(ctx context.Context, req CreateProductRequest) (Creat
 		return CreateProductResponse{}, errors.Wrap(err, "p.gen.CreateProduct")
 	}
 
+	err = setProductExternalLinks(ctx, qtx, id, req.ExternalLinks)
+	if err != nil {
+		return CreateProductResponse{}, errors.Wrap(err, "setProductExternalLinks")
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return CreateProductResponse{}, errors.Wrap(err, "tx.Commit")
+	}
+
 	return CreateProductResponse{ID: id}, err
 }
 
 // UpdateProduct updates the product of a marketplace in the database
 func (p *Pg) UpdateProduct(ctx context.Context, req UpdateProductRequest) error {
-	execRes, err := p.gen.UpdateProduct(ctx, generated.UpdateProductParams{
+	tx, err := p.pool.Begin(ctx)
+	if err != nil {
+		return errors.Wrap(err, "pg.pool.Begin")
+	}
+	defer func(tx pgx.Tx, ctx context.Context) {
+		_ = tx.Rollback(ctx)
+	}(tx, ctx)
+	qtx := p.gen.WithTx(tx)
+
+	execRes, err := qtx.UpdateProduct(ctx, generated.UpdateProductParams{
 		ID:          req.ID,
 		WebAppID:    req.WebAppID,
 		Name:        req.Name,
@@ -165,6 +197,16 @@ func (p *Pg) UpdateProduct(ctx context.Context, req UpdateProductRequest) error 
 
 	if execRes.RowsAffected() == 0 {
 		return ErrorOpNotAllowed
+	}
+
+	err = setProductExternalLinks(ctx, qtx, req.ID, req.ExternalLinks)
+	if err != nil {
+		return errors.Wrap(err, "setProductExternalLinks")
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return errors.Wrap(err, "tx.Commit")
 	}
 
 	return nil
@@ -317,4 +359,41 @@ func (p *Pg) GetTelegramChannels(ctx context.Context, ownerExternalID int64) (Ge
 	}
 
 	return GetTelegramChannelsResponse{Channels: channels}, nil
+}
+
+func setProductExternalLinks(
+	ctx context.Context,
+	qtx *generated.Queries,
+	productID uuid.UUID,
+	externalLinks []ProductExternalLink,
+) error {
+	// Remove existing external links for the product
+	err := qtx.RemoveProductExternalLinks(ctx, productID)
+	if err != nil {
+		return errors.Wrap(err, "qtx.RemoveProductExternalLinks")
+	}
+
+	// Prepare new external links
+	var extLinks []generated.SetProductExternalLinksParams
+	for _, link := range externalLinks {
+		extLinks = append(extLinks, generated.SetProductExternalLinksParams{
+			ProductID: productID,
+			Url:       link.URL,
+		})
+	}
+
+	// Insert new external links using batch execution
+	var batchErr error
+	br := qtx.SetProductExternalLinks(ctx, extLinks)
+	br.Exec(func(i int, err error) {
+		if err != nil {
+			batchErr = errors.Wrap(err, "qtx.SetProductExternalLinks")
+		}
+	})
+
+	if batchErr != nil {
+		return batchErr
+	}
+
+	return nil
 }

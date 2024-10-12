@@ -15,7 +15,7 @@ create table product_external_links
 
 
 alter table web_apps
-    drop constraint web_apps_short_name_key;
+    drop constraint if exists web_apps_short_name_key;
 
 create unique index on web_apps (short_name)
     where is_deleted = false;
