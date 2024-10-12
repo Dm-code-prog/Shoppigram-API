@@ -19,35 +19,35 @@ func MakeHandler(bs Service, authMw endpoint.Middleware) http.Handler {
 	opts = append(opts, telegramusers.AuthServerBefore...)
 
 	getMarketplacesHandler := kithttp.NewServer(
-		authMw(makeGetMarketplacesEndpoint(bs)),
+		authMw(makeGetShopEndpoint(bs)),
 		gokithelper.DecodeEmptyRequest,
 		encodeResponse,
 		opts...,
 	)
 
 	createMarketplaceHandler := kithttp.NewServer(
-		authMw(makeCreateMarketplaceEndpoint(bs)),
+		authMw(makeCreateShopEndpoint(bs)),
 		decodeCreateMarketplaceRequest,
 		encodeResponse,
 		opts...,
 	)
 
 	updateMarketplaceHandler := kithttp.NewServer(
-		authMw(makeUpdateMarketplaceEndpoint(bs)),
+		authMw(makeUpdateShopEndpoint(bs)),
 		decodeUpdateMarketplaceRequest,
 		encodeResponse,
 		opts...,
 	)
 
 	deleteMarketplaceHandler := kithttp.NewServer(
-		authMw(makeDeleteMarketplaceEndpoint(bs)),
+		authMw(makeDeleteShopEndpoint(bs)),
 		decodeDeleteMarketplaceRequest,
 		encodeResponse,
 		opts...,
 	)
 
 	createMarketplaceUploadLogoURLHandler := kithttp.NewServer(
-		authMw(makeCreateMarketplaceLogoUploadURLEndpoint(bs)),
+		authMw(makeCreateShopLogoUploadURLEndpoint(bs)),
 		decodeCreateMarketplaceUploadLogoURLRequest,
 		encodeResponse,
 		opts...,
@@ -89,7 +89,7 @@ func MakeHandler(bs Service, authMw endpoint.Middleware) http.Handler {
 	)
 
 	publishMarketplaceBannerToChannelHandler := kithttp.NewServer(
-		authMw(makePublishMarketplaceBannerToChannelEndpoint(bs)),
+		authMw(makePublishShopBannerToChannelEndpoint(bs)),
 		decodePublishMarketplaceBannerToChannelRequest,
 		encodeResponse,
 		opts...,
@@ -139,35 +139,35 @@ func MakeHandlerV2(bs Service, authMw endpoint.Middleware) http.Handler {
 	opts = append(opts, telegramusers.AuthServerBefore...)
 
 	getShopsH := kithttp.NewServer(
-		authMw(makeGetMarketplacesEndpoint(bs)),
+		authMw(makeGetShopEndpoint(bs)),
 		gokithelper.DecodeEmptyRequest,
 		encodeResponse,
 		opts...,
 	)
 
 	createShopH := kithttp.NewServer(
-		authMw(makeCreateMarketplaceEndpoint(bs)),
+		authMw(makeCreateShopEndpoint(bs)),
 		decodeCreateMarketplaceRequest,
 		encodeResponse,
 		opts...,
 	)
 
 	updateShopH := kithttp.NewServer(
-		authMw(makeUpdateMarketplaceEndpoint(bs)),
+		authMw(makeUpdateShopEndpoint(bs)),
 		decodeUpdateMarketplaceRequest,
 		encodeResponse,
 		opts...,
 	)
 
 	deleteShopH := kithttp.NewServer(
-		authMw(makeDeleteMarketplaceEndpoint(bs)),
+		authMw(makeDeleteShopEndpoint(bs)),
 		decodeDeleteMarketplaceRequest,
 		encodeResponse,
 		opts...,
 	)
 
 	createShopLogoUploadURLH := kithttp.NewServer(
-		authMw(makeCreateMarketplaceLogoUploadURLEndpoint(bs)),
+		authMw(makeCreateShopLogoUploadURLEndpoint(bs)),
 		decodeCreateMarketplaceUploadLogoURLRequest,
 		encodeResponse,
 		opts...,
@@ -209,7 +209,7 @@ func MakeHandlerV2(bs Service, authMw endpoint.Middleware) http.Handler {
 	)
 
 	publishShopPostToChannelH := kithttp.NewServer(
-		authMw(makePublishMarketplaceBannerToChannelEndpoint(bs)),
+		authMw(makePublishShopBannerToChannelEndpoint(bs)),
 		decodePublishMarketplaceBannerToChannelRequest,
 		encodeResponse,
 		opts...,
