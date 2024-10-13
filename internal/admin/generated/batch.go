@@ -18,9 +18,10 @@ var (
 )
 
 const setProductExternalLinks = `-- name: SetProductExternalLinks :batchexec
-insert into product_external_links (product_id, url)
+insert into product_external_links (product_id, url, label)
 values ($1,
-        $2)
+        $2,
+        $3)
 `
 
 type SetProductExternalLinksBatchResults struct {
@@ -32,6 +33,7 @@ type SetProductExternalLinksBatchResults struct {
 type SetProductExternalLinksParams struct {
 	ProductID uuid.UUID
 	Url       string
+	Label     string
 }
 
 func (q *Queries) SetProductExternalLinks(ctx context.Context, arg []SetProductExternalLinksParams) *SetProductExternalLinksBatchResults {
@@ -40,6 +42,7 @@ func (q *Queries) SetProductExternalLinks(ctx context.Context, arg []SetProductE
 		vals := []interface{}{
 			a.ProductID,
 			a.Url,
+			a.Label,
 		}
 		batch.Queue(setProductExternalLinks, vals...)
 	}

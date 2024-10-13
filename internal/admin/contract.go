@@ -25,7 +25,8 @@ type (
 	//
 	// Used for panels
 	ProductExternalLink struct {
-		URL string `json:"url"`
+		URL   string `json:"url"`
+		Label string `json:"label"`
 	}
 
 	// TelegramChannel contains the data about a Telegram channel

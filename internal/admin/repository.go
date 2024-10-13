@@ -379,6 +379,7 @@ func setProductExternalLinks(
 		extLinks = append(extLinks, generated.SetProductExternalLinksParams{
 			ProductID: productID,
 			Url:       link.URL,
+			Label:     link.Label,
 		})
 	}
 
