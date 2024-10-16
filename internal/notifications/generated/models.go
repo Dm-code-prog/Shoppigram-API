@@ -243,6 +243,7 @@ type ProductExternalLink struct {
 	Url       string
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
+	Label     string
 }
 
 type ProductsCustomMessage struct {

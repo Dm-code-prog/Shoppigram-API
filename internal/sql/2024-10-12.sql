@@ -3,7 +3,6 @@ create type web_app_type as enum ('shop', 'panel');
 alter table web_apps
     add column type web_app_type not null default 'shop';
 
-
 create table product_external_links
 (
     id         uuid               default uuid_generate_v4() primary key,
@@ -23,6 +22,7 @@ create unique index on web_apps (short_name)
 
 -- Drop existing trigger and function if they exist
 DROP TRIGGER IF EXISTS on_web_app_is_verified_update ON web_apps;
+DROP TRIGGER IF EXISTS trg_update_verified_at ON web_apps;
 DROP FUNCTION IF EXISTS update_verified_at();
 
 -- Create the trigger function
@@ -45,3 +45,7 @@ CREATE TRIGGER on_web_app_is_verified_update
     ON web_apps
     FOR EACH ROW
 EXECUTE PROCEDURE update_verified_at();
+
+
+alter table product_external_links
+    add column label text not null default '';

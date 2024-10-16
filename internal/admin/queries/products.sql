@@ -10,9 +10,10 @@ values (@web_app_id::uuid,
 returning id;
 
 -- name: SetProductExternalLinks :batchexec
-insert into product_external_links (product_id, url)
+insert into product_external_links (product_id, url, label)
 values ($1,
-        $2);
+        $2,
+        $3);
 
 -- name: RemoveProductExternalLinks :exec
 delete
