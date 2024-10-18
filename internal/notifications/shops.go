@@ -134,14 +134,12 @@ func (s *Service) runVerifiedMarketplaceNotifierOnce() error {
 }
 
 // sendNewMarketplaceNotifications sends batch of notifications for new marketplaces
-func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []NewMarketplaceNotification) error {
+func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []NewShopNotification) error {
 	reviewers, err := s.repo.GetReviewersNotificationList(s.ctx)
 	if err != nil {
 		return errors.Wrap(err, "s.repo.GetReviewersNotificationList")
 	}
 	for _, n := range marketplaceNotifications {
-		n.ImageBaseUrl = s.bucketUrl
-
 		ownerLang := checkAndGetLangCode(n.OwnerLanguage)
 		onVerificationMsgTxt, err := n.BuildMessageAdmin(ownerLang)
 		if err != nil {
@@ -189,7 +187,7 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 }
 
 // sendVerifiedMarketplaceNotifications sends batch of notifications for verified marketplaces
-func (s *Service) sendVerifiedMarketplaceNotifications(marketplaceNotifications []VerifiedMarketplaceNotification) error {
+func (s *Service) sendVerifiedMarketplaceNotifications(marketplaceNotifications []VerifiedShopNotification) error {
 	for _, n := range marketplaceNotifications {
 		ownerLang := checkAndGetLangCode(n.OwnerLanguage)
 		msgTxt, err := n.BuildMessage(ownerLang)

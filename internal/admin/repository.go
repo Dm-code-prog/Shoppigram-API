@@ -337,7 +337,16 @@ func (p *Pg) IsTelegramChannelOwner(ctx context.Context, externalUserID, channel
 
 // GetShortName returns the short name of the marketplace
 func (p *Pg) GetShortName(ctx context.Context, id uuid.UUID) (string, error) {
-	return p.gen.GetShortname(ctx, id)
+	s, err := p.gen.GetShortname(ctx, id)
+	if err != nil {
+		return "", errors.Wrap(err, "p.gen.GetShortname")
+	}
+
+	if s == "" {
+		return "", errors.New("short name is empty")
+	}
+
+	return s, nil
 }
 
 // GetTelegramChannels gets a user's Telegram channels

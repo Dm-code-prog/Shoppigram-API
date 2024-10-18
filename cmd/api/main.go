@@ -4,6 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/shoppigram-com/marketplace-api/packages/cloudwatchcollector"
 	"github.com/shoppigram-com/marketplace-api/packages/cors"
 	"github.com/shoppigram-com/marketplace-api/packages/health"
@@ -11,7 +15,6 @@ import (
 	"github.com/shoppigram-com/marketplace-api/packages/logger"
 	"net/http"
 	"os"
-	"strings"
 	"syscall"
 	"time"
 
@@ -91,6 +94,18 @@ func main() {
 		_ = json.NewEncoder(w).Encode(map[string]string{"error": "the path you requested does not exist"})
 	})
 
+	s3Instance := s3.New(
+		session.Must(session.NewSession(&aws.Config{
+			Region: aws.String("fra1"),
+			Credentials: credentials.NewStaticCredentials(
+				config.AWS.S3.Key,
+				config.AWS.S3.Secret,
+				"",
+			),
+			Endpoint:         aws.String(config.AWS.S3.Endpoint),
+			S3ForcePathStyle: aws.Bool(false),
+		})))
+
 	////////////////////////////////////// TELEGRAM USERS //////////////////////////////////////
 	authMw := auth.MakeAuthMiddleware(config.Bot.Token)
 	tgUsersRepo := auth.NewPg(db)
@@ -117,12 +132,6 @@ func main() {
 		config.VerifiedMarketplaceNotifications.BatchSize,
 	)
 
-	insertPosition := strings.Index(config.DigitalOcean.Spaces.Endpoint, "https://")
-	if insertPosition == -1 {
-		log.Error("Images storage endpoint incorrect!")
-	}
-	insertPosition += len("https://")
-
 	notificationsService := notifications.New(
 		notificationsRepo,
 		log.With(zap.String("service", "notifications")),
@@ -131,9 +140,6 @@ func main() {
 		time.Duration(config.VerifiedMarketplaceNotifications.TimeoutSec)*time.Second,
 		config.Bot.Token,
 		config.Bot.Name,
-		config.DigitalOcean.Spaces.Endpoint[:insertPosition]+
-			config.DigitalOcean.Spaces.Bucket+"."+
-			config.DigitalOcean.Spaces.Endpoint[insertPosition:],
 	)
 
 	////////////////////////////////////// RUN NOTIFICATION JOBS //////////////////////////////////////
@@ -161,21 +167,18 @@ func main() {
 		log.Warn("verified marketplace notifications job is disabled")
 	}
 
-	////////////////////////////////////// ADMINS //////////////////////////////////////
+	////////////////////////////////////// ADMINS /////////////////////////////////////
+
 	adminsRepo := admin.NewPg(db)
 	adminsService := admin.NewServiceWithObservability(
 		admin.New(
 			adminsRepo,
-			admin.DOSpacesConfig{
-				Endpoint: config.DigitalOcean.Spaces.Endpoint,
-				Bucket:   config.DigitalOcean.Spaces.Bucket,
-				ID:       config.DigitalOcean.Spaces.Key,
-				Secret:   config.DigitalOcean.Spaces.Secret,
-			},
 			&notificationsAdminAdapter{
 				notifier: notificationsService,
 			},
+			s3Instance,
 			config.Bot.Name,
+			config.AWS.S3.Bucket,
 		),
 		log.With(zap.String("service", "admins")),
 	)

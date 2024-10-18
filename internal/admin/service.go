@@ -7,8 +7,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/credentials"
-	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/pkg/errors"
 )
@@ -17,7 +15,7 @@ type (
 	// DefaultService provides admin operations
 	DefaultService struct {
 		repo     Repository
-		spaces   *s3.S3
+		s3       *s3.S3
 		bucket   string
 		notifier Notifier
 		botName  string
@@ -35,22 +33,11 @@ const (
 )
 
 // New creates a new admin service
-func New(repo Repository, conf DOSpacesConfig, notifier Notifier, botName string) *DefaultService {
-	sess := session.Must(session.NewSession(&aws.Config{
-		Region: aws.String("fra1"),
-		Credentials: credentials.NewStaticCredentials(
-			conf.ID,
-			conf.Secret,
-			"",
-		),
-		Endpoint:         aws.String(conf.Endpoint),
-		S3ForcePathStyle: aws.Bool(false),
-	}))
-
+func New(repo Repository, notifier Notifier, s3Instance *s3.S3, botName, s3Bucket string) *DefaultService {
 	return &DefaultService{
 		repo:     repo,
-		spaces:   s3.New(sess),
-		bucket:   conf.Bucket,
+		s3:       s3Instance,
+		bucket:   s3Bucket,
 		notifier: notifier,
 		botName:  botName,
 	}
@@ -109,7 +96,6 @@ func (s *DefaultService) DeleteShop(ctx context.Context, req DeleteShopRequest) 
 	if err != nil {
 		return errors.Wrap(err, "s.repo.IsShopOwner")
 	}
-
 	if !ok {
 		return ErrorOpNotAllowed
 	}
@@ -124,17 +110,16 @@ func (s *DefaultService) DeleteShop(ctx context.Context, req DeleteShopRequest) 
 
 // CreateProduct creates a new product in a marketplace
 func (s *DefaultService) CreateProduct(ctx context.Context, req CreateProductRequest) (CreateProductResponse, error) {
+	if !isProductNameValid(req.Name) {
+		return CreateProductResponse{}, ErrorInvalidName
+	}
+
 	ok, err := s.repo.IsShopOwner(ctx, req.ExternalUserID, req.WebAppID)
 	if err != nil {
 		return CreateProductResponse{}, errors.Wrap(err, "s.repo.IsShopOwner")
 	}
-
 	if !ok {
 		return CreateProductResponse{}, ErrorOpNotAllowed
-	}
-
-	if !isProductNameValid(req.Name) {
-		return CreateProductResponse{}, ErrorInvalidName
 	}
 
 	res, err := s.repo.CreateProduct(ctx, req)
@@ -147,14 +132,14 @@ func (s *DefaultService) CreateProduct(ctx context.Context, req CreateProductReq
 
 // UpdateProduct updates a product of a marketplace
 func (s *DefaultService) UpdateProduct(ctx context.Context, req UpdateProductRequest) error {
+	if !isProductNameValid(req.Name) {
+		return ErrorInvalidName
+	}
+
 	if ok, err := s.repo.IsProductOwner(ctx, req.ExternalUserID, req.ID); err != nil {
 		return errors.Wrap(err, "s.repo.IsProductOwner")
 	} else if !ok {
 		return ErrorOpNotAllowed
-	}
-
-	if !isProductNameValid(req.Name) {
-		return ErrorInvalidName
 	}
 
 	err := s.repo.UpdateProduct(ctx, req)
@@ -165,6 +150,7 @@ func (s *DefaultService) UpdateProduct(ctx context.Context, req UpdateProductReq
 	return nil
 }
 
+// DeleteProduct marks a product as deleted
 func (s *DefaultService) DeleteProduct(ctx context.Context, req DeleteProductRequest) error {
 	if ok, err := s.repo.IsProductOwner(ctx, req.ExternalUserID, req.ID); err != nil {
 		return errors.Wrap(err, "s.repo.IsProductOwner")
@@ -190,6 +176,7 @@ func (s *DefaultService) GetOrders(ctx context.Context, req GetOrdersRequest) (G
 	return orders, nil
 }
 
+// GetBalance TODO: fix this shit
 func (s *DefaultService) GetBalance(ctx context.Context, req GetBalanceRequest) (GetBalanceResponse, error) {
 	balances, err := s.repo.GetBalance(ctx, req)
 	if err != nil {
@@ -217,21 +204,10 @@ func (s *DefaultService) CreateProductImageUploadURL(ctx context.Context, reques
 		return CreateProductImageUploadURLResponse{}, errors.Wrap(err, "s.repo.GetShortName")
 	}
 
-	if shortName == "" {
-		return CreateProductImageUploadURLResponse{}, errors.New("s.repo.GetShortName: short name is empty")
-	}
-
-	key := shortName + "/" + request.ProductID.String()
-	req, _ := s.spaces.PutObjectRequest(&s3.PutObjectInput{
-		Bucket:      aws.String(s.bucket),
-		Key:         aws.String(key),
-		ACL:         aws.String("public-read"),
-		ContentType: aws.String("image/" + request.Extension),
-	})
-
-	url, err := req.Presign(time.Minute)
+	key := fmt.Sprintf("%s/%s", shortName, request.ProductID.String())
+	url, err := s.presignURL(key, request.Extension, time.Minute)
 	if err != nil {
-		return CreateProductImageUploadURLResponse{}, errors.Wrap(err, "req.Presign")
+		return CreateProductImageUploadURLResponse{}, errors.Wrap(err, "s.presignURL")
 	}
 
 	return CreateProductImageUploadURLResponse{
@@ -248,7 +224,6 @@ func (s *DefaultService) CreateShopLogoUploadURL(ctx context.Context, request Cr
 		return CreateShopLogoUploadURLResponse{}, ErrorOpNotAllowed
 	}
 
-	// validate extension
 	if !isValidImageExtension(request.Extension) {
 		return CreateShopLogoUploadURLResponse{}, ErrorInvalidImageExtension
 	}
@@ -258,21 +233,10 @@ func (s *DefaultService) CreateShopLogoUploadURL(ctx context.Context, request Cr
 		return CreateShopLogoUploadURLResponse{}, errors.Wrap(err, "s.repo.GetShortName")
 	}
 
-	if shortName == "" {
-		return CreateShopLogoUploadURLResponse{}, errors.New("s.repo.GetShortName: short name is empty")
-	}
-
 	key := shortName + "/logo"
-	req, _ := s.spaces.PutObjectRequest(&s3.PutObjectInput{
-		Bucket:      aws.String(s.bucket),
-		Key:         aws.String(key),
-		ACL:         aws.String("public-read"),
-		ContentType: aws.String("image/" + request.Extension),
-	})
-
-	url, err := req.Presign(10 * time.Minute)
+	url, err := s.presignURL(key, request.Extension, time.Minute)
 	if err != nil {
-		return CreateShopLogoUploadURLResponse{}, errors.Wrap(err, "req.Presign")
+		return CreateShopLogoUploadURLResponse{}, errors.Wrap(err, "s.presignURL")
 	}
 
 	return CreateShopLogoUploadURLResponse{
@@ -297,19 +261,15 @@ func (s *DefaultService) PublishShopBannerToChannel(ctx context.Context, req Pub
 		return ErrorBadRequest
 	}
 
-	ok, err := s.repo.IsTelegramChannelOwner(ctx, req.ExternalUserID, req.ExternalChannelID)
-	if err != nil {
+	if ok, err := s.repo.IsTelegramChannelOwner(ctx, req.ExternalUserID, req.ExternalChannelID); err != nil {
 		return errors.Wrap(err, "s.repo.IsTelegramChannelOwner")
-	}
-	if !ok {
+	} else if !ok {
 		return ErrorOpNotAllowed
 	}
 
-	ok, err = s.repo.IsShopOwner(ctx, req.ExternalUserID, req.WebAppID)
-	if err != nil {
+	if ok, err := s.repo.IsShopOwner(ctx, req.ExternalUserID, req.WebAppID); err != nil {
 		return errors.Wrap(err, "s.repo.IsShopOwner")
-	}
-	if !ok {
+	} else if !ok {
 		return ErrorOpNotAllowed
 	}
 
@@ -338,6 +298,22 @@ func (s *DefaultService) PublishShopBannerToChannel(ctx context.Context, req Pub
 	}
 
 	return nil
+}
+
+func (s *DefaultService) presignURL(key, extension string, ttl time.Duration) (string, error) {
+	req, _ := s.s3.PutObjectRequest(&s3.PutObjectInput{
+		Bucket:      aws.String(s.bucket),
+		Key:         aws.String(key),
+		ACL:         aws.String("public-read"),
+		ContentType: aws.String("image/" + extension),
+	})
+
+	url, err := req.Presign(ttl)
+	if err != nil {
+		return "", errors.Wrap(err, "req.Presign")
+	}
+
+	return url, nil
 }
 
 func makeShopURL(botName, shortName string) string {

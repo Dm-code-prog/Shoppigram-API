@@ -4,8 +4,6 @@ import (
 	"context"
 	"embed"
 	"github.com/shoppigram-com/marketplace-api/packages/cloudwatchcollector"
-	"strconv"
-	"strings"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -140,8 +138,8 @@ type (
 		// GetProductCustomMediaForward gets a custom media forward information for a product
 		GetProductCustomMediaForward(ctx context.Context, productID uuid.UUID, state string) (fromChatID int64, messageID int64, err error)
 
-		GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]NewMarketplaceNotification, error)
-		GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]VerifiedMarketplaceNotification, error)
+		GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]NewShopNotification, error)
+		GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]VerifiedShopNotification, error)
 		AddUserToNewOrderNotifications(ctx context.Context, req AddUserToNewOrderNotificationsRequest) error
 
 		// GetNotificationsForOrders returns a list of orders that were updated since the last run
@@ -160,12 +158,11 @@ type (
 		verifiedMarketplaceProcessingTimer time.Duration
 		bot                                *tgbotapi.BotAPI
 		botName                            string
-		bucketUrl                          string
 	}
 )
 
 // New creates a new Service
-func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration, newMarketplaceProcessingTimer time.Duration, verifiedMarketplaceProcessingTimer time.Duration, botToken string, botName string, bucketUrl string) *Service {
+func New(repo Repository, log *zap.Logger, newOrderJobTimeout, newShopJobTimeout, verifiedShopJobTimeout time.Duration, botToken, botName string) *Service {
 	if log == nil {
 		log, _ = zap.NewProduction()
 		log.Warn("log *zap.Logger is nil, using zap.NewProduction")
@@ -185,12 +182,11 @@ func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration
 		log:                                log,
 		ctx:                                ctx,
 		cancel:                             cancel,
-		newOrderProcessingTimer:            newOrderProcessingTimer,
-		newMarketplaceProcessingTimer:      newMarketplaceProcessingTimer,
-		verifiedMarketplaceProcessingTimer: verifiedMarketplaceProcessingTimer,
+		newOrderProcessingTimer:            newOrderJobTimeout,
+		newMarketplaceProcessingTimer:      newShopJobTimeout,
+		verifiedMarketplaceProcessingTimer: verifiedShopJobTimeout,
 		bot:                                bot,
 		botName:                            botName,
-		bucketUrl:                          bucketUrl,
 	}
 }
 
@@ -270,18 +266,6 @@ func (s *Service) SendMessage(msg tgbotapi.Chattable) (tgbotapi.Message, error) 
 		})
 	}()
 	if err != nil {
-		var chatID int64
-		if m, ok := msg.(tgbotapi.MessageConfig); ok {
-			chatID = m.ChatID
-		}
-
-		if strings.Contains(err.Error(), "chat not found") {
-			s.log.With(
-				zap.String("method", "bot.Send"),
-				zap.String("user_id", strconv.FormatInt(chatID, 10)),
-			).Warn("chat not found")
-			return tgbotapi.Message{}, errors.New("send message to Telegram: chat not found")
-		}
 		return tgbotapi.Message{}, errors.Wrap(err, "send message to Telegram")
 	}
 

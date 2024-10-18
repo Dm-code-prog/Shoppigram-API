@@ -46,8 +46,8 @@ type (
 		BuyerExternalID int64
 	}
 
-	// NewMarketplaceNotification defines the structure of new marketplace notification
-	NewMarketplaceNotification struct {
+	// NewShopNotification defines the structure of new marketplace notification
+	NewShopNotification struct {
 		ID              uuid.UUID
 		Name            string
 		ShortName       string
@@ -55,11 +55,10 @@ type (
 		OwnerUsername   string
 		OwnerExternalID int64
 		OwnerLanguage   string
-		ImageBaseUrl    string
 	}
 
-	// VerifiedMarketplaceNotification defines the structure of verified marketplace notification
-	VerifiedMarketplaceNotification struct {
+	// VerifiedShopNotification defines the structure of verified marketplace notification
+	VerifiedShopNotification struct {
 		ID                  uuid.UUID
 		Name                string
 		ShortName           string
@@ -253,7 +252,7 @@ func (o *OrderNotification) MakeDoneNotificationForBuyer(language string) (strin
 }
 
 // BuildMessageShoppigram creates a notification message for a new marketplace
-func (m *NewMarketplaceNotification) BuildMessageShoppigram(language string) (string, error) {
+func (m *NewShopNotification) BuildMessageShoppigram(language string) (string, error) {
 	template, err := templates.ReadFile(getPathToTemplate(language, pathToShoppigramMarketplaceNeedsVerification))
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
@@ -264,7 +263,6 @@ func (m *NewMarketplaceNotification) BuildMessageShoppigram(language string) (st
 		m.OwnerUsername,
 		m.Name,
 		m.ShortName,
-		m.ImageBaseUrl+"/"+m.ShortName+"/logo",
 		marketplaceBaseURL+m.ID.String(),
 	)
 
@@ -272,7 +270,7 @@ func (m *NewMarketplaceNotification) BuildMessageShoppigram(language string) (st
 }
 
 // BuildMessageAdmin creates a notification message for a marketplace on verification
-func (m *NewMarketplaceNotification) BuildMessageAdmin(language string) (string, error) {
+func (m *NewShopNotification) BuildMessageAdmin(language string) (string, error) {
 	template, err := templates.ReadFile(getPathToTemplate(language, pathToAdminMarketplaceSentForVerification))
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")
@@ -287,7 +285,7 @@ func (m *NewMarketplaceNotification) BuildMessageAdmin(language string) (string,
 }
 
 // BuildMessage creates a notification message for a verified marketplace
-func (m *VerifiedMarketplaceNotification) BuildMessage(language string) (string, error) {
+func (m *VerifiedShopNotification) BuildMessage(language string) (string, error) {
 	template, err := templates.ReadFile(getPathToTemplate(language, pathToAdminMarketplaceVerified))
 	if err != nil {
 		return "", errors.Wrap(err, "templates.ReadFile")

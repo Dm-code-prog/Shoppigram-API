@@ -48,10 +48,8 @@ type Environment struct {
 		Cloudwatch struct {
 			Namespace string `env:"AWS_CLOUD_WATCH_NAMESPACE,required=true"`
 		}
-	}
 
-	DigitalOcean struct {
-		Spaces struct {
+		S3 struct {
 			Endpoint string `env:"DIGITALOCEAN_SPACES_ENDPOINT,required=true"`
 			Bucket   string `env:"DIGITALOCEAN_SPACES_BUCKET,required=true"`
 			Key      string `env:"DIGITALOCEAN_SPACES_KEY,required=true"`

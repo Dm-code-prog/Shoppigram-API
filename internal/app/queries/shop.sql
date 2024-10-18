@@ -14,7 +14,6 @@ SELECT wa.id,
                                'description', p.description,
                                'category', p.category,
                                'price', p.price,
-                               'price_currency', p.price_currency::text,
                                'external_links', COALESCE(
                                        (SELECT json_agg(json_build_object('url', pel.url, 'label', pel.label))
                                         FROM product_external_links pel

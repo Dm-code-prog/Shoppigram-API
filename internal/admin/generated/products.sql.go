@@ -27,31 +27,28 @@ func (q *Queries) CountMarketplaceProducts(ctx context.Context, webAppID uuid.UU
 }
 
 const createProduct = `-- name: CreateProduct :one
-insert into products (web_app_id, name, description, price, price_currency, category, image_url)
-values ($4::uuid,
+insert into products (web_app_id, name, description, price, category, image_url)
+values ($3::uuid,
         $1,
-        nullif($5::text, ''),
+        nullif($4::text, ''),
         $2,
-        $3,
-        nullif($6::varchar(30), ''),
+        nullif($5::varchar(30), ''),
         '')
 returning id
 `
 
 type CreateProductParams struct {
-	Name          string
-	Price         float64
-	PriceCurrency string
-	WebAppID      uuid.UUID
-	Description   string
-	Category      string
+	Name        string
+	Price       float64
+	WebAppID    uuid.UUID
+	Description string
+	Category    string
 }
 
 func (q *Queries) CreateProduct(ctx context.Context, arg CreateProductParams) (uuid.UUID, error) {
 	row := q.db.QueryRow(ctx, createProduct,
 		arg.Name,
 		arg.Price,
-		arg.PriceCurrency,
 		arg.WebAppID,
 		arg.Description,
 		arg.Category,
@@ -128,29 +125,26 @@ func (q *Queries) RemoveProductExternalLinks(ctx context.Context, productID uuid
 const updateProduct = `-- name: UpdateProduct :execresult
 update products
 set name           = $1,
-    description    = nullif($5::text, ''),
+    description    = nullif($4::text, ''),
     price          = $2,
-    price_currency = $3,
-    category       = nullif($6::varchar(30), '')
-where web_app_id = $7::uuid
-  and id = $4
+    category       = nullif($5::varchar(30), '')
+where web_app_id = $6::uuid
+  and id = $3
 `
 
 type UpdateProductParams struct {
-	Name          string
-	Price         float64
-	PriceCurrency string
-	ID            uuid.UUID
-	Description   string
-	Category      string
-	WebAppID      uuid.UUID
+	Name        string
+	Price       float64
+	ID          uuid.UUID
+	Description string
+	Category    string
+	WebAppID    uuid.UUID
 }
 
 func (q *Queries) UpdateProduct(ctx context.Context, arg UpdateProductParams) (pgconn.CommandTag, error) {
 	return q.db.Exec(ctx, updateProduct,
 		arg.Name,
 		arg.Price,
-		arg.PriceCurrency,
 		arg.ID,
 		arg.Description,
 		arg.Category,
