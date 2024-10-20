@@ -38,7 +38,7 @@ func decodeUpdateMarketplaceRequest(_ context.Context, r *http.Request) (any, er
 	return request, nil
 }
 
-func decodeDeleteMarketplaceRequest(_ context.Context, r *http.Request) (any, error) {
+func decodeDeleteShopRequest(_ context.Context, r *http.Request) (any, error) {
 	var request DeleteShopRequest
 	id := chi.URLParam(r, "web_app_id")
 	if id == "" {
@@ -50,6 +50,26 @@ func decodeDeleteMarketplaceRequest(_ context.Context, r *http.Request) (any, er
 		return nil, ErrorBadRequest
 	}
 	request.WebAppId = asUUID
+
+	return request, nil
+}
+
+func decodeEnableShopSyncRequest(_ context.Context, r *http.Request) (any, error) {
+	var request ConfigureShopSyncRequest
+	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+		return nil, ErrorBadRequest
+	}
+
+	id := chi.URLParam(r, "web_app_id")
+	if id == "" {
+		return nil, ErrorBadRequest
+	}
+
+	asUUID, err := uuid.Parse(id)
+	if err != nil {
+		return nil, ErrorBadRequest
+	}
+	request.WebAppID = asUUID
 
 	return request, nil
 }

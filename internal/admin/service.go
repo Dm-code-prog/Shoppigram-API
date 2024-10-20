@@ -108,6 +108,24 @@ func (s *DefaultService) DeleteShop(ctx context.Context, req DeleteShopRequest) 
 	return nil
 }
 
+// ConfigureShopSync enables shop synchronization
+func (s *DefaultService) ConfigureShopSync(ctx context.Context, request ConfigureShopSyncRequest) error {
+	ok, err := s.repo.IsShopOwner(ctx, request.ExternalUserID, request.WebAppID)
+	if err != nil {
+		return errors.Wrap(err, "s.repo.IsShopOwner")
+	}
+	if !ok {
+		return ErrorOpNotAllowed
+	}
+
+	err = s.repo.ConfigureShopSync(ctx, request)
+	if err != nil {
+		return errors.Wrap(err, "s.repo.ConfigureShopSync")
+	}
+
+	return nil
+}
+
 // CreateProduct creates a new product in a marketplace
 func (s *DefaultService) CreateProduct(ctx context.Context, req CreateProductRequest) (CreateProductResponse, error) {
 	if !isProductNameValid(req.Name) {

@@ -266,12 +266,6 @@ func (ns NullWebAppType) Value() (driver.Value, error) {
 	return string(ns.WebAppType), nil
 }
 
-type Cursor struct {
-	Name            string
-	CursorTimestamp pgtype.Timestamp
-	CursorID        pgtype.UUID
-}
-
 type Order struct {
 	ID             uuid.UUID
 	ReadableID     pgtype.Int8
@@ -310,6 +304,14 @@ type ProductExternalLink struct {
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
 	Label     string
+}
+
+type ProductPhoto struct {
+	ID        uuid.UUID
+	Url       string
+	ProductID uuid.UUID
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
 }
 
 type ShopExternalConnection struct {

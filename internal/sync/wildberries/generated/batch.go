@@ -9,6 +9,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -16,6 +17,110 @@ import (
 var (
 	ErrBatchAlreadyClosed = errors.New("batch already closed")
 )
+
+const createOrUpdateExternalLinks = `-- name: CreateOrUpdateExternalLinks :batchexec
+insert into product_external_links (product_id, url, label)
+values ($1, $2, $3)
+`
+
+type CreateOrUpdateExternalLinksBatchResults struct {
+	br     pgx.BatchResults
+	tot    int
+	closed bool
+}
+
+type CreateOrUpdateExternalLinksParams struct {
+	ProductID uuid.UUID
+	Url       string
+	Label     string
+}
+
+func (q *Queries) CreateOrUpdateExternalLinks(ctx context.Context, arg []CreateOrUpdateExternalLinksParams) *CreateOrUpdateExternalLinksBatchResults {
+	batch := &pgx.Batch{}
+	for _, a := range arg {
+		vals := []interface{}{
+			a.ProductID,
+			a.Url,
+			a.Label,
+		}
+		batch.Queue(createOrUpdateExternalLinks, vals...)
+	}
+	br := q.db.SendBatch(ctx, batch)
+	return &CreateOrUpdateExternalLinksBatchResults{br, len(arg), false}
+}
+
+func (b *CreateOrUpdateExternalLinksBatchResults) Exec(f func(int, error)) {
+	defer b.br.Close()
+	for t := 0; t < b.tot; t++ {
+		if b.closed {
+			if f != nil {
+				f(t, ErrBatchAlreadyClosed)
+			}
+			continue
+		}
+		_, err := b.br.Exec()
+		if f != nil {
+			f(t, err)
+		}
+	}
+}
+
+func (b *CreateOrUpdateExternalLinksBatchResults) Close() error {
+	b.closed = true
+	return b.br.Close()
+}
+
+const createOrUpdatePhotos = `-- name: CreateOrUpdatePhotos :batchexec
+insert into product_photos(url, product_id)
+values ($1, $2)
+on conflict (url, product_id) do update
+    set url = excluded.url
+`
+
+type CreateOrUpdatePhotosBatchResults struct {
+	br     pgx.BatchResults
+	tot    int
+	closed bool
+}
+
+type CreateOrUpdatePhotosParams struct {
+	Url       string
+	ProductID uuid.UUID
+}
+
+func (q *Queries) CreateOrUpdatePhotos(ctx context.Context, arg []CreateOrUpdatePhotosParams) *CreateOrUpdatePhotosBatchResults {
+	batch := &pgx.Batch{}
+	for _, a := range arg {
+		vals := []interface{}{
+			a.Url,
+			a.ProductID,
+		}
+		batch.Queue(createOrUpdatePhotos, vals...)
+	}
+	br := q.db.SendBatch(ctx, batch)
+	return &CreateOrUpdatePhotosBatchResults{br, len(arg), false}
+}
+
+func (b *CreateOrUpdatePhotosBatchResults) Exec(f func(int, error)) {
+	defer b.br.Close()
+	for t := 0; t < b.tot; t++ {
+		if b.closed {
+			if f != nil {
+				f(t, ErrBatchAlreadyClosed)
+			}
+			continue
+		}
+		_, err := b.br.Exec()
+		if f != nil {
+			f(t, err)
+		}
+	}
+}
+
+func (b *CreateOrUpdatePhotosBatchResults) Close() error {
+	b.closed = true
+	return b.br.Close()
+}
 
 const createOrUpdateProducts = `-- name: CreateOrUpdateProducts :batchexec
 insert into products (web_app_id, name, description, price, category, external_provider, external_id)
@@ -84,6 +189,51 @@ func (b *CreateOrUpdateProductsBatchResults) Exec(f func(int, error)) {
 }
 
 func (b *CreateOrUpdateProductsBatchResults) Close() error {
+	b.closed = true
+	return b.br.Close()
+}
+
+const deletePhotos = `-- name: DeletePhotos :batchexec
+delete
+from product_photos
+where id in ($1)
+`
+
+type DeletePhotosBatchResults struct {
+	br     pgx.BatchResults
+	tot    int
+	closed bool
+}
+
+func (q *Queries) DeletePhotos(ctx context.Context, id []uuid.UUID) *DeletePhotosBatchResults {
+	batch := &pgx.Batch{}
+	for _, a := range id {
+		vals := []interface{}{
+			a,
+		}
+		batch.Queue(deletePhotos, vals...)
+	}
+	br := q.db.SendBatch(ctx, batch)
+	return &DeletePhotosBatchResults{br, len(id), false}
+}
+
+func (b *DeletePhotosBatchResults) Exec(f func(int, error)) {
+	defer b.br.Close()
+	for t := 0; t < b.tot; t++ {
+		if b.closed {
+			if f != nil {
+				f(t, ErrBatchAlreadyClosed)
+			}
+			continue
+		}
+		_, err := b.br.Exec()
+		if f != nil {
+			f(t, err)
+		}
+	}
+}
+
+func (b *DeletePhotosBatchResults) Close() error {
 	b.closed = true
 	return b.br.Close()
 }

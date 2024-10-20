@@ -3,8 +3,10 @@ select id, web_app_id, api_key
 from shop_external_connections
 where is_active = true
   and external_provider = 'wildberries'::external_provider
-  and last_sync_at < now() - @sync_interval
-  and last_failure_at < now() - @failure_retry_interval
+  -- default value for the frequence of syncs
+  and coalesce(last_sync_at, '1970-01-01'::timestamp) < now() - interval '1 hour'
+  -- if the last sync was a failure, we wait 3 hours before retrying
+  and coalesce(last_failure_at, '1970-01-01'::timestamp) < now() - interval '3 hour'
 order by last_sync_at
 limit 1;
 

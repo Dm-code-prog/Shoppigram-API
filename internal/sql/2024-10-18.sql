@@ -57,8 +57,28 @@ create table shop_external_connections
     primary key (id)
 );
 
+create unique index on shop_external_connections (web_app_id, external_provider);
+
 create trigger set_updated_at
     before update
     on shop_external_connections
     for each row
 execute function set_updated_at();
+
+create table product_photos
+(
+    id         uuid not null default uuid_generate_v4(),
+    url        text not null,
+    product_id uuid not null references products (id),
+    created_at timestamp     default now(),
+    updated_at timestamp     default now(),
+    primary key (id)
+);
+
+create unique index on product_photos (url, product_id);
+
+alter table products
+    alter column name type varchar(255);
+
+alter table products
+    alter column category type varchar(255);

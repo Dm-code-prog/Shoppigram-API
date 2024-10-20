@@ -58,6 +58,33 @@ func (q *Queries) CreateShop(ctx context.Context, arg CreateShopParams) (uuid.UU
 	return id, err
 }
 
+const enableShopSync = `-- name: EnableShopSync :exec
+insert
+into shop_external_connections
+    (web_app_id, external_provider, api_key, is_active)
+values ($1, $2, $3, $4)
+on conflict (web_app_id, external_provider)
+    do update set api_key   = $3,
+                  is_active = $4
+`
+
+type EnableShopSyncParams struct {
+	WebAppID         uuid.UUID
+	ExternalProvider ExternalProvider
+	ApiKey           string
+	IsActive         bool
+}
+
+func (q *Queries) EnableShopSync(ctx context.Context, arg EnableShopSyncParams) error {
+	_, err := q.db.Exec(ctx, enableShopSync,
+		arg.WebAppID,
+		arg.ExternalProvider,
+		arg.ApiKey,
+		arg.IsActive,
+	)
+	return err
+}
+
 const getShops = `-- name: GetShops :many
 select id, name, logo_url, is_verified, short_name, currency, type
 from web_apps
@@ -132,6 +159,23 @@ func (q *Queries) IsShopOwner(ctx context.Context, arg IsShopOwnerParams) (bool,
 	var column_1 bool
 	err := row.Scan(&column_1)
 	return column_1, err
+}
+
+const isShopSyncSupported = `-- name: IsShopSyncSupported :one
+select exists(select 1
+              from web_apps
+              where id = $1
+                and type = 'panel'
+                and is_deleted = false
+                and is_verified = true
+                and currency = 'rub'::product_currency)
+`
+
+func (q *Queries) IsShopSyncSupported(ctx context.Context, id uuid.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, isShopSyncSupported, id)
+	var exists bool
+	err := row.Scan(&exists)
+	return exists, err
 }
 
 const softDeleteShop = `-- name: SoftDeleteShop :exec

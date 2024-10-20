@@ -73,6 +73,18 @@ func (s *ServiceWithObservability) DeleteShop(ctx context.Context, request Delet
 	return err
 }
 
+// ConfigureShopSync calls the underlying service's ConfigureShopSync method
+func (s *ServiceWithObservability) ConfigureShopSync(ctx context.Context, request ConfigureShopSyncRequest) error {
+	err := s.service.ConfigureShopSync(ctx, request)
+	if err != nil {
+		s.log.
+			With(zap.String("web_app_id", request.WebAppID.String())).
+			Error("s.service.ConfigureShopSync", logger.SilentError(err))
+	}
+
+	return err
+}
+
 // CreateProduct calls the underlying service's CreateProduct method
 func (s *ServiceWithObservability) CreateProduct(ctx context.Context, request CreateProductRequest) (CreateProductResponse, error) {
 	res, err := s.service.CreateProduct(ctx, request)

@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/shoppigram-com/marketplace-api/internal/sync/wildberries"
 	"github.com/shoppigram-com/marketplace-api/packages/cloudwatchcollector"
 	"github.com/shoppigram-com/marketplace-api/packages/cors"
 	"github.com/shoppigram-com/marketplace-api/packages/health"
@@ -40,7 +41,7 @@ func main() {
 		os.Exit(-1)
 	}
 
-	log := logger.New(config.Zap.LogLevel)
+	log := logger.New(config.Logging.LogLevel)
 
 	cloudwatchcollector.Init(config.AWS.Cloudwatch.Namespace)
 	defer cloudwatchcollector.Shutdown()
@@ -125,46 +126,55 @@ func main() {
 	ordersHandler := app.MakeOrdersHandler(marketplacesService, authMw)
 
 	////////////////////////////////////// NOTIFICATIONS //////////////////////////////////////
-	notificationsRepo := notifications.NewPg(
-		db,
-		config.NewOrderNotifications.BatchSize,
-		config.NewMarketplaceNotifications.BatchSize,
-		config.VerifiedMarketplaceNotifications.BatchSize,
-	)
-
 	notificationsService := notifications.New(
-		notificationsRepo,
+		notifications.NewPg(
+			db,
+			config.Jobs.Notifications.Orders.BatchSize,
+			config.Jobs.Notifications.Orders.BatchSize,
+			config.Jobs.Notifications.Orders.BatchSize,
+		),
 		log.With(zap.String("service", "notifications")),
-		time.Duration(config.NewOrderNotifications.TimeoutSec)*time.Second,
-		time.Duration(config.NewMarketplaceNotifications.TimeoutSec)*time.Second,
-		time.Duration(config.VerifiedMarketplaceNotifications.TimeoutSec)*time.Second,
+		time.Duration(config.Jobs.Notifications.Orders.TimeoutSec)*time.Second,
+		time.Duration(config.Jobs.Notifications.NewShops.TimeoutSec)*time.Second,
+		time.Duration(config.Jobs.Notifications.VerfiedShops.TimeoutSec)*time.Second,
 		config.Bot.Token,
 		config.Bot.Name,
 	)
 
-	////////////////////////////////////// RUN NOTIFICATION JOBS //////////////////////////////////////
-	if config.NewOrderNotifications.IsEnabled {
-		g.Add(notificationsService.RunOrdersNotifier, func(err error) {
+	////////////////////////////////////// SYNC //////////////////////////////////////
+	wb := wildberries.New(wildberries.NewPg(db), log.With(zap.String("service", "wildberries")))
+
+	////////////////////////////////////// RUN JOBS //////////////////////////////////////
+	if config.Jobs.Notifications.Orders.IsEnabled {
+		g.Add(notificationsService.RunOrdersJob, func(err error) {
 			_ = notificationsService.Shutdown()
 		})
 	} else {
 		log.Warn("new order notifications job is disabled")
 	}
 
-	if config.NewMarketplaceNotifications.IsEnabled {
-		g.Add(notificationsService.RunNewMarketplaceNotifier, func(err error) {
+	if config.Jobs.Notifications.NewShops.IsEnabled {
+		g.Add(notificationsService.RunNewShopsJob, func(err error) {
 			_ = notificationsService.Shutdown()
 		})
 	} else {
 		log.Warn("new marketplace notifications job is disabled")
 	}
 
-	if config.VerifiedMarketplaceNotifications.IsEnabled {
-		g.Add(notificationsService.RunVerifiedMarketplaceNotifier, func(err error) {
+	if config.Jobs.Notifications.VerfiedShops.IsEnabled {
+		g.Add(notificationsService.RunVerifiedShopsJob, func(err error) {
 			_ = notificationsService.Shutdown()
 		})
 	} else {
 		log.Warn("verified marketplace notifications job is disabled")
+	}
+
+	if config.Jobs.Sync.Wildberries.IsEnabled {
+		g.Add(func() error {
+			return wb.Sync()
+		}, func(err error) {
+			wb.Shutdown()
+		})
 	}
 
 	////////////////////////////////////// ADMINS /////////////////////////////////////
@@ -182,7 +192,6 @@ func main() {
 		),
 		log.With(zap.String("service", "admins")),
 	)
-	adminsHandler := admin.MakeHandler(adminsService, authMw)
 	adminsHandlerV2 := admin.MakeHandlerV2(adminsService, authMw)
 
 	////////////////////////////////////// WEBHOOKS //////////////////////////////////////
@@ -214,11 +223,6 @@ func main() {
 	)
 
 	////////////////////////////////////// HTTP SERVER V1 //////////////////////////////////////
-	r.Mount("/api/v1/public/products", shopHandler)
-	r.Mount("/api/v1/public/auth", authHandler)
-	r.Mount("/api/v1/public/orders", ordersHandler)
-	r.Mount("/api/v1/private/marketplaces", adminsHandler)
-
 	r.Mount("/api/v1/telegram/webhooks", webhooksHandler)
 	r.Mount("/api/v1/cloud-payments/webhooks", cloudPaymentsWebhookHandler)
 

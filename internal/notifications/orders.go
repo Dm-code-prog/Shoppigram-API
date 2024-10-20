@@ -14,9 +14,9 @@ import (
 	"time"
 )
 
-// RunOrdersNotifier starts a job that batch loads new orders
+// RunOrdersJob starts a job that batch loads new orders
 // and sends notifications to the owners of marketplaces
-func (s *Service) RunOrdersNotifier() error {
+func (s *Notifier) RunOrdersJob() error {
 	ticker := time.NewTicker(s.newOrderProcessingTimer)
 	for {
 		select {
@@ -34,7 +34,7 @@ func (s *Service) RunOrdersNotifier() error {
 }
 
 // runOrdersNotifier sends notifications for orders
-func (s *Service) runOrdersNotifier() error {
+func (s *Notifier) runOrdersNotifier() error {
 	cursor, err := s.repo.GetNotifierCursor(s.ctx, orderNotifier)
 	if err != nil {
 		return errors.Wrap(err, "s.repo.GetNotifierCursor")

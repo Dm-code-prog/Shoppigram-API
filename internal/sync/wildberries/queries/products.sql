@@ -36,3 +36,7 @@ from products p
 where p.web_app_id = @web_app_id
   and p.external_provider = @external_provider
   and p.is_deleted = false;
+
+-- name: CreateOrUpdateExternalLinks :batchexec
+insert into product_external_links (product_id, url, label)
+values (@product_id, @url, @label);

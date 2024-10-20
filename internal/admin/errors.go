@@ -24,6 +24,8 @@ var (
 
 	ErrorInvalidImageExtension = errors.New("invalid image extension, only png, jpg, jpeg are allowed")
 
+	ErrorShopSyncNotSupported = errors.New("shop sync not supported")
+
 	badRequestErrors = []error{
 		ErrorBadRequest,
 		ErrorInvalidShortName,
@@ -33,6 +35,7 @@ var (
 		ErrorMaxMarketplacesExceeded,
 		ErrorInvalidImageExtension,
 		ErrorMaxProductsExceeded,
+		ErrorShopSyncNotSupported,
 	}
 )
 

@@ -2,6 +2,7 @@ package wildberries
 
 import (
 	"context"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -21,8 +22,8 @@ func NewPg(pool *pgxpool.Pool) *Pg {
 	return &Pg{gen: generated.New(pool), pool: pool}
 }
 
-// SetExternalProducts replaces all the products of a shop from a specific external provider
-func (pg *Pg) SetExternalProducts(ctx context.Context, params SetProductsParams) error {
+// SyncProducts replaces all the products of a shop from a specific external provider
+func (pg *Pg) SyncProducts(ctx context.Context, params SetProductsParams) error {
 	tx, err := pg.pool.Begin(ctx)
 	if err != nil {
 		return errors.Wrap(err, "pg.pool.Begin")
@@ -32,7 +33,7 @@ func (pg *Pg) SetExternalProducts(ctx context.Context, params SetProductsParams)
 	}(tx, ctx)
 	qtx := pg.gen.WithTx(tx)
 
-	existingIDsDB, err := qtx.GetExternalIds(ctx, generated.GetExternalIdsParams{
+	existingProductIDs, err := qtx.GetExternalIds(ctx, generated.GetExternalIdsParams{
 		WebAppID: pgtype.UUID{
 			Bytes: params.ShopID,
 			Valid: true,
@@ -53,22 +54,22 @@ func (pg *Pg) SetExternalProducts(ctx context.Context, params SetProductsParams)
 
 	// If a product used to be in the database but is not in the new list of products
 	// we need to delete it
-	var toDelete []pgtype.Text
-	for _, id := range existingIDsDB {
+	var productsToDelete []pgtype.Text
+	for _, id := range existingProductIDs {
 		if _, ok := productsIDsLookUpMap[id.String]; !ok {
-			toDelete = append(toDelete, id)
+			productsToDelete = append(productsToDelete, id)
 		}
 	}
 
-	var batchDeleteErr error
-	brDel := qtx.MarkProductAsDeleted(ctx, toDelete)
-	brDel.Exec(func(i int, err error) {
+	var batchDeleteProductsErr error
+	brProductsDel := qtx.MarkProductAsDeleted(ctx, productsToDelete)
+	brProductsDel.Exec(func(i int, err error) {
 		if err != nil {
-			batchDeleteErr = err
+			batchDeleteProductsErr = err
 		}
 	})
-	if batchDeleteErr != nil {
-		return errors.Wrap(batchDeleteErr, "brDel.Exec")
+	if batchDeleteProductsErr != nil {
+		return errors.Wrap(batchDeleteProductsErr, "brProductsDel.Exec")
 	}
 
 	var insertParams []generated.CreateOrUpdateProductsParams
@@ -99,62 +100,115 @@ func (pg *Pg) SetExternalProducts(ctx context.Context, params SetProductsParams)
 		})
 	}
 
-	var batchInsertErr error
+	var batchInsertProductsErr error
 	brInsert := qtx.CreateOrUpdateProducts(ctx, insertParams)
 	brInsert.Exec(func(i int, err error) {
 		if err != nil {
-			batchInsertErr = err
+			batchInsertProductsErr = err
 		}
 	})
-	if batchInsertErr != nil {
-		return errors.Wrap(batchInsertErr, "brInsert.Exec")
+	if batchInsertProductsErr != nil {
+		return errors.Wrap(batchInsertProductsErr, "brInsert.Exec")
+	}
+
+	intProducts, err := qtx.GetProducts(ctx, generated.GetProductsParams{
+		WebAppID: pgtype.UUID{
+			Bytes: params.ShopID,
+			Valid: true,
+		},
+		ExternalProvider: generated.NullExternalProvider{ExternalProvider: externalProvider, Valid: true},
+	})
+	if err != nil {
+		return errors.Wrap(err, "qtx.GetProducts")
+	}
+
+	productIDsMap := make(map[string]uuid.UUID)
+	for _, p := range intProducts {
+		productIDsMap[p.ExternalID.String] = p.ID
+	}
+
+	// set external links
+	var insertLinksParams []generated.CreateOrUpdateExternalLinksParams
+	for _, p := range params.Products {
+		for _, l := range p.ExternalLinks {
+			if id, ok := productIDsMap[p.ExternalID]; ok {
+				insertLinksParams = append(insertLinksParams, generated.CreateOrUpdateExternalLinksParams{
+					ProductID: id,
+					Url:       l.URL,
+					Label:     l.Label,
+				})
+			}
+		}
+	}
+
+	var batchInsertLinksErr error
+	brInsertLinks := qtx.CreateOrUpdateExternalLinks(ctx, insertLinksParams)
+	brInsertLinks.Exec(func(i int, err error) {
+		if err != nil {
+			batchInsertLinksErr = err
+		}
+	})
+	if batchInsertLinksErr != nil {
+		return errors.Wrap(batchInsertLinksErr, "brInsertLinks.Exec")
+	}
+
+	// set photos
+	// delete photos of all products in the batch
+	var toDelete []uuid.UUID
+	for _, p := range intProducts {
+		toDelete = append(toDelete, p.ID)
+	}
+
+	var batchDelPhotosErr error
+	brPhotosDel := qtx.DeletePhotos(ctx, toDelete)
+	brPhotosDel.Exec(func(i int, err error) {
+		if err != nil {
+			batchDelPhotosErr = err
+		}
+	})
+	if batchDelPhotosErr != nil {
+		return errors.Wrap(batchDeleteProductsErr, "brProductsDel.Exec")
+	}
+
+	var insertPhotosParams []generated.CreateOrUpdatePhotosParams
+	for _, p := range params.Products {
+		for _, photo := range p.Photos {
+			if id, ok := productIDsMap[p.ExternalID]; ok {
+				insertPhotosParams = append(insertPhotosParams, generated.CreateOrUpdatePhotosParams{
+					ProductID: id,
+					Url:       photo.URL,
+				})
+			}
+		}
+	}
+
+	var batchInsertPhotosErr error
+	brPhotosInsert := qtx.CreateOrUpdatePhotos(ctx, insertPhotosParams)
+	brPhotosInsert.Exec(func(i int, err error) {
+		if err != nil {
+			batchInsertPhotosErr = err
+		}
+	})
+	if batchInsertPhotosErr != nil {
+		return errors.Wrap(batchInsertPhotosErr, "brPhotosInsert.Exec")
 	}
 
 	return tx.Commit(ctx)
 }
 
-// GetProducts returns all the products of a shop from a specific external provider
-func (pg *Pg) GetProducts(ctx context.Context, params GetProductsParams) ([]Product, error) {
-	res, err := pg.gen.GetProducts(ctx, generated.GetProductsParams{
-		WebAppID: pgtype.UUID{
-			Bytes: params.ShopID,
-			Valid: true,
-		},
-		ExternalProvider: generated.NullExternalProvider{
-			ExternalProvider: generated.ExternalProvider(params.ExternalProvider),
-			Valid:            true,
-		},
-	})
+// GetNextSyncJob returns the next shop to sync
+func (pg *Pg) GetNextSyncJob(ctx context.Context) (*Job, error) {
+	ns, err := pg.gen.GetNextShop(ctx)
+
 	if err != nil {
-		return nil, errors.Wrap(err, "pg.gen.GetProducts")
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+
+		return &Job{}, errors.Wrap(err, "pg.gen.GetNextSyncJob")
 	}
 
-	var products []Product
-	for _, p := range res {
-		products = append(products, Product{
-			ID:          p.ID,
-			ExternalID:  p.ExternalID.String,
-			Name:        p.Name,
-			Price:       p.Price,
-			Category:    p.Category.String,
-			Description: p.Description.String,
-		})
-	}
-
-	return products, nil
-}
-
-// GetNextShop returns the next shop to sync
-func (pg *Pg) GetNextShop(ctx context.Context) (NextShop, error) {
-	ns, err := pg.gen.GetNextShop(ctx, generated.GetNextShopParams{
-		SyncInterval:         syncInterval,
-		FailureRetryInterval: failureRetryInterval,
-	})
-	if err != nil {
-		return NextShop{}, errors.Wrap(err, "pg.gen.GetNextShop")
-	}
-
-	return NextShop{
+	return &Job{
 		ShopID:    ns.WebAppID,
 		SyncJobID: ns.ID,
 		APIKey:    ns.ApiKey,

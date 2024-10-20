@@ -127,6 +127,29 @@ func (p *Pg) SoftDeleteShop(ctx context.Context, req DeleteShopRequest) error {
 	return nil
 }
 
+// ConfigureShopSync enables the shop synchronization
+func (p *Pg) ConfigureShopSync(ctx context.Context, req ConfigureShopSyncRequest) error {
+	ok, err := p.gen.IsShopSyncSupported(ctx, req.WebAppID)
+	if err != nil {
+		return errors.Wrap(err, "p.gen.IsShopSyncSupported")
+	}
+	if !ok {
+		return ErrorShopSyncNotSupported
+	}
+
+	err = p.gen.EnableShopSync(ctx, generated.EnableShopSyncParams{
+		WebAppID:         req.WebAppID,
+		ApiKey:           req.APIKey,
+		ExternalProvider: generated.ExternalProvider(req.ExternalProvider),
+		IsActive:         req.IsActive,
+	})
+	if err != nil {
+		return errors.Wrap(err, "pg.gen.ConfigureShopSync")
+	}
+
+	return nil
+}
+
 // CreateProduct saves a product to the database
 // and returns the ShopID that it assigned to it
 func (p *Pg) CreateProduct(ctx context.Context, req CreateProductRequest) (CreateProductResponse, error) {

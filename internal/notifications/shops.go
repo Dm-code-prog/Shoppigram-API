@@ -17,9 +17,9 @@ import (
 	"time"
 )
 
-// RunNewMarketplaceNotifier starts a job that batch loads new marketplaces
+// RunNewShopsJob starts a job that batch loads new marketplaces
 // and sends notifications to the reviewers of marketplaces
-func (s *Service) RunNewMarketplaceNotifier() error {
+func (s *Notifier) RunNewShopsJob() error {
 	ticker := time.NewTicker(s.newMarketplaceProcessingTimer)
 	for {
 		select {
@@ -36,9 +36,29 @@ func (s *Service) RunNewMarketplaceNotifier() error {
 	}
 }
 
+// RunVerifiedShopsJob starts a job that batch loads verified marketplaces
+// and sends notifications to the owners of those marketplaces
+func (s *Notifier) RunVerifiedShopsJob() error {
+	ticker := time.NewTicker(s.verifiedMarketplaceProcessingTimer)
+
+	for {
+		select {
+		case <-ticker.C:
+			err := s.runVerifiedMarketplaceNotifierOnce()
+			if err != nil {
+				s.log.Error("runVerifiedMarketplaceNotifierOnce failed", logger.SilentError(err))
+				continue
+			}
+		case <-s.ctx.Done():
+			ticker.Stop()
+			return nil
+		}
+	}
+}
+
 // runNewMarketplaceNotifier executes one iteration of loading a batch of new
 // marketplaces and sending notifications to the reviewers of marketplaces
-func (s *Service) runNewMarketplaceNotifier() error {
+func (s *Notifier) runNewMarketplaceNotifier() error {
 	cursor, err := s.repo.GetNotifierCursor(s.ctx, newMarketplaceNotifierName)
 	if err != nil {
 		return errors.Wrap(err, "s.repo.GetNotifierCursor")
@@ -74,29 +94,9 @@ func (s *Service) runNewMarketplaceNotifier() error {
 	return nil
 }
 
-// RunVerifiedMarketplaceNotifier starts a job that batch loads verified marketplaces
-// and sends notifications to the owners of those marketplaces
-func (s *Service) RunVerifiedMarketplaceNotifier() error {
-	ticker := time.NewTicker(s.verifiedMarketplaceProcessingTimer)
-
-	for {
-		select {
-		case <-ticker.C:
-			err := s.runVerifiedMarketplaceNotifierOnce()
-			if err != nil {
-				s.log.Error("runVerifiedMarketplaceNotifierOnce failed", logger.SilentError(err))
-				continue
-			}
-		case <-s.ctx.Done():
-			ticker.Stop()
-			return nil
-		}
-	}
-}
-
 // runVerifiedMarketplaceNotifierOnce executes one iteration of loading a batch of
 // verified marketplaces and sending notifications to the owners of those marketplaces
-func (s *Service) runVerifiedMarketplaceNotifierOnce() error {
+func (s *Notifier) runVerifiedMarketplaceNotifierOnce() error {
 	cursor, err := s.repo.GetNotifierCursor(s.ctx, verifiedMarketplaceNotifierName)
 	if err != nil {
 		return errors.Wrap(err, "s.repo.GetNotifierCursor")
@@ -134,7 +134,7 @@ func (s *Service) runVerifiedMarketplaceNotifierOnce() error {
 }
 
 // sendNewMarketplaceNotifications sends batch of notifications for new marketplaces
-func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []NewShopNotification) error {
+func (s *Notifier) sendNewMarketplaceNotifications(marketplaceNotifications []NewShopNotification) error {
 	reviewers, err := s.repo.GetReviewersNotificationList(s.ctx)
 	if err != nil {
 		return errors.Wrap(err, "s.repo.GetReviewersNotificationList")
@@ -187,7 +187,7 @@ func (s *Service) sendNewMarketplaceNotifications(marketplaceNotifications []New
 }
 
 // sendVerifiedMarketplaceNotifications sends batch of notifications for verified marketplaces
-func (s *Service) sendVerifiedMarketplaceNotifications(marketplaceNotifications []VerifiedShopNotification) error {
+func (s *Notifier) sendVerifiedMarketplaceNotifications(marketplaceNotifications []VerifiedShopNotification) error {
 	for _, n := range marketplaceNotifications {
 		ownerLang := checkAndGetLangCode(n.OwnerLanguage)
 		msgTxt, err := n.BuildMessage(ownerLang)

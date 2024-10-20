@@ -17,16 +17,20 @@ type (
 		Label string `json:"label"`
 	}
 
+	Photo struct {
+		URL string `json:"url"`
+	}
+
 	// Product defines the structure for a product
 	Product struct {
-		ID                  uuid.UUID             `json:"id"`
-		Name                string                `json:"name"`
-		Description         string                `json:"description,omitempty"`
-		Quantity            int32                 `json:"quantity,omitempty"`
-		Category            string                `json:"category,omitempty"`
-		Price               float64               `json:"price"`
-		LegacyPriceCurrency string                `json:"price_currency"`
-		ExternalLinks       []ProductExternalLink `json:"external_links"`
+		ID            uuid.UUID             `json:"id"`
+		Name          string                `json:"name"`
+		Description   string                `json:"description,omitempty"`
+		Quantity      int32                 `json:"quantity,omitempty"`
+		Category      string                `json:"category,omitempty"`
+		Price         float64               `json:"price"`
+		ExternalLinks []ProductExternalLink `json:"external_links"`
+		Photos        []Photo               `json:"photos"`
 	}
 
 	// OrderProduct is a product in an order
@@ -122,14 +126,19 @@ type (
 	// Repository provides access to the product storage
 	Repository interface {
 		GetShop(ctx context.Context, request GetShopRequest) (GetShopResponse, error)
+
 		CreateOrder(context.Context, SaveOrderParams) (SaveOrderResult, error)
+
 		GetOrder(ctx context.Context, orderID uuid.UUID, externalUserId int64) (GetOrderResponse, error)
 	}
 
 	Service interface {
 		GetShop(ctx context.Context, request GetShopRequest) (GetShopResponse, error)
+
 		InvalidateShopCache(ctx context.Context, req InvalidateShopCacheRequest)
+
 		CreateOrder(ctx context.Context, req CreateOrderRequest) (CreateOrderResponse, error)
+
 		GetOrder(ctx context.Context, req GetOrderRequest) (GetOrderResponse, error)
 	}
 )

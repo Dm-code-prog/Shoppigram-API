@@ -32,7 +32,13 @@ SELECT wa.id,
                                        (SELECT json_agg(json_build_object('url', pel.url, 'label', pel.label))
                                         FROM product_external_links pel
                                         WHERE pel.product_id = p.id),
-                                       '[]'::json)
+                                       '[]'::json),
+                               'photos', coalesce(
+                                       (select json_agg(json_build_object('url', pp.url))
+                                        from product_photos pp
+                                        where pp.product_id = p.id),
+                                       '[]'::json
+                                         )
                        )
                                ) FILTER (WHERE p.id IS NOT NULL),
                        '[]'::json

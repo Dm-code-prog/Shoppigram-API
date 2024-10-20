@@ -7,11 +7,22 @@ import (
 )
 
 const (
-	syncInterval         = time.Hour
-	failureRetryInterval = time.Hour * 3
+	externalProvider  = "wildberries"
+	supportedCurrency = "rub"
+
+	// default configuration for the sync process
+	timeout = time.Second * 10
+)
+
+var (
+	fetchLimit int32 = 100
 )
 
 type (
+	Photo struct {
+		URL string
+	}
+
 	// ExternalLink is a link to a product
 	// on an external website
 	//
@@ -29,6 +40,7 @@ type (
 		Category      string
 		Price         float64
 		ExternalLinks []ExternalLink
+		Photos        []Photo
 	}
 
 	// Product is a product in the database
@@ -51,11 +63,11 @@ type (
 		Products         []ExternalProduct
 	}
 
-	// GetProductsParams is the structure that holds params for
-	// Repository.GetProducts method
-	GetProductsParams struct {
-		ShopID           uuid.UUID
-		ExternalProvider string
+	// ProductPhotos is the structure that holds the product id and
+	// the photos of the product
+	ProductPhotos struct {
+		ProductID uuid.UUID
+		Photos    []Photo
 	}
 
 	// SetSyncSuccessParams is the structure that holds params for
@@ -71,23 +83,20 @@ type (
 		LastError string
 	}
 
-	// NextShop is the structure that holds the next shop to sync
-	NextShop struct {
+	// Job is the structure that holds the next shop to sync
+	Job struct {
 		ShopID    uuid.UUID
 		SyncJobID uuid.UUID
 		APIKey    string
 	}
 
 	Repository interface {
-		// SetExternalProducts replaces all the products of a shop from a specific external provider
+		// GetNextSyncJob returns the next shop to sync
+		GetNextSyncJob(context.Context) (*Job, error)
+
+		// SyncProducts replaces all the products of a shop from a specific external provider
 		// with a new list of products
-		SetExternalProducts(context.Context, SetProductsParams) error
-
-		// GetProducts returns all the products of a shop from a specific external provider
-		GetProducts(context.Context, GetProductsParams) ([]Product, error)
-
-		// GetNextShop returns the next shop to sync
-		GetNextShop(context.Context) (NextShop, error)
+		SyncProducts(context.Context, SetProductsParams) error
 
 		// SetSyncSuccess marks a sync job as successful
 		SetSyncSuccess(context.Context, SetSyncSuccessParams) error
