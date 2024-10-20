@@ -14,16 +14,12 @@ import (
 )
 
 type (
-	Config struct {
-		RunInterval time.Duration
-	}
 	// Syncer is a runner process for syncing our system with WildBerries
 	Syncer struct {
 		contentAPI *contentapi.APIClient
 		pricesAPI  *pricesapi.APIClient
 		repo       Repository
 		l          *zap.Logger
-		conf       Config
 		ctx        context.Context
 		cancelFunc context.CancelFunc
 	}
