@@ -193,6 +193,51 @@ func (b *CreateOrUpdateProductsBatchResults) Close() error {
 	return b.br.Close()
 }
 
+const deleteExternalLinks = `-- name: DeleteExternalLinks :batchexec
+delete
+from product_external_links
+where product_id = $1
+`
+
+type DeleteExternalLinksBatchResults struct {
+	br     pgx.BatchResults
+	tot    int
+	closed bool
+}
+
+func (q *Queries) DeleteExternalLinks(ctx context.Context, productID []uuid.UUID) *DeleteExternalLinksBatchResults {
+	batch := &pgx.Batch{}
+	for _, a := range productID {
+		vals := []interface{}{
+			a,
+		}
+		batch.Queue(deleteExternalLinks, vals...)
+	}
+	br := q.db.SendBatch(ctx, batch)
+	return &DeleteExternalLinksBatchResults{br, len(productID), false}
+}
+
+func (b *DeleteExternalLinksBatchResults) Exec(f func(int, error)) {
+	defer b.br.Close()
+	for t := 0; t < b.tot; t++ {
+		if b.closed {
+			if f != nil {
+				f(t, ErrBatchAlreadyClosed)
+			}
+			continue
+		}
+		_, err := b.br.Exec()
+		if f != nil {
+			f(t, err)
+		}
+	}
+}
+
+func (b *DeleteExternalLinksBatchResults) Close() error {
+	b.closed = true
+	return b.br.Close()
+}
+
 const deletePhotos = `-- name: DeletePhotos :batchexec
 delete
 from product_photos

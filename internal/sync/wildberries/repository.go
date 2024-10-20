@@ -127,6 +127,22 @@ func (pg *Pg) SyncProducts(ctx context.Context, params SetProductsParams) error 
 		productIDsMap[p.ExternalID.String] = p.ID
 	}
 
+	var linksToDelete []uuid.UUID
+	for _, p := range intProducts {
+		linksToDelete = append(linksToDelete, p.ID)
+	}
+
+	var batchDeleteLinksErr error
+	brDeleteLinks := qtx.DeleteExternalLinks(ctx, linksToDelete)
+	brDeleteLinks.Exec(func(i int, err error) {
+		if err != nil {
+			batchDeleteLinksErr = err
+		}
+	})
+	if batchDeleteLinksErr != nil {
+		return errors.Wrap(batchDeleteLinksErr, "brDeleteLinks.Exec")
+	}
+
 	// set external links
 	var insertLinksParams []generated.CreateOrUpdateExternalLinksParams
 	for _, p := range params.Products {

@@ -40,3 +40,8 @@ where p.web_app_id = @web_app_id
 -- name: CreateOrUpdateExternalLinks :batchexec
 insert into product_external_links (product_id, url, label)
 values (@product_id, @url, @label);
+
+-- name: DeleteExternalLinks :batchexec
+delete
+from product_external_links
+where product_id = @product_id;
