@@ -27,13 +27,12 @@ func (q *Queries) CountMarketplaceProducts(ctx context.Context, webAppID uuid.UU
 }
 
 const createProduct = `-- name: CreateProduct :one
-insert into products (web_app_id, name, description, price, category, image_url)
+insert into products (web_app_id, name, description, price, category)
 values ($3::uuid,
         $1,
         nullif($4::text, ''),
         $2,
-        nullif($5::varchar(30), ''),
-        '')
+        nullif($5::varchar(30), ''))
 returning id
 `
 
@@ -124,10 +123,10 @@ func (q *Queries) RemoveProductExternalLinks(ctx context.Context, productID uuid
 
 const updateProduct = `-- name: UpdateProduct :execresult
 update products
-set name           = $1,
-    description    = nullif($4::text, ''),
-    price          = $2,
-    category       = nullif($5::varchar(30), '')
+set name        = $1,
+    description = nullif($4::text, ''),
+    price       = $2,
+    category    = nullif($5::varchar(30), '')
 where web_app_id = $6::uuid
   and id = $3
 `
