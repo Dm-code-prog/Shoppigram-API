@@ -39,6 +39,7 @@ create trigger set_updated_at
     for each row
 execute function set_updated_at();
 
+create type extenal_sync_status as enum ('success', 'failure');
 
 create table shop_external_connections
 (
@@ -48,7 +49,12 @@ create table shop_external_connections
     web_app_id        uuid              not null references web_apps (id),
     is_active         boolean           not null default true,
     external_provider external_provider not null,
-    api_key           text              not null
+    api_key           text              not null,
+    last_sync_at      timestamp,
+    last_failure_at   timestamp,
+    last_sync_status  extenal_sync_status,
+    last_error        text,
+    primary key (id)
 );
 
 create trigger set_updated_at
@@ -56,11 +62,3 @@ create trigger set_updated_at
     on shop_external_connections
     for each row
 execute function set_updated_at();
-
-
-create table cursors
-(
-    name             text primary key,
-    cursor_timestamp timestamp,
-    cursor_id        uuid
-);

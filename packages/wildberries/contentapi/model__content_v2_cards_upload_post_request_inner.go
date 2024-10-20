@@ -21,7 +21,7 @@ var _ MappedNullable = &ContentV2CardsUploadPostRequestInner{}
 
 // ContentV2CardsUploadPostRequestInner struct for ContentV2CardsUploadPostRequestInner
 type ContentV2CardsUploadPostRequestInner struct {
-	// ID предмета
+	// ShopID предмета
 	SubjectID int32 `json:"subjectID"`
 	// Массив вариантов товара. В каждой КТ может быть не более 30 вариантов (НМ)
 	Variants []ContentV2CardsUploadPostRequestInnerVariantsInner `json:"variants"`

@@ -9,7 +9,7 @@ import (
 )
 
 // decodeGetShopRequest decodes the request for the GetShops endpoint.
-// The ID can be either a UUID or a short name. The request is malformed if the ID is missing.
+// The ShopID can be either a UUID or a short name. The request is malformed if the ShopID is missing.
 func decodeGetShopRequest(_ context.Context, r *http.Request) (any, error) {
 	var (
 		webAppID        uuid.UUID

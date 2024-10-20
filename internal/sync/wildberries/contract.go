@@ -6,6 +6,11 @@ import (
 	"time"
 )
 
+const (
+	syncInterval         = time.Hour
+	failureRetryInterval = time.Hour * 3
+)
+
 type (
 	// ExternalLink is a link to a product
 	// on an external website
@@ -53,31 +58,24 @@ type (
 		ExternalProvider string
 	}
 
-	// GetCursorParams is the structure that holds params for
-	// Repository.GetCursor method
-	GetCursorParams struct {
-		Name string
+	// SetSyncSuccessParams is the structure that holds params for
+	// Repository.SetSyncSuccess method
+	SetSyncSuccessParams struct {
+		JobID uuid.UUID
 	}
 
-	// ResetCursorParams is the structure that holds params for
-	// Repository.ResetCursor method
-	ResetCursorParams struct {
-		Name string
-	}
-
-	// Cursor points to a specific record in a database
-	// used for tracking state
-	Cursor struct {
-		Name      string
-		ID        uuid.UUID
-		Timestamp time.Time
+	// SetSyncFailureParams is the structure that holds params for
+	// Repository.SetSyncFailure method
+	SetSyncFailureParams struct {
+		JobID     uuid.UUID
+		LastError string
 	}
 
 	// NextShop is the structure that holds the next shop to sync
 	NextShop struct {
-		ID              uuid.UUID
-		CursorTimestamp time.Time
-		APIKey          string
+		ShopID    uuid.UUID
+		SyncJobID uuid.UUID
+		APIKey    string
 	}
 
 	Repository interface {
@@ -88,16 +86,13 @@ type (
 		// GetProducts returns all the products of a shop from a specific external provider
 		GetProducts(context.Context, GetProductsParams) ([]Product, error)
 
-		// GetCursor returns a Cursor by name
-		GetCursor(context.Context, GetCursorParams) (*Cursor, error)
-
-		// SetCursor sets a Cursor by name
-		SetCursor(context.Context, Cursor) error
-
-		// ResetCursor resets a Cursor by name
-		ResetCursor(context.Context, ResetCursorParams) error
-
 		// GetNextShop returns the next shop to sync
-		GetNextShop(context.Context, Cursor) (NextShop, error)
+		GetNextShop(context.Context) (NextShop, error)
+
+		// SetSyncSuccess marks a sync job as successful
+		SetSyncSuccess(context.Context, SetSyncSuccessParams) error
+
+		// SetSyncFailure marks a sync job as failed
+		SetSyncFailure(context.Context, SetSyncFailureParams) error
 	}
 )

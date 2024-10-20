@@ -128,7 +128,7 @@ func (p *Pg) SoftDeleteShop(ctx context.Context, req DeleteShopRequest) error {
 }
 
 // CreateProduct saves a product to the database
-// and returns the ID that it assigned to it
+// and returns the ShopID that it assigned to it
 func (p *Pg) CreateProduct(ctx context.Context, req CreateProductRequest) (CreateProductResponse, error) {
 	tx, err := p.pool.Begin(ctx)
 	if err != nil {

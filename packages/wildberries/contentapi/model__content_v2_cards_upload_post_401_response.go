@@ -25,9 +25,9 @@ type ContentV2CardsUploadPost401Response struct {
 	Detail *string `json:"detail,omitempty"`
 	// Внутренний код ошибки
 	Code *string `json:"code,omitempty"`
-	// Уникальный ID запроса
+	// Уникальный ShopID запроса
 	RequestId *string `json:"requestId,omitempty"`
-	// ID внутреннего сервиса WB
+	// ShopID внутреннего сервиса WB
 	Origin *string `json:"origin,omitempty"`
 	// HTTP статус-код
 	Status *float32 `json:"status,omitempty"`

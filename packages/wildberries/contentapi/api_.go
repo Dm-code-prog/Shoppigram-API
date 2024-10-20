@@ -2263,7 +2263,7 @@ func (r ApiContentV2DirectoryTnvedGetRequest) Execute() (*ContentV2DirectoryTnve
 /*
 ContentV2DirectoryTnvedGet ТНВЭД код
 
-С помощью данного метода можно получить список ТНВЭД кодов по ID предмета и фильтру по ТНВЭД коду.
+С помощью данного метода можно получить список ТНВЭД кодов по ShopID предмета и фильтру по ТНВЭД коду.
 
 	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
 	@return ApiContentV2DirectoryTnvedGetRequest
@@ -3198,7 +3198,7 @@ func (r ApiContentV2ObjectCharcsSubjectIdGetRequest) Execute() (*ContentV2Object
 /*
 ContentV2ObjectCharcsSubjectIdGet Характеристики предмета (подкатегории)
 
-Получение списка характеристик предмета по его ID.
+Получение списка характеристик предмета по его ShopID.
 
 	@param ctx context.Context - for authentication, logging, cancellation, deadlines, tracing, etc. Passed from http.Request or context.Background().
 	@param subjectId Идентификатор предмета

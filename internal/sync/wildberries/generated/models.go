@@ -12,6 +12,48 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type ExtenalSyncStatus string
+
+const (
+	ExtenalSyncStatusSuccess ExtenalSyncStatus = "success"
+	ExtenalSyncStatusFailure ExtenalSyncStatus = "failure"
+)
+
+func (e *ExtenalSyncStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ExtenalSyncStatus(s)
+	case string:
+		*e = ExtenalSyncStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ExtenalSyncStatus: %T", src)
+	}
+	return nil
+}
+
+type NullExtenalSyncStatus struct {
+	ExtenalSyncStatus ExtenalSyncStatus
+	Valid             bool // Valid is true if ExtenalSyncStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullExtenalSyncStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.ExtenalSyncStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ExtenalSyncStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullExtenalSyncStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ExtenalSyncStatus), nil
+}
+
 type ExternalProvider string
 
 const (
@@ -278,6 +320,10 @@ type ShopExternalConnection struct {
 	IsActive         bool
 	ExternalProvider ExternalProvider
 	ApiKey           string
+	LastSyncAt       pgtype.Timestamp
+	LastFailureAt    pgtype.Timestamp
+	LastSyncStatus   NullExtenalSyncStatus
+	LastError        pgtype.Text
 }
 
 type TelegramChannel struct {

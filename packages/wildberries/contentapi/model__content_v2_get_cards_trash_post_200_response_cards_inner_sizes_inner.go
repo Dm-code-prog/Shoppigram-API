@@ -19,7 +19,7 @@ var _ MappedNullable = &ContentV2GetCardsTrashPost200ResponseCardsInnerSizesInne
 
 // ContentV2GetCardsTrashPost200ResponseCardsInnerSizesInner struct for ContentV2GetCardsTrashPost200ResponseCardsInnerSizesInner
 type ContentV2GetCardsTrashPost200ResponseCardsInnerSizesInner struct {
-	// ID размера
+	// ShopID размера
 	ChrtID *int32 `json:"chrtID,omitempty"`
 	// Размер товара
 	TechSize *string `json:"techSize,omitempty"`

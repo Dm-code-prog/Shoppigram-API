@@ -1,0 +1,16 @@
+"401":
+  content:
+    application/json:
+      example:
+        title: unauthorized
+        detail: "token problem; token is malformed: could not base64 decode signature:\
+              \ illegal base64 data at input byte 84"
+        code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+        requestId: 7b80742415072fe8b6b7f7761f1d1211
+        origin: s2s-api-auth-catalog
+        status: 401
+        statusText: Unauthorized
+        timestamp: 2024-09-30T06:52:38Z
+      schema:
+        $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+  description: Пользователь не авторизован

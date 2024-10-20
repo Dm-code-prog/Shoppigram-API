@@ -19,7 +19,7 @@ var _ MappedNullable = &ContentV2CardsUpdatePostRequestInnerCharacteristicsInner
 
 // ContentV2CardsUpdatePostRequestInnerCharacteristicsInner struct for ContentV2CardsUpdatePostRequestInnerCharacteristicsInner
 type ContentV2CardsUpdatePostRequestInnerCharacteristicsInner struct {
-	// ID характеристики
+	// ShopID характеристики
 	Id *int32 `json:"id,omitempty"`
 	// Значение характеристики. Тип значения зависит от типа характеристики.
 	Value interface{} `json:"value,omitempty"`

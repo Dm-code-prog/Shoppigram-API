@@ -3,6 +3,7 @@ package wildberries
 import (
 	"context"
 	"github.com/pkg/errors"
+	"github.com/shoppigram-com/marketplace-api/packages/logger"
 	"github.com/shoppigram-com/marketplace-api/packages/wildberries/contentapi"
 	"go.uber.org/zap"
 	"net/http"
@@ -11,8 +12,6 @@ import (
 )
 
 const (
-	cursorName = "wildberries_sync"
-
 	externalProvider = "wildberries"
 )
 
@@ -57,10 +56,11 @@ func New(r Repository, conf RunnerConf, l *zap.Logger) *Runner {
 // Shutdown cancels the context of the runner to stop it
 func (r *Runner) Shutdown() {
 	r.cancelFunc()
+	<-r.ctx.Done()
 }
 
-// Run launches the Runner
-func (r *Runner) Run() error {
+// Sync launches the Runner
+func (r *Runner) Sync() error {
 	ticker := time.NewTicker(r.conf.RunInterval)
 
 	for {
@@ -68,47 +68,30 @@ func (r *Runner) Run() error {
 		case <-r.ctx.Done():
 			return nil
 		case <-ticker.C:
-			cursor, err := r.repo.GetCursor(
-				r.ctx,
-				GetCursorParams{Name: cursorName},
-			)
-			if err != nil {
-				return errors.Wrap(err, "r.repo.GetCursor")
-			}
-
-			if cursor == nil {
-				err := r.repo.ResetCursor(
-					r.ctx,
-					ResetCursorParams{
-						Name: cursorName,
-					},
-				)
-				if err != nil {
-					return errors.Wrap(err, "r.repo.ResetCursor")
-				}
-
-				r.l.Info("cursor reset")
-				continue
-			}
-
-			shop, err := r.repo.GetNextShop(r.ctx, *cursor)
+			shop, err := r.repo.GetNextShop(r.ctx)
 			if err != nil {
 				return errors.Wrap(err, "r.repo.GetNextShop")
 			}
 
 			err = r.sync(shop)
 			if err != nil {
-				return errors.Wrap(err, "r.sync")
+				r.l.Error("r.sync", logger.SilentError(err))
+				err2 := r.repo.SetSyncFailure(r.ctx, SetSyncFailureParams{
+					JobID:     shop.SyncJobID,
+					LastError: err.Error(),
+				})
+				if err2 != nil {
+					return errors.Wrap(err2, "r.repo.SetSyncFailure")
+				}
+				continue
 			}
 
-			err = r.repo.SetCursor(
-				r.ctx,
-				Cursor{
-					Name:      cursorName,
-					ID:        shop.ID,
-					Timestamp: shop.CursorTimestamp,
-				},
-			)
+			err = r.repo.SetSyncSuccess(r.ctx, SetSyncSuccessParams{
+				JobID: shop.SyncJobID,
+			})
+			if err != nil {
+				return errors.Wrap(err, "r.repo.SetSyncSuccess")
+			}
 		}
 	}
 }
@@ -150,7 +133,7 @@ func (r *Runner) sync(shop NextShop) error {
 	// TODO: request the price from the price and discounts API
 
 	err = r.repo.SetExternalProducts(r.ctx, SetProductsParams{
-		ShopID:           shop.ID,
+		ShopID:           shop.ShopID,
 		ExternalProvider: externalProvider,
 		Products:         extProducts,
 	})
@@ -159,7 +142,7 @@ func (r *Runner) sync(shop NextShop) error {
 	}
 
 	_, err = r.repo.GetProducts(r.ctx, GetProductsParams{
-		ShopID:           shop.ID,
+		ShopID:           shop.ShopID,
 		ExternalProvider: externalProvider,
 	})
 	if err != nil {

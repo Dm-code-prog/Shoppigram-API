@@ -144,70 +144,42 @@ func (pg *Pg) GetProducts(ctx context.Context, params GetProductsParams) ([]Prod
 	return products, nil
 }
 
-// GetCursor returns a Cursor by name
-func (pg *Pg) GetCursor(ctx context.Context, params GetCursorParams) (*Cursor, error) {
-	c, err := pg.gen.GetCursor(ctx, params.Name)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, nil
-		}
-
-		return &Cursor{}, errors.Wrap(err, "pg.gen.GetCursor")
-	}
-
-	return &Cursor{
-		Name:      params.Name,
-		ID:        c.CursorID.Bytes,
-		Timestamp: c.CursorTimestamp.Time,
-	}, nil
-}
-
-// SetCursor sets a Cursor by name
-func (pg *Pg) SetCursor(ctx context.Context, cursor Cursor) error {
-	err := pg.gen.SetCursor(ctx, generated.SetCursorParams{
-		Name: cursor.Name,
-		CursorID: pgtype.UUID{
-			Bytes: cursor.ID,
-			Valid: true,
-		},
-		CursorTimestamp: pgtype.Timestamp{
-			Time:  cursor.Timestamp,
-			Valid: true,
-		},
-	})
-	if err != nil {
-		return errors.Wrap(err, "pg.gen.SetCursor")
-	}
-
-	return nil
-}
-
-// ResetCursor resets a Cursor by name
-func (pg *Pg) ResetCursor(ctx context.Context, params ResetCursorParams) error {
-	err := pg.gen.ResetCursor(ctx, params.Name)
-	if err != nil {
-		return errors.Wrap(err, "pg.gen.ResetCursor")
-	}
-
-	return nil
-}
-
 // GetNextShop returns the next shop to sync
-func (pg *Pg) GetNextShop(ctx context.Context, cursor Cursor) (NextShop, error) {
+func (pg *Pg) GetNextShop(ctx context.Context) (NextShop, error) {
 	ns, err := pg.gen.GetNextShop(ctx, generated.GetNextShopParams{
-		CursorID: cursor.ID,
-		CursorDate: pgtype.Timestamp{
-			Time:  cursor.Timestamp,
-			Valid: true,
-		},
+		SyncInterval:         syncInterval,
+		FailureRetryInterval: failureRetryInterval,
 	})
 	if err != nil {
 		return NextShop{}, errors.Wrap(err, "pg.gen.GetNextShop")
 	}
 
 	return NextShop{
-		ID:              ns.ID,
-		CursorTimestamp: ns.CreatedAt.Time,
-		APIKey:          ns.ApiKey.String,
+		ShopID:    ns.WebAppID,
+		SyncJobID: ns.ID,
+		APIKey:    ns.ApiKey,
 	}, nil
+}
+
+// SetSyncSuccess marks the sync job as successful
+func (pg *Pg) SetSyncSuccess(ctx context.Context, params SetSyncSuccessParams) error {
+	err := pg.gen.SetSyncSuccess(ctx, params.JobID)
+	if err != nil {
+		return errors.Wrap(err, "pg.gen.SetSyncSuccess")
+	}
+
+	return nil
+}
+
+// SetSyncFailure marks the sync job as failed
+func (pg *Pg) SetSyncFailure(ctx context.Context, params SetSyncFailureParams) error {
+	err := pg.gen.SetSyncFailure(ctx, generated.SetSyncFailureParams{
+		ID:        params.JobID,
+		LastError: pgtype.Text{String: params.LastError, Valid: true},
+	})
+	if err != nil {
+		return errors.Wrap(err, "pg.gen.SetSyncFailure")
+	}
+
+	return nil
 }

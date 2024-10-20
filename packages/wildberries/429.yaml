@@ -1,0 +1,15 @@
+"429":
+  content:
+    application/json:
+      example:
+        title: too many requests
+        detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+        code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+        requestId: 9d3c02cc698f8b041c661a7c28bed293
+        origin: s2s-api-auth-catalog
+        status: 429
+        statusText: Too Many Requests
+        timestamp: 2024-09-30T06:52:38Z
+      schema:
+        $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+  description: Слишком много запросов
