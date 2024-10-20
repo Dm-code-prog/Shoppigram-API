@@ -8,8 +8,8 @@ import (
 	telegramusers "github.com/shoppigram-com/marketplace-api/internal/auth"
 )
 
-// makeGetShopEndpoint constructs a GetShops endpoint wrapping the service.
-func makeGetShopEndpoint(s Service) endpoint.Endpoint {
+// makeGetShopsEndpoint constructs a GetShops endpoint wrapping the service.
+func makeGetShopsEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, _ any) (any, error) {
 		usr, err := telegramusers.GetUserFromContext(ctx)
 		if err != nil {
@@ -23,6 +23,30 @@ func makeGetShopEndpoint(s Service) endpoint.Endpoint {
 			return nil, errors.Wrap(err, "s.GetShops")
 		}
 		return v0, nil
+	}
+}
+
+// makeGetShopEndpoint creates a new endpoint for access to
+// GetShop service method
+func makeGetShopEndpoint(s Service) endpoint.Endpoint {
+	return func(ctx context.Context, req any) (any, error) {
+		usr, err := telegramusers.GetUserFromContext(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		request, ok := req.(GetShopRequest)
+		if !ok {
+			return nil, ErrorBadRequest
+		}
+
+		request.ExternalUserID = usr.ExternalId
+		response, err := s.GetShop(ctx, request)
+		if err != nil {
+			return nil, errors.Wrap(err, "s.GetShop")
+		}
+
+		return response, nil
 	}
 }
 

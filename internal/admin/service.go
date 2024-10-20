@@ -53,6 +53,16 @@ func (s *DefaultService) GetShops(ctx context.Context, req GetShopsRequest) (Get
 	return shops, nil
 }
 
+// GetShop returns a shop by ID
+func (s *DefaultService) GetShop(ctx context.Context, req GetShopRequest) (GetShopResponse, error) {
+	shop, err := s.repo.GetShop(ctx, req)
+	if err != nil {
+		return GetShopResponse{}, errors.Wrap(err, "s.repo.GetShop")
+	}
+
+	return shop, nil
+}
+
 // CreateShop creates a new Shop
 func (s *DefaultService) CreateShop(ctx context.Context, req CreateShopRequest) (CreateShopResponse, error) {
 	if !isNameValid(req.Name) {

@@ -3,10 +3,9 @@ package admin
 import (
 	"context"
 	"encoding/json"
-	"strings"
-
 	"github.com/google/uuid"
 	"github.com/jackc/pgerrcode"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -65,6 +64,32 @@ func (p *Pg) GetShops(ctx context.Context, req GetShopsRequest) (GetShopsRespons
 
 	return GetShopsResponse{
 		Shops: shops,
+	}, nil
+}
+
+// GetShop returns a shop by ID
+func (p *Pg) GetShop(ctx context.Context, req GetShopRequest) (GetShopResponse, error) {
+	shop, err := p.gen.GetShop(ctx, generated.GetShopParams{
+		ID:              req.WebAppID,
+		OwnerExternalID: pgtype.Int8{Int64: req.ExternalUserID, Valid: true},
+	})
+	if err != nil {
+		return GetShopResponse{}, errors.Wrap(err, "p.gen.GetShop")
+	}
+
+	return GetShopResponse{
+		ID:         shop.ID,
+		Name:       shop.Name,
+		IsVerified: shop.IsVerified.Bool,
+		ShortName:  shop.ShortName,
+		Type:       shopType(shop.Type),
+		Currency:   string(shop.Currency),
+		Sync: Sync{
+			ExternalProvider: string(shop.ExternalProvider.ExternalProvider),
+			IsActive:         shop.IsActive.Bool,
+			LastSyncedAt:     shop.LastSyncAt.Time,
+			LastStatus:       string(shop.LastSyncStatus.ExtenalSyncStatus),
+		},
 	}, nil
 }
 

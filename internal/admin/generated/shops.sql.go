@@ -85,17 +85,70 @@ func (q *Queries) EnableShopSync(ctx context.Context, arg EnableShopSyncParams) 
 	return err
 }
 
-const getShops = `-- name: GetShops :many
-select id, name, logo_url, is_verified, short_name, currency, type
-from web_apps
-where owner_external_id = $1
+const getShop = `-- name: GetShop :one
+select wa.id,
+       wa.name,
+       wa.is_verified,
+       wa.short_name,
+       wa.currency,
+       wa.type,
+       sec.external_provider,
+       sec.is_active,
+       sec.last_sync_at,
+       sec.last_sync_status
+from web_apps wa
+         left join shop_external_connections sec on wa.id = sec.web_app_id
+where wa.id = $1
+  and wa.owner_external_id = $2
   and is_deleted = false
+`
+
+type GetShopParams struct {
+	ID              uuid.UUID
+	OwnerExternalID pgtype.Int8
+}
+
+type GetShopRow struct {
+	ID               uuid.UUID
+	Name             string
+	IsVerified       pgtype.Bool
+	ShortName        string
+	Currency         ProductCurrency
+	Type             WebAppType
+	ExternalProvider NullExternalProvider
+	IsActive         pgtype.Bool
+	LastSyncAt       pgtype.Timestamp
+	LastSyncStatus   NullExtenalSyncStatus
+}
+
+func (q *Queries) GetShop(ctx context.Context, arg GetShopParams) (GetShopRow, error) {
+	row := q.db.QueryRow(ctx, getShop, arg.ID, arg.OwnerExternalID)
+	var i GetShopRow
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.IsVerified,
+		&i.ShortName,
+		&i.Currency,
+		&i.Type,
+		&i.ExternalProvider,
+		&i.IsActive,
+		&i.LastSyncAt,
+		&i.LastSyncStatus,
+	)
+	return i, err
+}
+
+const getShops = `-- name: GetShops :many
+select id, name, is_verified, short_name, currency, type
+from web_apps
+where is_deleted = false
+  and owner_external_id = $1
 `
 
 type GetShopsRow struct {
 	ID         uuid.UUID
 	Name       string
-	LogoUrl    pgtype.Text
 	IsVerified pgtype.Bool
 	ShortName  string
 	Currency   ProductCurrency
@@ -114,7 +167,6 @@ func (q *Queries) GetShops(ctx context.Context, ownerExternalID pgtype.Int8) ([]
 		if err := rows.Scan(
 			&i.ID,
 			&i.Name,
-			&i.LogoUrl,
 			&i.IsVerified,
 			&i.ShortName,
 			&i.Currency,

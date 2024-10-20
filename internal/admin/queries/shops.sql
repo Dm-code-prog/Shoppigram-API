@@ -1,8 +1,26 @@
 -- name: GetShops :many
-select id, name, logo_url, is_verified, short_name, currency, type
+select id, name, is_verified, short_name, currency, type
 from web_apps
-where owner_external_id = $1
+where is_deleted = false
+  and owner_external_id = $1;
+
+-- name: GetShop :one
+select wa.id,
+       wa.name,
+       wa.is_verified,
+       wa.short_name,
+       wa.currency,
+       wa.type,
+       sec.external_provider,
+       sec.is_active,
+       sec.last_sync_at,
+       sec.last_sync_status
+from web_apps wa
+         left join shop_external_connections sec on wa.id = sec.web_app_id
+where wa.id = $1
+  and wa.owner_external_id = $2
   and is_deleted = false;
+
 
 -- name: CreateShop :one
 insert into web_apps (name, owner_external_id, short_name, currency, type)

@@ -57,7 +57,7 @@ create table shop_external_connections
     primary key (id)
 );
 
-create unique index on shop_external_connections (web_app_id, external_provider);
+create unique index on shop_external_connections (web_app_id);
 
 create trigger set_updated_at
     before update

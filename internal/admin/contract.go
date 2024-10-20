@@ -9,6 +9,15 @@ import (
 type (
 	shopType string
 
+	// Sync represents the synchronization status of a shop
+	// with an external provider
+	Sync struct {
+		ExternalProvider string    `json:"external_provider"`
+		IsActive         bool      `json:"is_active"`
+		LastSyncedAt     time.Time `json:"last_synced_at"`
+		LastStatus       string    `json:"last_status"`
+	}
+
 	// Shop stores the information about a shop application
 	Shop struct {
 		ID                    uuid.UUID `json:"id"`
@@ -18,6 +27,7 @@ type (
 		Type                  shopType  `json:"type"`
 		Currency              string    `json:"currency"`
 		OnlinePaymentsEnabled bool      `json:"online_payments_enabled"`
+		Sync                  Sync      `json:"syncs"`
 	}
 
 	// ProductExternalLink is a link to a product
@@ -77,8 +87,18 @@ type (
 
 	// GetShopsResponse defines the response for the GetShops endpoint
 	GetShopsResponse struct {
-		Shops []Shop `json:"marketplaces"`
+		Shops []Shop `json:"shops"`
 	}
+
+	// GetShopRequest specifies the information required to get a shop
+	GetShopRequest struct {
+		ExternalUserID int64
+		WebAppID       uuid.UUID
+	}
+
+	// GetShopResponse specifies the information returned
+	// about a shop
+	GetShopResponse Shop
 
 	// CreateShopRequest creates a new shop
 	// for a client with a given name and shortname
@@ -250,14 +270,6 @@ type (
 		ChatID    int64
 		MessageID int64
 	}
-
-	// DOSpacesConfig holds the credentials for the S3 bucket
-	DOSpacesConfig struct {
-		Endpoint string
-		ID       string
-		Secret   string
-		Bucket   string
-	}
 )
 
 // interfaces
@@ -265,10 +277,17 @@ type (
 	// Repository provides access to the admin storage
 	Repository interface {
 		GetShops(ctx context.Context, req GetShopsRequest) (GetShopsResponse, error)
+
+		GetShop(ctx context.Context, req GetShopRequest) (GetShopResponse, error)
+
 		GetShortName(ctx context.Context, id uuid.UUID) (string, error)
+
 		CreateShop(ctx context.Context, req CreateShopRequest) (CreateShopResponse, error)
+
 		UpdateShop(ctx context.Context, req UpdateShopRequest) error
+
 		SoftDeleteShop(ctx context.Context, req DeleteShopRequest) error
+
 		ConfigureShopSync(ctx context.Context, req ConfigureShopSyncRequest) error
 
 		CreateProduct(ctx context.Context, req CreateProductRequest) (CreateProductResponse, error)
@@ -293,6 +312,7 @@ type (
 
 	Service interface {
 		GetShops(context.Context, GetShopsRequest) (GetShopsResponse, error)
+		GetShop(context.Context, GetShopRequest) (GetShopResponse, error)
 		CreateShop(context.Context, CreateShopRequest) (CreateShopResponse, error)
 		UpdateShop(context.Context, UpdateShopRequest) error
 		DeleteShop(context.Context, DeleteShopRequest) error

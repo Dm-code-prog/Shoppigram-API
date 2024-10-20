@@ -19,22 +19,29 @@ func MakeHandlerV2(bs Service, authMw endpoint.Middleware) http.Handler {
 	opts = append(opts, telegramusers.AuthServerBefore...)
 
 	getShopsH := kithttp.NewServer(
-		authMw(makeGetShopEndpoint(bs)),
+		authMw(makeGetShopsEndpoint(bs)),
 		gokithelper.DecodeEmptyRequest,
+		encodeResponse,
+		opts...,
+	)
+
+	getShopH := kithttp.NewServer(
+		authMw(makeGetShopEndpoint(bs)),
+		decodeGetShopRequest,
 		encodeResponse,
 		opts...,
 	)
 
 	createShopH := kithttp.NewServer(
 		authMw(makeCreateShopEndpoint(bs)),
-		decodeCreateMarketplaceRequest,
+		decodeCreateShopRequest,
 		encodeResponse,
 		opts...,
 	)
 
 	updateShopH := kithttp.NewServer(
 		authMw(makeUpdateShopEndpoint(bs)),
-		decodeUpdateMarketplaceRequest,
+		decodeUpdateShopRequest,
 		encodeResponse,
 		opts...,
 	)
@@ -118,6 +125,7 @@ func MakeHandlerV2(bs Service, authMw endpoint.Middleware) http.Handler {
 
 	r := chi.NewRouter()
 	r.Get("/shops", getShopsH.ServeHTTP)
+	r.Get("/shops/{web_app_id}", getShopH.ServeHTTP)
 	r.Post("/shops", createShopH.ServeHTTP)
 	r.Put("/shops/{web_app_id}", updateShopH.ServeHTTP)
 	r.Delete("/shops/{web_app_id}", deleteShopH.ServeHTTP)
