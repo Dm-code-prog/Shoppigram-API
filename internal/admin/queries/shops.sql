@@ -18,7 +18,6 @@ select wa.id,
 from web_apps wa
          left join shop_external_connections sec on wa.id = sec.web_app_id
 where wa.id = $1
-  and wa.owner_external_id = $2
   and is_deleted = false;
 
 

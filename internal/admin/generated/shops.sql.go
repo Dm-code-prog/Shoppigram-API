@@ -99,14 +99,8 @@ select wa.id,
 from web_apps wa
          left join shop_external_connections sec on wa.id = sec.web_app_id
 where wa.id = $1
-  and wa.owner_external_id = $2
   and is_deleted = false
 `
-
-type GetShopParams struct {
-	ID              uuid.UUID
-	OwnerExternalID pgtype.Int8
-}
 
 type GetShopRow struct {
 	ID               uuid.UUID
@@ -121,8 +115,8 @@ type GetShopRow struct {
 	LastSyncStatus   NullExtenalSyncStatus
 }
 
-func (q *Queries) GetShop(ctx context.Context, arg GetShopParams) (GetShopRow, error) {
-	row := q.db.QueryRow(ctx, getShop, arg.ID, arg.OwnerExternalID)
+func (q *Queries) GetShop(ctx context.Context, id uuid.UUID) (GetShopRow, error) {
+	row := q.db.QueryRow(ctx, getShop, id)
 	var i GetShopRow
 	err := row.Scan(
 		&i.ID,

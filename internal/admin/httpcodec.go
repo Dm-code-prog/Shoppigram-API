@@ -159,7 +159,7 @@ func decodeGetOrdersRequest(_ context.Context, r *http.Request) (any, error) {
 		if err != nil {
 			return nil, ErrorBadRequest
 		}
-		request.MarketplaceID = marketplaceUUID
+		request.ShopID = marketplaceUUID
 	}
 
 	state := r.URL.Query().Get("state")

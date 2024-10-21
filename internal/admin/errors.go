@@ -13,12 +13,12 @@ var (
 	ErrorInternal      = errors.New("internal server error")
 	ErrorBadRequest    = errors.New("bad request")
 
-	ErrorNotUniqueShortName      = errors.New("not unique short name")
-	ErrorInvalidShortName        = errors.New("invalid short name")
-	ErrorInvalidName             = errors.New("invalid name")
-	ErrorMaxMarketplacesExceeded = errors.New("max marketplaces exceeded")
+	ErrorNotUniqueShortName = errors.New("not unique short name")
+	ErrorInvalidShortName   = errors.New("invalid short name")
+	ErrorInvalidName        = errors.New("invalid name")
+	MaxShopsLimitExceeded   = errors.New("max shops limit exceeded")
 
-	ErrorMaxProductsExceeded = errors.New("max products exceeded")
+	ErrorMaxProductsExceeded = errors.New("max products limit exceeded")
 
 	ErrorOpNotAllowed = errors.New("operation not allowed")
 
@@ -32,7 +32,7 @@ var (
 		ErrorInvalidName,
 		ErrorNotUniqueShortName,
 		ErrorAdminNotFound,
-		ErrorMaxMarketplacesExceeded,
+		MaxShopsLimitExceeded,
 		ErrorInvalidImageExtension,
 		ErrorMaxProductsExceeded,
 		ErrorShopSyncNotSupported,

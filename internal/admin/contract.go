@@ -9,9 +9,9 @@ import (
 type (
 	shopType string
 
-	// Sync represents the synchronization status of a shop
+	// SyncDetails represents the synchronization status of a shop
 	// with an external provider
-	Sync struct {
+	SyncDetails struct {
 		ExternalProvider string    `json:"external_provider"`
 		IsActive         bool      `json:"is_active"`
 		LastSyncedAt     time.Time `json:"last_synced_at"`
@@ -20,14 +20,14 @@ type (
 
 	// Shop stores the information about a shop application
 	Shop struct {
-		ID                    uuid.UUID `json:"id"`
-		Name                  string    `json:"name"`
-		ShortName             string    `json:"short_name"`
-		IsVerified            bool      `json:"is_verified"`
-		Type                  shopType  `json:"type"`
-		Currency              string    `json:"currency"`
-		OnlinePaymentsEnabled bool      `json:"online_payments_enabled"`
-		Sync                  Sync      `json:"syncs"`
+		ID                    uuid.UUID   `json:"id"`
+		Name                  string      `json:"name"`
+		ShortName             string      `json:"short_name"`
+		IsVerified            bool        `json:"is_verified"`
+		Type                  shopType    `json:"type"`
+		Currency              string      `json:"currency"`
+		OnlinePaymentsEnabled bool        `json:"online_payments_enabled"`
+		SyncDetails           SyncDetails `json:"sync_details"`
 	}
 
 	// ProductExternalLink is a link to a product
@@ -229,18 +229,13 @@ type (
 		Balances []Balance `json:"balances"`
 	}
 
-	// GetTelegramChannelOwnerResponse contains the data about Telegram channels owned by a specific user
-	GetTelegramChannelOwnerResponse struct {
-		ChatId int64
-	}
-
 	// GetOrdersRequest is a filter for getting orders
 	GetOrdersRequest struct {
 		ExternalUserID int64
-		State          string
-		MarketplaceID  uuid.UUID
-		Limit          int
-		Offset         int
+		State          string    `json:"state"`
+		ShopID         uuid.UUID `json:"shop_id"`
+		Limit          int       `json:"limit"`
+		Offset         int       `json:"offset"`
 	}
 
 	GetOrdersResponse struct {
@@ -280,8 +275,6 @@ type (
 
 		GetShop(ctx context.Context, req GetShopRequest) (GetShopResponse, error)
 
-		GetShortName(ctx context.Context, id uuid.UUID) (string, error)
-
 		CreateShop(ctx context.Context, req CreateShopRequest) (CreateShopResponse, error)
 
 		UpdateShop(ctx context.Context, req UpdateShopRequest) error
@@ -298,7 +291,6 @@ type (
 		GetBalance(ctx context.Context, req GetBalanceRequest) (GetBalanceResponse, error)
 
 		IsShopOwner(ctx context.Context, externalUserID int64, webAppID uuid.UUID) (bool, error)
-		IsProductOwner(ctx context.Context, externalUserID int64, productID uuid.UUID) (bool, error)
 		IsTelegramChannelOwner(ctx context.Context, externalUserID, channelID int64) (bool, error)
 
 		GetTelegramChannels(ctx context.Context, ownerExternalID int64) (GetTelegramChannelsResponse, error)
@@ -311,26 +303,53 @@ type (
 	}
 
 	Service interface {
+		// GetShops returns a list of shops owned by a user
 		GetShops(context.Context, GetShopsRequest) (GetShopsResponse, error)
+
+		// GetShop returns the information about a shop
 		GetShop(context.Context, GetShopRequest) (GetShopResponse, error)
+
+		// CreateShop creates a new shop for a user
 		CreateShop(context.Context, CreateShopRequest) (CreateShopResponse, error)
+
+		// UpdateShop updates a shop
 		UpdateShop(context.Context, UpdateShopRequest) error
+
+		// DeleteShop deletes a shop
 		DeleteShop(context.Context, DeleteShopRequest) error
+
+		// ConfigureShopSync enables or disables the synchronization of a shop with an external provider
 		ConfigureShopSync(context.Context, ConfigureShopSyncRequest) error
 
+		// CreateProduct creates a new product in a shop
 		CreateProduct(context.Context, CreateProductRequest) (CreateProductResponse, error)
+
+		// UpdateProduct updates a product in a shop
 		UpdateProduct(context.Context, UpdateProductRequest) error
+
+		// DeleteProduct deletes a product in a shop
 		DeleteProduct(context.Context, DeleteProductRequest) error
 
+		// GetOrders returns a list of orders for a user
+		// can be filtered by shop, state, etc.
 		GetOrders(context.Context, GetOrdersRequest) (GetOrdersResponse, error)
 
+		// GetBalance returns the balance of a user
+		// across all shops
+		//
+		// Not production-ready, don't use it
 		GetBalance(context.Context, GetBalanceRequest) (GetBalanceResponse, error)
 
+		// CreateProductImageUploadURL returns a URL for uploading a product image
 		CreateProductImageUploadURL(context.Context, CreateProductImageUploadURLRequest) (CreateProductImageUploadURLResponse, error)
+
+		// CreateShopLogoUploadURL returns a URL for uploading a shop logo
 		CreateShopLogoUploadURL(context.Context, CreateShopLogoUploadURLRequest) (CreateShopLogoUploadURLResponse, error)
 
+		// GetTelegramChannels returns a list of Telegram channels owned by a user
 		GetTelegramChannels(context.Context, int64) (GetTelegramChannelsResponse, error)
 
+		// PublishShopBannerToChannel publishes a banner to a Telegram channel
 		PublishShopBannerToChannel(context.Context, PublishShopBannerToChannelRequest) error
 	}
 )
