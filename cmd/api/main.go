@@ -116,7 +116,7 @@ func main() {
 	)
 	authHandler := auth.MakeHandler(tgUsersService, authMw)
 
-	////////////////////////////////////// MARKETPLACES //////////////////////////////////////
+	////////////////////////////////////// SHOP API //////////////////////////////////////
 	marketplacesRepo := app.NewPg(db)
 	marketplacesService := app.NewServiceWithObservability(
 		app.New(marketplacesRepo, config.Cache.MaxSize),
@@ -158,7 +158,7 @@ func main() {
 			_ = notificationsService.Shutdown()
 		})
 	} else {
-		log.Warn("new marketplace notifications job is disabled")
+		log.Warn("new shop notifications job is disabled")
 	}
 
 	if config.Jobs.Notifications.VerfiedShops.IsEnabled {
@@ -166,7 +166,7 @@ func main() {
 			_ = notificationsService.Shutdown()
 		})
 	} else {
-		log.Warn("verified marketplace notifications job is disabled")
+		log.Warn("verified notifications job is disabled")
 	}
 
 	if config.Jobs.Sync.Wildberries.IsEnabled {
@@ -175,6 +175,8 @@ func main() {
 		}, func(err error) {
 			wb.Shutdown()
 		})
+	} else {
+		log.Warn("wildberries sync job is disabled")
 	}
 
 	////////////////////////////////////// ADMINS /////////////////////////////////////

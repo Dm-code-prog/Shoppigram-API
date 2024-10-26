@@ -2,12 +2,14 @@ package wildberries
 
 import (
 	"context"
+	"encoding/json"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pkg/errors"
 	"github.com/shoppigram-com/marketplace-api/internal/sync/wildberries/generated"
+	"math/big"
 )
 
 // Pg implements the Repository interface
@@ -28,69 +30,202 @@ func (pg *Pg) SyncProducts(ctx context.Context, params SetProductsParams) error 
 	if err != nil {
 		return errors.Wrap(err, "pg.pool.Begin")
 	}
-	defer func(tx pgx.Tx, ctx context.Context) {
+	defer func() {
 		_ = tx.Rollback(ctx)
-	}(tx, ctx)
+	}()
 	qtx := pg.gen.WithTx(tx)
 
-	// Start by getting the external IDs of products we have before the sync
+	err = pg.syncProductsWithTx(ctx, qtx, params)
+	if err != nil {
+		return errors.Wrap(err, "pg.syncProductsWithTx")
+	}
+
+	return tx.Commit(ctx)
+}
+
+func (pg *Pg) syncProductsWithTx(ctx context.Context, qtx *generated.Queries, params SetProductsParams) error {
+	currentExternalIDs, err := pg.getCurrentExternalIDs(ctx, qtx, params)
+	if err != nil {
+		return err
+	}
+
+	productsToDelete := pg.identifyProductsToDelete(currentExternalIDs, params)
+
+	// Delete products not in the new list
+	if err := pg.deleteProducts(ctx, qtx, productsToDelete); err != nil {
+		return err
+	}
+
+	// Insert or update products
+	if err := pg.insertOrUpdateProducts(ctx, qtx, params); err != nil {
+		return err
+	}
+
+	// Get internal product IDs after insertion/update
+	intProducts, err := pg.getInternalProductIDs(ctx, qtx, params)
+	if err != nil {
+		return err
+	}
+
+	// Create a map of external ID to internal ID
+	productIDsMap := pg.createProductIDsMap(intProducts)
+
+	// Update product variants
+	//
+	// Note:
+	// In this implementation we first delete all the product variants
+	// and then insert the new ones. I am not sure if this is the way to go.
+	//
+	// One thing to keep in mind is that after each sync, the IDs of variants will be reset.
+	if err := pg.updateProductVariants(ctx, qtx, params, intProducts, productIDsMap); err != nil {
+		return err
+	}
+
+	// Delete and insert external links
+	if err := pg.updateExternalLinks(ctx, qtx, params, intProducts, productIDsMap); err != nil {
+		return err
+	}
+
+	// Delete and insert photos
+	if err := pg.updatePhotos(ctx, qtx, params, intProducts, productIDsMap); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (pg *Pg) getCurrentExternalIDs(ctx context.Context, qtx *generated.Queries, params SetProductsParams) ([]pgtype.Text, error) {
 	currentExternalIDs, err := qtx.GetExternalIds(ctx, generated.GetExternalIdsParams{
-		WebAppID: pgtype.UUID{
-			Bytes: params.ShopID,
-			Valid: true,
-		},
+		WebAppID: pgtype.UUID{Bytes: params.ShopID, Valid: true},
 		ExternalProvider: generated.NullExternalProvider{
 			ExternalProvider: generated.ExternalProvider(params.ExternalProvider),
 			Valid:            true,
 		},
 	})
 	if err != nil {
-		return errors.Wrap(err, "qtx.GetExternalIds")
+		return nil, errors.Wrap(err, "qtx.GetExternalIds")
+	}
+	return currentExternalIDs, nil
+}
+
+func (pg *Pg) updateProductVariants(ctx context.Context, qtx *generated.Queries, params SetProductsParams, intProducts []generated.Product, productIDsMap map[string]uuid.UUID) error {
+	// Delete existing product variants
+	var productIDs []uuid.UUID
+	for _, p := range intProducts {
+		productIDs = append(productIDs, p.ID)
+	}
+	if err := pg.deleteProductVariants(ctx, qtx, productIDs); err != nil {
+		return err
 	}
 
-	// Create a map of current external IDs.
-	// This way we can find out if a product is already present in the database
-	// And find products that are not in the new list of products anymore
-	// and therefore need to be deleted
+	// Insert new product variants
+	if err := pg.insertProductVariants(ctx, qtx, params, productIDsMap); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (pg *Pg) deleteProductVariants(ctx context.Context, qtx *generated.Queries, productIDs []uuid.UUID) error {
+	if len(productIDs) == 0 {
+		return nil
+	}
+	var batchErr error
+	br := qtx.DeleteProductVariants(ctx, productIDs)
+	br.Exec(func(i int, err error) {
+		if err != nil {
+			batchErr = err
+		}
+	})
+	if batchErr != nil {
+		return errors.Wrap(batchErr, "br.Exec")
+	}
+	return nil
+}
+
+func (pg *Pg) insertProductVariants(ctx context.Context, qtx *generated.Queries, params SetProductsParams, productIDsMap map[string]uuid.UUID) error {
+	var insertParams []generated.CreateOrUpdateProductVariantsParams
+	for _, p := range params.Products {
+		productID, ok := productIDsMap[p.ExternalID]
+		if !ok {
+			continue
+		}
+		for _, v := range p.Variants {
+			var (
+				dimensionsJSONb []byte
+				err             error
+			)
+			if v.Dimensions != nil {
+				dimensionsJSONb, err = json.Marshal(v.Dimensions)
+				if err != nil {
+					return errors.Wrap(err, "json.Marshal")
+				}
+			}
+
+			insertParams = append(insertParams, generated.CreateOrUpdateProductVariantsParams{
+				ProductID:       productID,
+				Price:           pgtype.Numeric{Int: big.NewInt(int64(v.Price * 100)), Valid: true},
+				DiscountedPrice: pgtype.Numeric{Int: big.NewInt(int64(v.DiscountedPrice * 100)), Valid: true},
+				Dimensions:      dimensionsJSONb,
+			})
+		}
+	}
+
+	if len(insertParams) == 0 {
+		return nil
+	}
+
+	var batchErr error
+	br := qtx.CreateOrUpdateProductVariants(ctx, insertParams)
+	br.Exec(func(i int, err error) {
+		if err != nil {
+			batchErr = err
+		}
+	})
+	if batchErr != nil {
+		return errors.Wrap(batchErr, "br.Exec")
+	}
+	return nil
+}
+
+func (pg *Pg) identifyProductsToDelete(currentExternalIDs []pgtype.Text, params SetProductsParams) []pgtype.Text {
 	productsIDsLookUpMap := make(map[string]struct{})
 	for _, p := range params.Products {
 		productsIDsLookUpMap[p.ExternalID] = struct{}{}
 	}
 
-	// Products
-
-	// If a product used to be in the database but is not in the new list of products
-	// we need to delete it
 	var productsToDelete []pgtype.Text
 	for _, id := range currentExternalIDs {
 		if _, ok := productsIDsLookUpMap[id.String]; !ok {
 			productsToDelete = append(productsToDelete, id)
 		}
 	}
+	return productsToDelete
+}
 
-	// Delete products that are not in the new list of products
-	// in a batch operation.
-	var batchDeleteProductsErr error
-	brProductsDel := qtx.MarkProductAsDeleted(ctx, productsToDelete)
-	brProductsDel.Exec(func(i int, err error) {
+func (pg *Pg) deleteProducts(ctx context.Context, qtx *generated.Queries, productsToDelete []pgtype.Text) error {
+	if len(productsToDelete) == 0 {
+		return nil
+	}
+	var batchErr error
+	br := qtx.MarkProductAsDeleted(ctx, productsToDelete)
+	br.Exec(func(i int, err error) {
 		if err != nil {
-			batchDeleteProductsErr = err
+			batchErr = err
 		}
 	})
-	if batchDeleteProductsErr != nil {
-		return errors.Wrap(batchDeleteProductsErr, "brProductsDel.Exec")
+	if batchErr != nil {
+		return errors.Wrap(batchErr, "br.Exec")
 	}
-	// Finished deleting products
+	return nil
+}
 
-	// Now we need to insert the new products and update the existing ones
+func (pg *Pg) insertOrUpdateProducts(ctx context.Context, qtx *generated.Queries, params SetProductsParams) error {
 	var insertParams []generated.CreateOrUpdateProductsParams
 	for _, p := range params.Products {
 		insertParams = append(insertParams, generated.CreateOrUpdateProductsParams{
-			WebAppID: pgtype.UUID{
-				Bytes: params.ShopID,
-				Valid: true,
-			},
-			Name: p.Name,
+			WebAppID: pgtype.UUID{Bytes: params.ShopID, Valid: true},
+			Name:     p.Name,
 			Description: pgtype.Text{
 				String: p.Description,
 				Valid:  true,
@@ -111,129 +246,183 @@ func (pg *Pg) SyncProducts(ctx context.Context, params SetProductsParams) error 
 		})
 	}
 
-	// insert the new products in a batch operation
-	var batchInsertProductsErr error
-	brInsert := qtx.CreateOrUpdateProducts(ctx, insertParams)
-	brInsert.Exec(func(i int, err error) {
+	var batchErr error
+	br := qtx.CreateOrUpdateProducts(ctx, insertParams)
+	br.Exec(func(i int, err error) {
 		if err != nil {
-			batchInsertProductsErr = err
+			batchErr = err
 		}
 	})
-	if batchInsertProductsErr != nil {
-		return errors.Wrap(batchInsertProductsErr, "brInsert.Exec")
+	if batchErr != nil {
+		return errors.Wrap(batchErr, "br.Exec")
 	}
-	// Finished inserting the new list of products
+	return nil
+}
 
-	// After the insert we get the internal IDs of all products that are to be found in the database
-	// We need them for creating or updating matching records such as photos or external links.
-	intProducts, err := qtx.GetProducts(ctx, generated.GetProductsParams{
-		WebAppID: pgtype.UUID{
-			Bytes: params.ShopID,
-			Valid: true,
+func (pg *Pg) getInternalProductIDs(ctx context.Context, qtx *generated.Queries, params SetProductsParams) ([]generated.Product, error) {
+	intProducts, err := qtx.GetProductIDs(ctx, generated.GetProductIDsParams{
+		WebAppID: pgtype.UUID{Bytes: params.ShopID, Valid: true},
+		ExternalProvider: generated.NullExternalProvider{
+			ExternalProvider: generated.ExternalProvider(params.ExternalProvider),
+			Valid:            true,
 		},
-		ExternalProvider: generated.NullExternalProvider{ExternalProvider: externalProvider, Valid: true},
 	})
 	if err != nil {
-		return errors.Wrap(err, "qtx.GetProducts")
+		return nil, errors.Wrap(err, "qtx.GetProducts")
 	}
 
-	// We create a map with:
-	// External ID as key
-	// Internal ID as value
+	var products []generated.Product
+	for _, p := range intProducts {
+		products = append(products, generated.Product{
+			ID:         p.ID,
+			ExternalID: p.ExternalID,
+		})
+	}
+
+	return products, nil
+}
+
+func (pg *Pg) createProductIDsMap(intProducts []generated.Product) map[string]uuid.UUID {
 	productIDsMap := make(map[string]uuid.UUID)
 	for _, p := range intProducts {
 		productIDsMap[p.ExternalID.String] = p.ID
 	}
+	return productIDsMap
+}
 
-	// External links
-
-	// First we delete all external links of all products in the batch
-	var linksToDelete []uuid.UUID
+func (pg *Pg) updateExternalLinks(ctx context.Context, qtx *generated.Queries, params SetProductsParams, intProducts []generated.Product, productIDsMap map[string]uuid.UUID) error {
+	// Delete existing external links
+	var productIDs []uuid.UUID
 	for _, p := range intProducts {
-		linksToDelete = append(linksToDelete, p.ID)
+		productIDs = append(productIDs, p.ID)
 	}
-	var batchDeleteLinksErr error
-	brDeleteLinks := qtx.DeleteExternalLinks(ctx, linksToDelete)
-	brDeleteLinks.Exec(func(i int, err error) {
+	if err := pg.deleteExternalLinks(ctx, qtx, productIDs); err != nil {
+		return err
+	}
+
+	// Insert new external links
+	if err := pg.insertExternalLinks(ctx, qtx, params, productIDsMap); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (pg *Pg) deleteExternalLinks(ctx context.Context, qtx *generated.Queries, productIDs []uuid.UUID) error {
+	if len(productIDs) == 0 {
+		return nil
+	}
+	var batchErr error
+	br := qtx.DeleteExternalLinks(ctx, productIDs)
+	br.Exec(func(i int, err error) {
 		if err != nil {
-			batchDeleteLinksErr = err
+			batchErr = err
 		}
 	})
-	if batchDeleteLinksErr != nil {
-		return errors.Wrap(batchDeleteLinksErr, "brDeleteLinks.Exec")
+	if batchErr != nil {
+		return errors.Wrap(batchErr, "br.Exec")
 	}
+	return nil
+}
 
-	// Now we insert the new external links
-	var insertLinksParams []generated.CreateOrUpdateExternalLinksParams
+func (pg *Pg) insertExternalLinks(ctx context.Context, qtx *generated.Queries, params SetProductsParams, productIDsMap map[string]uuid.UUID) error {
+	var insertParams []generated.CreateOrUpdateExternalLinksParams
 	for _, p := range params.Products {
+		productID, ok := productIDsMap[p.ExternalID]
+		if !ok {
+			continue
+		}
 		for _, l := range p.ExternalLinks {
-			if id, ok := productIDsMap[p.ExternalID]; ok {
-				insertLinksParams = append(insertLinksParams, generated.CreateOrUpdateExternalLinksParams{
-					ProductID: id,
-					Url:       l.URL,
-					Label:     l.Label,
-				})
-			}
+			insertParams = append(insertParams, generated.CreateOrUpdateExternalLinksParams{
+				ProductID: productID,
+				Url:       l.URL,
+				Label:     l.Label,
+			})
 		}
 	}
 
-	// Insert the new external links in a batch operation
-	var batchInsertLinksErr error
-	brInsertLinks := qtx.CreateOrUpdateExternalLinks(ctx, insertLinksParams)
-	brInsertLinks.Exec(func(i int, err error) {
+	if len(insertParams) == 0 {
+		return nil
+	}
+
+	var batchErr error
+	br := qtx.CreateOrUpdateExternalLinks(ctx, insertParams)
+	br.Exec(func(i int, err error) {
 		if err != nil {
-			batchInsertLinksErr = err
+			batchErr = err
 		}
 	})
-	if batchInsertLinksErr != nil {
-		return errors.Wrap(batchInsertLinksErr, "brInsertLinks.Exec")
+	if batchErr != nil {
+		return errors.Wrap(batchErr, "br.Exec")
 	}
-	// Finished inserting external links
+	return nil
+}
 
-	// Photos
-
-	// The same as with external links
-	// First we delete all photos of all products in the batch
-	var toDelete []uuid.UUID
+func (pg *Pg) updatePhotos(ctx context.Context, qtx *generated.Queries, params SetProductsParams, intProducts []generated.Product, productIDsMap map[string]uuid.UUID) error {
+	// Delete existing photos
+	var productIDs []uuid.UUID
 	for _, p := range intProducts {
-		toDelete = append(toDelete, p.ID)
+		productIDs = append(productIDs, p.ID)
 	}
-	var batchDelPhotosErr error
-	brPhotosDel := qtx.DeletePhotos(ctx, toDelete)
-	brPhotosDel.Exec(func(i int, err error) {
-		if err != nil {
-			batchDelPhotosErr = err
-		}
-	})
-	if batchDelPhotosErr != nil {
-		return errors.Wrap(batchDeleteProductsErr, "brProductsDel.Exec")
+	if err := pg.deletePhotos(ctx, qtx, productIDs); err != nil {
+		return err
 	}
 
-	// Now we insert the new photos
-	var insertPhotosParams []generated.CreateOrUpdatePhotosParams
+	// Insert new photos
+	if err := pg.insertPhotos(ctx, qtx, params, productIDsMap); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (pg *Pg) deletePhotos(ctx context.Context, qtx *generated.Queries, productIDs []uuid.UUID) error {
+	if len(productIDs) == 0 {
+		return nil
+	}
+	var batchErr error
+	br := qtx.DeletePhotos(ctx, productIDs)
+	br.Exec(func(i int, err error) {
+		if err != nil {
+			batchErr = err
+		}
+	})
+	if batchErr != nil {
+		return errors.Wrap(batchErr, "br.Exec")
+	}
+	return nil
+}
+
+func (pg *Pg) insertPhotos(ctx context.Context, qtx *generated.Queries, params SetProductsParams, productIDsMap map[string]uuid.UUID) error {
+	var insertParams []generated.CreateOrUpdatePhotosParams
 	for _, p := range params.Products {
+		productID, ok := productIDsMap[p.ExternalID]
+		if !ok {
+			continue
+		}
 		for _, photo := range p.Photos {
-			if id, ok := productIDsMap[p.ExternalID]; ok {
-				insertPhotosParams = append(insertPhotosParams, generated.CreateOrUpdatePhotosParams{
-					ProductID: id,
-					Url:       photo.URL,
-				})
-			}
+			insertParams = append(insertParams, generated.CreateOrUpdatePhotosParams{
+				ProductID: productID,
+				Url:       photo.URL,
+			})
 		}
-	}
-	var batchInsertPhotosErr error
-	brPhotosInsert := qtx.CreateOrUpdatePhotos(ctx, insertPhotosParams)
-	brPhotosInsert.Exec(func(i int, err error) {
-		if err != nil {
-			batchInsertPhotosErr = err
-		}
-	})
-	if batchInsertPhotosErr != nil {
-		return errors.Wrap(batchInsertPhotosErr, "brPhotosInsert.Exec")
 	}
 
-	// If all the operations succeeded we commit the transaction
-	return tx.Commit(ctx)
+	if len(insertParams) == 0 {
+		return nil
+	}
+
+	var batchErr error
+	br := qtx.CreateOrUpdatePhotos(ctx, insertParams)
+	br.Exec(func(i int, err error) {
+		if err != nil {
+			batchErr = err
+		}
+	})
+	if batchErr != nil {
+		return errors.Wrap(batchErr, "br.Exec")
+	}
+	return nil
 }
 
 // GetNextSyncJob returns the next shop to sync

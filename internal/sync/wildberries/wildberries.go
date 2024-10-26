@@ -50,88 +50,61 @@ func New(r Repository, l *zap.Logger) *Syncer {
 }
 
 // Shutdown cancels the context of the runner to stop it
-func (r *Syncer) Shutdown() {
-	r.cancelFunc()
-	<-r.ctx.Done()
+func (s *Syncer) Shutdown() {
+	s.cancelFunc()
+	<-s.ctx.Done()
 }
 
 // Sync launches the Syncer
-func (r *Syncer) Sync() error {
+func (s *Syncer) Sync() error {
 	for {
 		select {
-		case <-r.ctx.Done():
+		case <-s.ctx.Done():
 			return nil
 		default:
-			job, err := r.repo.GetNextSyncJob(r.ctx)
+			job, err := s.repo.GetNextSyncJob(s.ctx)
 			if err != nil {
-				return errors.Wrap(err, "r.repo.GetNextSyncJob")
+				return errors.Wrap(err, "s.repo.GetNextSyncJob")
 			}
 			if job == nil {
 				time.Sleep(timeout)
 				continue
 			}
 
-			err = r.sync(*job)
+			err = s.sync(*job)
 			if err != nil {
-				r.l.Error("failed wildberries sync", logger.SilentError(err))
-				err2 := r.repo.SetSyncFailure(r.ctx, SetSyncFailureParams{
+				s.l.Error("failed wildberries sync", logger.SilentError(err))
+				err2 := s.repo.SetSyncFailure(s.ctx, SetSyncFailureParams{
 					JobID:     job.SyncJobID,
 					LastError: err.Error(),
 				})
 				if err2 != nil {
-					return errors.Wrap(err2, "r.repo.SetSyncFailure")
+					return errors.Wrap(err2, "s.repo.SetSyncFailure")
 				}
 				continue
 			}
 
-			err = r.repo.SetSyncSuccess(r.ctx, SetSyncSuccessParams{
+			err = s.repo.SetSyncSuccess(s.ctx, SetSyncSuccessParams{
 				JobID: job.SyncJobID,
 			})
 			if err != nil {
-				return errors.Wrap(err, "r.repo.SetSyncSuccess")
+				return errors.Wrap(err, "s.repo.SetSyncSuccess")
 			}
 
-			r.l.Info("wildberries sync success", zap.String("shop_id", job.ShopID.String()))
+			s.l.Info("wildberries sync success", zap.String("shop_id", job.ShopID.String()))
 		}
 	}
 }
 
-func (r *Syncer) sync(shop Job) error {
-	sortAscPtr := new(bool)
-	*sortAscPtr = true
-
-	withPhotoPtr := new(int32)
-	*withPhotoPtr = -1
-
-	cards, _, err := r.contentAPI.DefaultApi.
-		ContentV2GetCardsListPost(
-			context.WithValue(
-				r.ctx,
-				contentapi.ContextAPIKeys,
-				map[string]contentapi.APIKey{
-					"HeaderApiKey": {Key: shop.APIKey},
-				},
-			)).
-		ContentV2GetCardsListPostRequest(
-			contentapi.ContentV2GetCardsListPostRequest{
-				Settings: &contentapi.ContentV2GetCardsListPostRequestSettings{
-					Sort: &contentapi.ContentV2GetCardsListPostRequestSettingsSort{Ascending: sortAscPtr},
-					Filter: &contentapi.ContentV2GetCardsListPostRequestSettingsFilter{
-						WithPhoto: withPhotoPtr,
-					},
-					Cursor: &contentapi.ContentV2GetCardsListPostRequestSettingsCursor{
-						Limit: &fetchLimit,
-					},
-				}},
-		).
-		Execute()
+func (s *Syncer) sync(shop Job) error {
+	cards, err := s.getCards(shop.APIKey)
 	if err != nil {
-		return errors.Wrap(err, "r.contentAPI.DefaultApi.ContentV2CardsErrorListGet")
+		return errors.Wrap(err, "s.getCards")
 	}
 
-	extProductsMap := make(map[string]ExternalProduct)
+	extProductsMap := make(map[string]Product)
 	for _, card := range cards.Cards {
-		var p ExternalProduct
+		var p Product
 
 		id := card.GetNmID()
 		p.ExternalID = strconv.Itoa(int(id))
@@ -148,70 +121,116 @@ func (r *Syncer) sync(shop Job) error {
 		extProductsMap[p.ExternalID] = p
 	}
 
-	goods, _, err := r.pricesAPI.DefaultApi.
-		ApiV2ListGoodsFilterGet(
-			context.WithValue(
-				context.Background(),
-				pricesapi.ContextAPIKeys,
-				map[string]pricesapi.APIKey{
-					"HeaderApiKey": {Key: shop.APIKey},
-				},
-			),
-		).
-		Limit(fetchLimit).
-		Execute()
+	goods, err := s.getGoods(shop.APIKey)
 	if err != nil {
-		return errors.Wrap(err, "r.pricesAPI.DefaultApi.ApiV2ListGoodsFilterGet")
+		return errors.Wrap(err, "s.getGoods")
 	}
 
 	// For now, we will get the average price of all sizes
 	for _, good := range goods.Data.ListGoods {
-		id := strconv.Itoa(int(good.GetNmID()))
-		var (
-			sum, count, price int32
-		)
-		for _, s := range good.Sizes {
-			sum += s.GetPrice()
-			count++
-		}
-
-		if count > 0 {
-			price = sum / count
-		}
-
 		currency := strings.ToLower(good.GetCurrencyIsoCode4217())
 		if currency != supportedCurrency {
 			return errors.Errorf("currency %s is not supported", currency)
 		}
 
-		if p, ok := extProductsMap[id]; ok {
-			p.Price = float64(price)
+		id := strconv.Itoa(int(good.GetNmID()))
 
+		var variants []Variant
+		for _, s := range good.Sizes {
+			variants = append(variants, Variant{
+				Price:           float64(s.GetPrice()),
+				DiscountedPrice: float64(s.GetDiscountedPrice()),
+				Dimensions: map[string]string{
+					"size": s.GetTechSizeName(),
+				},
+			})
+		}
+
+		if p, ok := extProductsMap[id]; ok {
 			// Add WildBerries link
 			p.ExternalLinks = append(p.ExternalLinks, ExternalLink{
 				URL:   makeWBProductLink(id),
 				Label: "WildBerries",
 			})
 
+			// Add variants
+			p.Variants = variants
+
 			extProductsMap[id] = p
 		}
 	}
 
-	var extProducts []ExternalProduct
+	var extProducts []Product
 	for _, p := range extProductsMap {
 		extProducts = append(extProducts, p)
 	}
 
-	err = r.repo.SyncProducts(r.ctx, SetProductsParams{
+	err = s.repo.SyncProducts(s.ctx, SetProductsParams{
 		ShopID:           shop.ShopID,
 		ExternalProvider: externalProvider,
 		Products:         extProducts,
 	})
 	if err != nil {
-		return errors.Wrap(err, "r.repo.SyncProducts")
+		return errors.Wrap(err, "s.repo.SyncProducts")
 	}
 
 	return nil
+}
+
+func (s *Syncer) getCards(apiKey string) (*contentapi.ContentV2GetCardsListPost200Response, error) {
+	sortAscPtr := new(bool)
+	*sortAscPtr = true
+
+	withPhotoPtr := new(int32)
+	*withPhotoPtr = -1
+
+	cards, _, err := s.contentAPI.DefaultApi.
+		ContentV2GetCardsListPost(
+			context.WithValue(
+				s.ctx,
+				contentapi.ContextAPIKeys,
+				map[string]contentapi.APIKey{
+					"HeaderApiKey": {Key: apiKey},
+				},
+			)).
+		ContentV2GetCardsListPostRequest(
+			contentapi.ContentV2GetCardsListPostRequest{
+				Settings: &contentapi.ContentV2GetCardsListPostRequestSettings{
+					Sort: &contentapi.ContentV2GetCardsListPostRequestSettingsSort{Ascending: sortAscPtr},
+					Filter: &contentapi.ContentV2GetCardsListPostRequestSettingsFilter{
+						WithPhoto: withPhotoPtr,
+					},
+					Cursor: &contentapi.ContentV2GetCardsListPostRequestSettingsCursor{
+						Limit: &fetchLimit,
+					},
+				}},
+		).
+		Execute()
+	if err != nil {
+		return nil, errors.Wrap(err, "s.contentAPI.DefaultApi.ContentV2CardsErrorListGet")
+	}
+
+	return cards, nil
+}
+
+func (s *Syncer) getGoods(apiKey string) (*pricesapi.ApiV2ListGoodsFilterGet200Response, error) {
+	goods, _, err := s.pricesAPI.DefaultApi.
+		ApiV2ListGoodsFilterGet(
+			context.WithValue(
+				s.ctx,
+				pricesapi.ContextAPIKeys,
+				map[string]pricesapi.APIKey{
+					"HeaderApiKey": {Key: apiKey},
+				},
+			),
+		).
+		Limit(fetchLimit).
+		Execute()
+	if err != nil {
+		return nil, errors.Wrap(err, "s.pricesAPI.DefaultApi.ApiV2ListGoodsFilterGet")
+	}
+
+	return goods, nil
 }
 
 func makeWBProductLink(id string) string {

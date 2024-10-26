@@ -122,6 +122,63 @@ func (b *CreateOrUpdatePhotosBatchResults) Close() error {
 	return b.br.Close()
 }
 
+const createOrUpdateProductVariants = `-- name: CreateOrUpdateProductVariants :batchexec
+insert into product_variants (product_id, dimensions, price, discounted_price)
+values ($1, $2, $3, $4)
+on conflict (product_id, dimensions) do update
+    set price            = excluded.price,
+        discounted_price = excluded.discounted_price
+`
+
+type CreateOrUpdateProductVariantsBatchResults struct {
+	br     pgx.BatchResults
+	tot    int
+	closed bool
+}
+
+type CreateOrUpdateProductVariantsParams struct {
+	ProductID       uuid.UUID
+	Dimensions      []byte
+	Price           pgtype.Numeric
+	DiscountedPrice pgtype.Numeric
+}
+
+func (q *Queries) CreateOrUpdateProductVariants(ctx context.Context, arg []CreateOrUpdateProductVariantsParams) *CreateOrUpdateProductVariantsBatchResults {
+	batch := &pgx.Batch{}
+	for _, a := range arg {
+		vals := []interface{}{
+			a.ProductID,
+			a.Dimensions,
+			a.Price,
+			a.DiscountedPrice,
+		}
+		batch.Queue(createOrUpdateProductVariants, vals...)
+	}
+	br := q.db.SendBatch(ctx, batch)
+	return &CreateOrUpdateProductVariantsBatchResults{br, len(arg), false}
+}
+
+func (b *CreateOrUpdateProductVariantsBatchResults) Exec(f func(int, error)) {
+	defer b.br.Close()
+	for t := 0; t < b.tot; t++ {
+		if b.closed {
+			if f != nil {
+				f(t, ErrBatchAlreadyClosed)
+			}
+			continue
+		}
+		_, err := b.br.Exec()
+		if f != nil {
+			f(t, err)
+		}
+	}
+}
+
+func (b *CreateOrUpdateProductVariantsBatchResults) Close() error {
+	b.closed = true
+	return b.br.Close()
+}
+
 const createOrUpdateProducts = `-- name: CreateOrUpdateProducts :batchexec
 insert into products (web_app_id, name, description, price, category, external_provider, external_id)
 values ($1,
@@ -279,6 +336,51 @@ func (b *DeletePhotosBatchResults) Exec(f func(int, error)) {
 }
 
 func (b *DeletePhotosBatchResults) Close() error {
+	b.closed = true
+	return b.br.Close()
+}
+
+const deleteProductVariants = `-- name: DeleteProductVariants :batchexec
+delete
+from product_variants
+where product_id = $1
+`
+
+type DeleteProductVariantsBatchResults struct {
+	br     pgx.BatchResults
+	tot    int
+	closed bool
+}
+
+func (q *Queries) DeleteProductVariants(ctx context.Context, productID []uuid.UUID) *DeleteProductVariantsBatchResults {
+	batch := &pgx.Batch{}
+	for _, a := range productID {
+		vals := []interface{}{
+			a,
+		}
+		batch.Queue(deleteProductVariants, vals...)
+	}
+	br := q.db.SendBatch(ctx, batch)
+	return &DeleteProductVariantsBatchResults{br, len(productID), false}
+}
+
+func (b *DeleteProductVariantsBatchResults) Exec(f func(int, error)) {
+	defer b.br.Close()
+	for t := 0; t < b.tot; t++ {
+		if b.closed {
+			if f != nil {
+				f(t, ErrBatchAlreadyClosed)
+			}
+			continue
+		}
+		_, err := b.br.Exec()
+		if f != nil {
+			f(t, err)
+		}
+	}
+}
+
+func (b *DeleteProductVariantsBatchResults) Close() error {
 	b.closed = true
 	return b.br.Close()
 }

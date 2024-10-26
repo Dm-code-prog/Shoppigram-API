@@ -45,50 +45,35 @@ func (q *Queries) GetExternalIds(ctx context.Context, arg GetExternalIdsParams) 
 	return items, nil
 }
 
-const getProducts = `-- name: GetProducts :many
+const getProductIDs = `-- name: GetProductIDs :many
 select p.id,
-       p.external_id,
-       p.name,
-       p.description,
-       p.price,
-       p.category
+       p.external_id
 from products p
 where p.web_app_id = $1
   and p.external_provider = $2
   and p.is_deleted = false
 `
 
-type GetProductsParams struct {
+type GetProductIDsParams struct {
 	WebAppID         pgtype.UUID
 	ExternalProvider NullExternalProvider
 }
 
-type GetProductsRow struct {
-	ID          uuid.UUID
-	ExternalID  pgtype.Text
-	Name        string
-	Description pgtype.Text
-	Price       float64
-	Category    pgtype.Text
+type GetProductIDsRow struct {
+	ID         uuid.UUID
+	ExternalID pgtype.Text
 }
 
-func (q *Queries) GetProducts(ctx context.Context, arg GetProductsParams) ([]GetProductsRow, error) {
-	rows, err := q.db.Query(ctx, getProducts, arg.WebAppID, arg.ExternalProvider)
+func (q *Queries) GetProductIDs(ctx context.Context, arg GetProductIDsParams) ([]GetProductIDsRow, error) {
+	rows, err := q.db.Query(ctx, getProductIDs, arg.WebAppID, arg.ExternalProvider)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetProductsRow
+	var items []GetProductIDsRow
 	for rows.Next() {
-		var i GetProductsRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.ExternalID,
-			&i.Name,
-			&i.Description,
-			&i.Price,
-			&i.Category,
-		); err != nil {
+		var i GetProductIDsRow
+		if err := rows.Scan(&i.ID, &i.ExternalID); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

@@ -32,25 +32,24 @@ type (
 		Label string
 	}
 
-	// ExternalProduct defines the structure for a product
-	ExternalProduct struct {
+	// Variant is a product variant
+	Variant struct {
+		ID              uuid.UUID
+		Dimensions      map[string]string
+		Price           float64
+		DiscountedPrice float64
+	}
+
+	// Product defines the structure for a product
+	Product struct {
 		ExternalID    string
 		Name          string
 		Description   string
 		Category      string
 		Price         float64
+		Variants      []Variant
 		ExternalLinks []ExternalLink
 		Photos        []Photo
-	}
-
-	// Product is a product in the database
-	Product struct {
-		ID          uuid.UUID
-		ExternalID  string
-		Name        string
-		Price       float64
-		Category    string
-		Description string
 	}
 )
 
@@ -60,7 +59,7 @@ type (
 	SetProductsParams struct {
 		ShopID           uuid.UUID
 		ExternalProvider string
-		Products         []ExternalProduct
+		Products         []Product
 	}
 
 	// ProductPhotos is the structure that holds the product id and

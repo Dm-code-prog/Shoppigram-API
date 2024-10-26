@@ -25,17 +25,26 @@ on conflict (external_id, external_provider) do update
         price       = excluded.price,
         category    = excluded.category;
 
--- name: GetProducts :many
+-- name: GetProductIDs :many
 select p.id,
-       p.external_id,
-       p.name,
-       p.description,
-       p.price,
-       p.category
+       p.external_id
 from products p
 where p.web_app_id = @web_app_id
   and p.external_provider = @external_provider
   and p.is_deleted = false;
+
+-- name: DeleteProductVariants :batchexec
+delete
+from product_variants
+where product_id = $1;
+
+-- name: CreateOrUpdateProductVariants :batchexec
+insert into product_variants (product_id, dimensions, price, discounted_price)
+values (@product_id, @dimensions, @price, @discounted_price)
+on conflict (product_id, dimensions) do update
+    set price            = excluded.price,
+        discounted_price = excluded.discounted_price;
+
 
 -- name: CreateOrUpdateExternalLinks :batchexec
 insert into product_external_links (product_id, url, label)
