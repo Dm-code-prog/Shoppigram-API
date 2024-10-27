@@ -1,6 +1,16 @@
 -- name: GetShops :many
-select id, name, is_verified, short_name, currency, type
-from web_apps
+select wa.id,
+       wa.name,
+       wa.is_verified,
+       wa.short_name,
+       wa.currency,
+       wa.type,
+       sec.external_provider as sync_provider,
+       sec.is_active         as sync_is_active,
+       sec.last_sync_at      as last_sync_at,
+       sec.last_sync_status  as last_sync_status
+from web_apps wa
+         left join shop_external_connections sec on wa.id = sec.web_app_id
 where is_deleted = false
   and owner_external_id = $1;
 
@@ -11,10 +21,10 @@ select wa.id,
        wa.short_name,
        wa.currency,
        wa.type,
-       sec.external_provider,
-       sec.is_active,
-       sec.last_sync_at,
-       sec.last_sync_status
+       sec.external_provider as sync_provider,
+       sec.is_active         as sync_is_active,
+       sec.last_sync_at      as last_sync_at,
+       sec.last_sync_status  as last_sync_status
 from web_apps wa
          left join shop_external_connections sec on wa.id = sec.web_app_id
 where wa.id = $1
@@ -73,9 +83,3 @@ where owner_external_id = $1
 select owner_external_id = $1
 from web_apps
 where id = $2;
-
-
--- name: GetShortname :one
-select short_name
-from web_apps
-where id = @id::uuid;

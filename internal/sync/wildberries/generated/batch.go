@@ -18,24 +18,24 @@ var (
 	ErrBatchAlreadyClosed = errors.New("batch already closed")
 )
 
-const createOrUpdateExternalLinks = `-- name: CreateOrUpdateExternalLinks :batchexec
+const createExternalLinks = `-- name: CreateExternalLinks :batchexec
 insert into product_external_links (product_id, url, label)
 values ($1, $2, $3)
 `
 
-type CreateOrUpdateExternalLinksBatchResults struct {
+type CreateExternalLinksBatchResults struct {
 	br     pgx.BatchResults
 	tot    int
 	closed bool
 }
 
-type CreateOrUpdateExternalLinksParams struct {
+type CreateExternalLinksParams struct {
 	ProductID uuid.UUID
 	Url       string
 	Label     string
 }
 
-func (q *Queries) CreateOrUpdateExternalLinks(ctx context.Context, arg []CreateOrUpdateExternalLinksParams) *CreateOrUpdateExternalLinksBatchResults {
+func (q *Queries) CreateExternalLinks(ctx context.Context, arg []CreateExternalLinksParams) *CreateExternalLinksBatchResults {
 	batch := &pgx.Batch{}
 	for _, a := range arg {
 		vals := []interface{}{
@@ -43,13 +43,13 @@ func (q *Queries) CreateOrUpdateExternalLinks(ctx context.Context, arg []CreateO
 			a.Url,
 			a.Label,
 		}
-		batch.Queue(createOrUpdateExternalLinks, vals...)
+		batch.Queue(createExternalLinks, vals...)
 	}
 	br := q.db.SendBatch(ctx, batch)
-	return &CreateOrUpdateExternalLinksBatchResults{br, len(arg), false}
+	return &CreateExternalLinksBatchResults{br, len(arg), false}
 }
 
-func (b *CreateOrUpdateExternalLinksBatchResults) Exec(f func(int, error)) {
+func (b *CreateExternalLinksBatchResults) Exec(f func(int, error)) {
 	defer b.br.Close()
 	for t := 0; t < b.tot; t++ {
 		if b.closed {
@@ -65,7 +65,7 @@ func (b *CreateOrUpdateExternalLinksBatchResults) Exec(f func(int, error)) {
 	}
 }
 
-func (b *CreateOrUpdateExternalLinksBatchResults) Close() error {
+func (b *CreateExternalLinksBatchResults) Close() error {
 	b.closed = true
 	return b.br.Close()
 }
@@ -118,63 +118,6 @@ func (b *CreateOrUpdatePhotosBatchResults) Exec(f func(int, error)) {
 }
 
 func (b *CreateOrUpdatePhotosBatchResults) Close() error {
-	b.closed = true
-	return b.br.Close()
-}
-
-const createOrUpdateProductVariants = `-- name: CreateOrUpdateProductVariants :batchexec
-insert into product_variants (product_id, dimensions, price, discounted_price)
-values ($1, $2, $3, $4)
-on conflict (product_id, dimensions) do update
-    set price            = excluded.price,
-        discounted_price = excluded.discounted_price
-`
-
-type CreateOrUpdateProductVariantsBatchResults struct {
-	br     pgx.BatchResults
-	tot    int
-	closed bool
-}
-
-type CreateOrUpdateProductVariantsParams struct {
-	ProductID       uuid.UUID
-	Dimensions      []byte
-	Price           pgtype.Numeric
-	DiscountedPrice pgtype.Numeric
-}
-
-func (q *Queries) CreateOrUpdateProductVariants(ctx context.Context, arg []CreateOrUpdateProductVariantsParams) *CreateOrUpdateProductVariantsBatchResults {
-	batch := &pgx.Batch{}
-	for _, a := range arg {
-		vals := []interface{}{
-			a.ProductID,
-			a.Dimensions,
-			a.Price,
-			a.DiscountedPrice,
-		}
-		batch.Queue(createOrUpdateProductVariants, vals...)
-	}
-	br := q.db.SendBatch(ctx, batch)
-	return &CreateOrUpdateProductVariantsBatchResults{br, len(arg), false}
-}
-
-func (b *CreateOrUpdateProductVariantsBatchResults) Exec(f func(int, error)) {
-	defer b.br.Close()
-	for t := 0; t < b.tot; t++ {
-		if b.closed {
-			if f != nil {
-				f(t, ErrBatchAlreadyClosed)
-			}
-			continue
-		}
-		_, err := b.br.Exec()
-		if f != nil {
-			f(t, err)
-		}
-	}
-}
-
-func (b *CreateOrUpdateProductVariantsBatchResults) Close() error {
 	b.closed = true
 	return b.br.Close()
 }
@@ -246,6 +189,60 @@ func (b *CreateOrUpdateProductsBatchResults) Exec(f func(int, error)) {
 }
 
 func (b *CreateOrUpdateProductsBatchResults) Close() error {
+	b.closed = true
+	return b.br.Close()
+}
+
+const createProductVariants = `-- name: CreateProductVariants :batchexec
+insert into product_variants (product_id, dimensions, price, discounted_price)
+values ($1, $2, $3, $4)
+`
+
+type CreateProductVariantsBatchResults struct {
+	br     pgx.BatchResults
+	tot    int
+	closed bool
+}
+
+type CreateProductVariantsParams struct {
+	ProductID       uuid.UUID
+	Dimensions      []byte
+	Price           pgtype.Numeric
+	DiscountedPrice pgtype.Numeric
+}
+
+func (q *Queries) CreateProductVariants(ctx context.Context, arg []CreateProductVariantsParams) *CreateProductVariantsBatchResults {
+	batch := &pgx.Batch{}
+	for _, a := range arg {
+		vals := []interface{}{
+			a.ProductID,
+			a.Dimensions,
+			a.Price,
+			a.DiscountedPrice,
+		}
+		batch.Queue(createProductVariants, vals...)
+	}
+	br := q.db.SendBatch(ctx, batch)
+	return &CreateProductVariantsBatchResults{br, len(arg), false}
+}
+
+func (b *CreateProductVariantsBatchResults) Exec(f func(int, error)) {
+	defer b.br.Close()
+	for t := 0; t < b.tot; t++ {
+		if b.closed {
+			if f != nil {
+				f(t, ErrBatchAlreadyClosed)
+			}
+			continue
+		}
+		_, err := b.br.Exec()
+		if f != nil {
+			f(t, err)
+		}
+	}
+}
+
+func (b *CreateProductVariantsBatchResults) Close() error {
 	b.closed = true
 	return b.br.Close()
 }

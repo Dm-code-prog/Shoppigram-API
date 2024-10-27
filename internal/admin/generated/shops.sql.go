@@ -92,10 +92,10 @@ select wa.id,
        wa.short_name,
        wa.currency,
        wa.type,
-       sec.external_provider,
-       sec.is_active,
-       sec.last_sync_at,
-       sec.last_sync_status
+       sec.external_provider as sync_provider,
+       sec.is_active         as sync_is_active,
+       sec.last_sync_at      as last_sync_at,
+       sec.last_sync_status  as last_sync_status
 from web_apps wa
          left join shop_external_connections sec on wa.id = sec.web_app_id
 where wa.id = $1
@@ -103,16 +103,16 @@ where wa.id = $1
 `
 
 type GetShopRow struct {
-	ID               uuid.UUID
-	Name             string
-	IsVerified       pgtype.Bool
-	ShortName        string
-	Currency         ProductCurrency
-	Type             WebAppType
-	ExternalProvider NullExternalProvider
-	IsActive         pgtype.Bool
-	LastSyncAt       pgtype.Timestamp
-	LastSyncStatus   NullExtenalSyncStatus
+	ID             uuid.UUID
+	Name           string
+	IsVerified     pgtype.Bool
+	ShortName      string
+	Currency       ProductCurrency
+	Type           WebAppType
+	SyncProvider   NullExternalProvider
+	SyncIsActive   pgtype.Bool
+	LastSyncAt     pgtype.Timestamp
+	LastSyncStatus NullExtenalSyncStatus
 }
 
 func (q *Queries) GetShop(ctx context.Context, id uuid.UUID) (GetShopRow, error) {
@@ -125,8 +125,8 @@ func (q *Queries) GetShop(ctx context.Context, id uuid.UUID) (GetShopRow, error)
 		&i.ShortName,
 		&i.Currency,
 		&i.Type,
-		&i.ExternalProvider,
-		&i.IsActive,
+		&i.SyncProvider,
+		&i.SyncIsActive,
 		&i.LastSyncAt,
 		&i.LastSyncStatus,
 	)
@@ -134,19 +134,33 @@ func (q *Queries) GetShop(ctx context.Context, id uuid.UUID) (GetShopRow, error)
 }
 
 const getShops = `-- name: GetShops :many
-select id, name, is_verified, short_name, currency, type
-from web_apps
+select wa.id,
+       wa.name,
+       wa.is_verified,
+       wa.short_name,
+       wa.currency,
+       wa.type,
+       sec.external_provider as sync_provider,
+       sec.is_active         as sync_is_active,
+       sec.last_sync_at      as last_sync_at,
+       sec.last_sync_status  as last_sync_status
+from web_apps wa
+         left join shop_external_connections sec on wa.id = sec.web_app_id
 where is_deleted = false
   and owner_external_id = $1
 `
 
 type GetShopsRow struct {
-	ID         uuid.UUID
-	Name       string
-	IsVerified pgtype.Bool
-	ShortName  string
-	Currency   ProductCurrency
-	Type       WebAppType
+	ID             uuid.UUID
+	Name           string
+	IsVerified     pgtype.Bool
+	ShortName      string
+	Currency       ProductCurrency
+	Type           WebAppType
+	SyncProvider   NullExternalProvider
+	SyncIsActive   pgtype.Bool
+	LastSyncAt     pgtype.Timestamp
+	LastSyncStatus NullExtenalSyncStatus
 }
 
 func (q *Queries) GetShops(ctx context.Context, ownerExternalID pgtype.Int8) ([]GetShopsRow, error) {
@@ -165,6 +179,10 @@ func (q *Queries) GetShops(ctx context.Context, ownerExternalID pgtype.Int8) ([]
 			&i.ShortName,
 			&i.Currency,
 			&i.Type,
+			&i.SyncProvider,
+			&i.SyncIsActive,
+			&i.LastSyncAt,
+			&i.LastSyncStatus,
 		); err != nil {
 			return nil, err
 		}
@@ -174,19 +192,6 @@ func (q *Queries) GetShops(ctx context.Context, ownerExternalID pgtype.Int8) ([]
 		return nil, err
 	}
 	return items, nil
-}
-
-const getShortname = `-- name: GetShortname :one
-select short_name
-from web_apps
-where id = $1::uuid
-`
-
-func (q *Queries) GetShortname(ctx context.Context, id uuid.UUID) (string, error) {
-	row := q.db.QueryRow(ctx, getShortname, id)
-	var short_name string
-	err := row.Scan(&short_name)
-	return short_name, err
 }
 
 const isShopOwner = `-- name: IsShopOwner :one

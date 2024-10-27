@@ -203,7 +203,7 @@ func (pg *Pg) GetOrder(ctx context.Context, orderId uuid.UUID, userId int64) (Ge
 			Name:        v.Name,
 			Description: v.Description.String,
 			Category:    v.Category.String,
-			Price:       v.Price,
+			BasePrice:   v.Price,
 			Quantity:    v.Quantity,
 		}
 

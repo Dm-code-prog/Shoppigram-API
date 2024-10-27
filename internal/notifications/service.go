@@ -29,9 +29,6 @@ const (
 
 	stateConfirmed = "confirmed"
 	stateDone      = "done"
-
-	metricsStatusOK = "OK"
-	metricsStatusKO = "KO"
 )
 
 type (
@@ -188,10 +185,9 @@ func New(repo Repository, log *zap.Logger, newOrderJobTimeout, newShopJobTimeout
 }
 
 // Shutdown stops all the notifications
-func (s *Notifier) Shutdown() error {
+func (s *Notifier) Shutdown(_ error) {
 	s.cancel()
 	<-s.ctx.Done()
-	return nil
 }
 
 // AddUserToNewOrderNotifications creates a new order notification
@@ -254,9 +250,9 @@ func (s *Notifier) PinNotification(_ context.Context, req PinNotificationParams)
 func (s *Notifier) SendMessage(msg tgbotapi.Chattable) (tgbotapi.Message, error) {
 	message, err := s.bot.Send(msg)
 	defer func() {
-		status := metricsStatusOK
+		status := cloudwatchcollector.StatusOK
 		if err != nil {
-			status = metricsStatusKO
+			status = cloudwatchcollector.StatusKO
 		}
 		cloudwatchcollector.Increment("telegram_bot_api_send_message", cloudwatchcollector.Dimensions{
 			"status": status,

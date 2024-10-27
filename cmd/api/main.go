@@ -38,7 +38,7 @@ func main() {
 	var config Environment
 	if _, err := env.UnmarshalFromEnviron(&config); err != nil {
 		fmt.Println("failed to load environment variables", logger.SilentError(err))
-		os.Exit(-1)
+		os.Exit(1)
 	}
 
 	log := logger.New(config.Logging.LogLevel)
@@ -147,7 +147,8 @@ func main() {
 	////////////////////////////////////// RUN JOBS //////////////////////////////////////
 	if config.Jobs.Notifications.Orders.IsEnabled {
 		g.Add(notificationsService.RunOrdersJob, func(err error) {
-			_ = notificationsService.Shutdown()
+			log.Error("new order notifications job exited with error", logger.SilentError(err))
+			notificationsService.Shutdown(err)
 		})
 	} else {
 		log.Warn("new order notifications job is disabled")
@@ -155,7 +156,8 @@ func main() {
 
 	if config.Jobs.Notifications.NewShops.IsEnabled {
 		g.Add(notificationsService.RunNewShopsJob, func(err error) {
-			_ = notificationsService.Shutdown()
+			log.Error("new shop notifications job exited with error", logger.SilentError(err))
+			notificationsService.Shutdown(err)
 		})
 	} else {
 		log.Warn("new shop notifications job is disabled")
@@ -163,7 +165,8 @@ func main() {
 
 	if config.Jobs.Notifications.VerfiedShops.IsEnabled {
 		g.Add(notificationsService.RunVerifiedShopsJob, func(err error) {
-			_ = notificationsService.Shutdown()
+			log.Error("verified shop notifications job exited with error", logger.SilentError(err))
+			notificationsService.Shutdown(err)
 		})
 	} else {
 		log.Warn("verified notifications job is disabled")
@@ -173,7 +176,7 @@ func main() {
 		g.Add(func() error {
 			return wb.Sync()
 		}, func(err error) {
-			wb.Shutdown()
+			wb.Shutdown(err)
 		})
 	} else {
 		log.Warn("wildberries sync job is disabled")

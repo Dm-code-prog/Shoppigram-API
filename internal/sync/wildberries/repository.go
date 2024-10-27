@@ -53,18 +53,18 @@ func (pg *Pg) syncProductsWithTx(ctx context.Context, qtx *generated.Queries, pa
 
 	// Delete products not in the new list
 	if err := pg.deleteProducts(ctx, qtx, productsToDelete); err != nil {
-		return err
+		return errors.Wrap(err, "pg.deleteProducts")
 	}
 
 	// Insert or update products
 	if err := pg.insertOrUpdateProducts(ctx, qtx, params); err != nil {
-		return err
+		return errors.Wrap(err, "pg.insertOrUpdateProducts")
 	}
 
 	// Get internal product IDs after insertion/update
 	intProducts, err := pg.getInternalProductIDs(ctx, qtx, params)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "pg.getInternalProductIDs")
 	}
 
 	// Create a map of external ID to internal ID
@@ -78,17 +78,17 @@ func (pg *Pg) syncProductsWithTx(ctx context.Context, qtx *generated.Queries, pa
 	//
 	// One thing to keep in mind is that after each sync, the IDs of variants will be reset.
 	if err := pg.updateProductVariants(ctx, qtx, params, intProducts, productIDsMap); err != nil {
-		return err
+		return errors.Wrap(err, "pg.updateProductVariants")
 	}
 
 	// Delete and insert external links
 	if err := pg.updateExternalLinks(ctx, qtx, params, intProducts, productIDsMap); err != nil {
-		return err
+		return errors.Wrap(err, "pg.updateExternalLinks")
 	}
 
 	// Delete and insert photos
 	if err := pg.updatePhotos(ctx, qtx, params, intProducts, productIDsMap); err != nil {
-		return err
+		return errors.Wrap(err, "pg.updatePhotos")
 	}
 
 	return nil
@@ -144,7 +144,7 @@ func (pg *Pg) deleteProductVariants(ctx context.Context, qtx *generated.Queries,
 }
 
 func (pg *Pg) insertProductVariants(ctx context.Context, qtx *generated.Queries, params SetProductsParams, productIDsMap map[string]uuid.UUID) error {
-	var insertParams []generated.CreateOrUpdateProductVariantsParams
+	var insertParams []generated.CreateProductVariantsParams
 	for _, p := range params.Products {
 		productID, ok := productIDsMap[p.ExternalID]
 		if !ok {
@@ -162,10 +162,10 @@ func (pg *Pg) insertProductVariants(ctx context.Context, qtx *generated.Queries,
 				}
 			}
 
-			insertParams = append(insertParams, generated.CreateOrUpdateProductVariantsParams{
+			insertParams = append(insertParams, generated.CreateProductVariantsParams{
 				ProductID:       productID,
-				Price:           pgtype.Numeric{Int: big.NewInt(int64(v.Price * 100)), Valid: true},
-				DiscountedPrice: pgtype.Numeric{Int: big.NewInt(int64(v.DiscountedPrice * 100)), Valid: true},
+				Price:           pgtype.Numeric{Int: big.NewInt(int64(v.Price)), Valid: true},
+				DiscountedPrice: pgtype.Numeric{Int: big.NewInt(int64(v.DiscountedPrice)), Valid: true},
 				Dimensions:      dimensionsJSONb,
 			})
 		}
@@ -176,7 +176,7 @@ func (pg *Pg) insertProductVariants(ctx context.Context, qtx *generated.Queries,
 	}
 
 	var batchErr error
-	br := qtx.CreateOrUpdateProductVariants(ctx, insertParams)
+	br := qtx.CreateProductVariants(ctx, insertParams)
 	br.Exec(func(i int, err error) {
 		if err != nil {
 			batchErr = err
@@ -326,14 +326,14 @@ func (pg *Pg) deleteExternalLinks(ctx context.Context, qtx *generated.Queries, p
 }
 
 func (pg *Pg) insertExternalLinks(ctx context.Context, qtx *generated.Queries, params SetProductsParams, productIDsMap map[string]uuid.UUID) error {
-	var insertParams []generated.CreateOrUpdateExternalLinksParams
+	var insertParams []generated.CreateExternalLinksParams
 	for _, p := range params.Products {
 		productID, ok := productIDsMap[p.ExternalID]
 		if !ok {
 			continue
 		}
 		for _, l := range p.ExternalLinks {
-			insertParams = append(insertParams, generated.CreateOrUpdateExternalLinksParams{
+			insertParams = append(insertParams, generated.CreateExternalLinksParams{
 				ProductID: productID,
 				Url:       l.URL,
 				Label:     l.Label,
@@ -346,7 +346,7 @@ func (pg *Pg) insertExternalLinks(ctx context.Context, qtx *generated.Queries, p
 	}
 
 	var batchErr error
-	br := qtx.CreateOrUpdateExternalLinks(ctx, insertParams)
+	br := qtx.CreateExternalLinks(ctx, insertParams)
 	br.Exec(func(i int, err error) {
 		if err != nil {
 			batchErr = err

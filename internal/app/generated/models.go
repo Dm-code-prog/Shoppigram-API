@@ -314,6 +314,17 @@ type ProductPhoto struct {
 	UpdatedAt pgtype.Timestamp
 }
 
+type ProductVariant struct {
+	ID              uuid.UUID
+	CreatedAt       pgtype.Timestamp
+	UpdatedAt       pgtype.Timestamp
+	ProductID       uuid.UUID
+	Dimensions      []byte
+	Price           pgtype.Numeric
+	DiscountedPrice pgtype.Numeric
+	IsDeleted       bool
+}
+
 type ShopExternalConnection struct {
 	ID               uuid.UUID
 	CreatedAt        pgtype.Timestamp

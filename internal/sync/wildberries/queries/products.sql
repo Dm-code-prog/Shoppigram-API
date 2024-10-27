@@ -38,15 +38,12 @@ delete
 from product_variants
 where product_id = $1;
 
--- name: CreateOrUpdateProductVariants :batchexec
+-- name: CreateProductVariants :batchexec
 insert into product_variants (product_id, dimensions, price, discounted_price)
-values (@product_id, @dimensions, @price, @discounted_price)
-on conflict (product_id, dimensions) do update
-    set price            = excluded.price,
-        discounted_price = excluded.discounted_price;
+values (@product_id, @dimensions, @price, @discounted_price);
 
 
--- name: CreateOrUpdateExternalLinks :batchexec
+-- name: CreateExternalLinks :batchexec
 insert into product_external_links (product_id, url, label)
 values (@product_id, @url, @label);
 

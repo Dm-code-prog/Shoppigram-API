@@ -6,9 +6,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
-	"strings"
-
 	"github.com/jackc/pgx/v5/pgxpool"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pkg/errors"
@@ -52,13 +51,24 @@ func (p *Pg) GetShops(ctx context.Context, req GetShopsRequest) (GetShopsRespons
 	}
 
 	for _, v := range rows {
+		var syncDetails *SyncDetails
+		if v.SyncProvider.Valid {
+			syncDetails = &SyncDetails{
+				ExternalProvider: string(v.SyncProvider.ExternalProvider),
+				IsActive:         v.SyncIsActive.Bool,
+				LastSyncedAt:     v.LastSyncAt.Time,
+				LastStatus:       string(v.LastSyncStatus.ExtenalSyncStatus),
+			}
+		}
+
 		shops = append(shops, Shop{
-			ID:         v.ID,
-			Name:       v.Name,
-			IsVerified: v.IsVerified.Bool,
-			ShortName:  v.ShortName,
-			Type:       shopType(v.Type),
-			Currency:   string(v.Currency),
+			ID:          v.ID,
+			Name:        v.Name,
+			IsVerified:  v.IsVerified.Bool,
+			ShortName:   v.ShortName,
+			Type:        shopType(v.Type),
+			Currency:    string(v.Currency),
+			SyncDetails: syncDetails,
 		})
 	}
 
@@ -74,19 +84,24 @@ func (p *Pg) GetShop(ctx context.Context, req GetShopRequest) (GetShopResponse, 
 		return GetShopResponse{}, errors.Wrap(err, "p.gen.GetShop")
 	}
 
-	return GetShopResponse{
-		ID:         shop.ID,
-		Name:       shop.Name,
-		IsVerified: shop.IsVerified.Bool,
-		ShortName:  shop.ShortName,
-		Type:       shopType(shop.Type),
-		Currency:   string(shop.Currency),
-		SyncDetails: SyncDetails{
-			ExternalProvider: string(shop.ExternalProvider.ExternalProvider),
-			IsActive:         shop.IsActive.Bool,
+	var syncDetails *SyncDetails
+	if shop.SyncProvider.Valid {
+		syncDetails = &SyncDetails{
+			ExternalProvider: string(shop.SyncProvider.ExternalProvider),
+			IsActive:         shop.SyncIsActive.Bool,
 			LastSyncedAt:     shop.LastSyncAt.Time,
 			LastStatus:       string(shop.LastSyncStatus.ExtenalSyncStatus),
-		},
+		}
+	}
+
+	return GetShopResponse{
+		ID:          shop.ID,
+		Name:        shop.Name,
+		IsVerified:  shop.IsVerified.Bool,
+		ShortName:   shop.ShortName,
+		Type:        shopType(shop.Type),
+		Currency:    string(shop.Currency),
+		SyncDetails: syncDetails,
 	}, nil
 }
 

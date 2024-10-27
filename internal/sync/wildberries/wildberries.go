@@ -50,49 +50,62 @@ func New(r Repository, l *zap.Logger) *Syncer {
 }
 
 // Shutdown cancels the context of the runner to stop it
-func (s *Syncer) Shutdown() {
+func (s *Syncer) Shutdown(_ error) {
 	s.cancelFunc()
 	<-s.ctx.Done()
 }
 
 // Sync launches the Syncer
 func (s *Syncer) Sync() error {
+	exec := func() (err error) {
+		defer func(l *zap.Logger) {
+			_ = l.Sync()
+		}(s.l)
+
+		job, err := s.repo.GetNextSyncJob(s.ctx)
+		if err != nil {
+			return errors.Wrap(err, "s.repo.GetNextSyncJob")
+		}
+		if job == nil {
+			time.Sleep(timeout)
+			return nil
+		}
+
+		err = s.sync(*job)
+		if err != nil {
+			s.l.Error("failed wildberries sync", logger.SilentError(err))
+			err2 := s.repo.SetSyncFailure(s.ctx, SetSyncFailureParams{
+				JobID:     job.SyncJobID,
+				LastError: err.Error(),
+			})
+			if err2 != nil {
+				return errors.Wrap(err2, "s.repo.SetSyncFailure")
+			}
+			return nil
+		}
+
+		err = s.repo.SetSyncSuccess(s.ctx, SetSyncSuccessParams{
+			JobID: job.SyncJobID,
+		})
+		if err != nil {
+			return errors.Wrap(err, "s.repo.SetSyncSuccess")
+		}
+
+		s.l.Info("wildberries sync success", zap.String("shop_id", job.ShopID.String()))
+		return nil
+	}
+
 	for {
 		select {
 		case <-s.ctx.Done():
 			return nil
 		default:
-			job, err := s.repo.GetNextSyncJob(s.ctx)
+			err := exec()
 			if err != nil {
-				return errors.Wrap(err, "s.repo.GetNextSyncJob")
+				return err
 			}
-			if job == nil {
-				time.Sleep(timeout)
-				continue
-			}
-
-			err = s.sync(*job)
-			if err != nil {
-				s.l.Error("failed wildberries sync", logger.SilentError(err))
-				err2 := s.repo.SetSyncFailure(s.ctx, SetSyncFailureParams{
-					JobID:     job.SyncJobID,
-					LastError: err.Error(),
-				})
-				if err2 != nil {
-					return errors.Wrap(err2, "s.repo.SetSyncFailure")
-				}
-				continue
-			}
-
-			err = s.repo.SetSyncSuccess(s.ctx, SetSyncSuccessParams{
-				JobID: job.SyncJobID,
-			})
-			if err != nil {
-				return errors.Wrap(err, "s.repo.SetSyncSuccess")
-			}
-
-			s.l.Info("wildberries sync success", zap.String("shop_id", job.ShopID.String()))
 		}
+
 	}
 }
 

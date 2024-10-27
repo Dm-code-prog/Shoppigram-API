@@ -20,14 +20,14 @@ type (
 
 	// Shop stores the information about a shop application
 	Shop struct {
-		ID                    uuid.UUID   `json:"id"`
-		Name                  string      `json:"name"`
-		ShortName             string      `json:"short_name"`
-		IsVerified            bool        `json:"is_verified"`
-		Type                  shopType    `json:"type"`
-		Currency              string      `json:"currency"`
-		OnlinePaymentsEnabled bool        `json:"online_payments_enabled"`
-		SyncDetails           SyncDetails `json:"sync_details"`
+		ID                    uuid.UUID    `json:"id"`
+		Name                  string       `json:"name"`
+		ShortName             string       `json:"short_name"`
+		IsVerified            bool         `json:"is_verified"`
+		Type                  shopType     `json:"type"`
+		Currency              string       `json:"currency"`
+		OnlinePaymentsEnabled bool         `json:"online_payments_enabled"`
+		SyncDetails           *SyncDetails `json:"sync_details,omitempty"`
 	}
 
 	// ProductExternalLink is a link to a product

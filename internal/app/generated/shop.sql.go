@@ -38,8 +38,15 @@ SELECT wa.id,
                                         from product_photos pp
                                         where pp.product_id = p.id),
                                        '[]'::json
-                                         )
-                       )
+                                         ),
+                               'variants', coalesce(
+                                       (select json_agg(json_build_object('id', pv.id, 'price', pv.price,
+                                                                          'discounted_price', pv.discounted_price,
+                                                                          'dimensions', pv.dimensions))
+                                        from product_variants pv
+                                        where pv.product_id = p.id),
+                                       '[]'::json
+                                           ))
                                ) FILTER (WHERE p.id IS NOT NULL),
                        '[]'::json
        )::json AS products
