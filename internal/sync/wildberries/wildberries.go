@@ -197,7 +197,7 @@ func (s *Syncer) getCards(apiKey string) (*contentapi.ContentV2GetCardsListPost2
 	withPhotoPtr := new(int32)
 	*withPhotoPtr = -1
 
-	cards, _, err := s.contentAPI.DefaultApi.
+	cards, r, err := s.contentAPI.DefaultApi.
 		ContentV2GetCardsListPost(
 			context.WithValue(
 				s.ctx,
@@ -223,11 +223,15 @@ func (s *Syncer) getCards(apiKey string) (*contentapi.ContentV2GetCardsListPost2
 		return nil, errors.Wrap(err, "s.contentAPI.DefaultApi.ContentV2CardsErrorListGet")
 	}
 
+	if r.StatusCode != http.StatusOK {
+		return nil, errors.Errorf("unexpected status code %d", r.StatusCode)
+	}
+
 	return cards, nil
 }
 
 func (s *Syncer) getGoods(apiKey string) (*pricesapi.ApiV2ListGoodsFilterGet200Response, error) {
-	goods, _, err := s.pricesAPI.DefaultApi.
+	goods, r, err := s.pricesAPI.DefaultApi.
 		ApiV2ListGoodsFilterGet(
 			context.WithValue(
 				s.ctx,
@@ -241,6 +245,10 @@ func (s *Syncer) getGoods(apiKey string) (*pricesapi.ApiV2ListGoodsFilterGet200R
 		Execute()
 	if err != nil {
 		return nil, errors.Wrap(err, "s.pricesAPI.DefaultApi.ApiV2ListGoodsFilterGet")
+	}
+
+	if r.StatusCode != http.StatusOK {
+		return nil, errors.Errorf("unexpected status code %d", r.StatusCode)
 	}
 
 	return goods, nil
