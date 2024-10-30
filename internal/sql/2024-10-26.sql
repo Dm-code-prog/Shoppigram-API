@@ -9,3 +9,8 @@ create table product_variants
     discounted_price numeric(10, 2),
     is_deleted       boolean        not null             default false
 );
+
+
+create unique index on products (external_provider, external_id, is_deleted);
+
+drop index if exists  products_external_id_external_provider_idx;

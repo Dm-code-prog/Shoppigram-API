@@ -131,7 +131,7 @@ values ($1,
         $5,
         $6,
         $7)
-on conflict (external_id, external_provider) do update
+on conflict (external_id, external_provider, is_deleted) do update
     set name        = excluded.name,
         description = excluded.description,
         price       = excluded.price,
