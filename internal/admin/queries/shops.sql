@@ -65,11 +65,14 @@ select exists(select 1
 -- name: EnableShopSync :exec
 insert
 into shop_external_connections
-    (web_app_id, external_provider, api_key, is_active)
-values ($1, $2, $3, $4)
+(web_app_id, external_provider, api_key, is_active, last_sync_at, last_failure_at, last_sync_status)
+values ($1, $2, $3, $4, null, null, null)
 on conflict (web_app_id, external_provider)
-    do update set api_key   = $3,
-                  is_active = $4;
+    do update set api_key          = $3,
+                  is_active        = $4,
+                  last_sync_at     = null,
+                  last_failure_at  = null,
+                  last_sync_status = null;
 
 
 -- name: CountUserShops :one
