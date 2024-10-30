@@ -19,7 +19,7 @@ values (@web_app_id,
         @category,
         @external_provider,
         @external_id)
-on conflict (external_id, external_provider, is_deleted) do update
+on conflict (external_provider, external_id, web_app_id, is_deleted) do update
     set name        = excluded.name,
         description = excluded.description,
         price       = excluded.price,
