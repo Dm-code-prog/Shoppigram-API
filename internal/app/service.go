@@ -2,14 +2,12 @@ package app
 
 import (
 	"context"
-	telegramusers "github.com/shoppigram-com/marketplace-api/internal/auth"
-	"github.com/shoppigram-com/marketplace-api/packages/logger"
-	"log"
-	"time"
-
 	"github.com/dgraph-io/ristretto"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
+	telegramusers "github.com/shoppigram-com/marketplace-api/internal/auth"
+	"github.com/shoppigram-com/marketplace-api/packages/logger"
+	"log"
 )
 
 type (
@@ -48,18 +46,10 @@ func New(repo Repository, maxCacheSize int64) *DefaultService {
 
 // GetShop returns the products of a marketplace along with the shop info
 func (s *DefaultService) GetShop(ctx context.Context, request GetShopRequest) (GetShopResponse, error) {
-	cacheKey := makeProductsCacheKey(request.WebAppID, request.WebAppShortName)
-	if res, ok := s.cache.Get(cacheKey); ok {
-		return res, nil
-	}
-
 	res, err := s.repo.GetShop(ctx, request)
 	if err != nil {
 		return GetShopResponse{}, errors.Wrap(err, "s.repo.GetShops")
 	}
-
-	// Cache the response
-	s.cache.SetWithTTL(cacheKey, res, 0, 15*time.Minute)
 
 	return res, nil
 }
