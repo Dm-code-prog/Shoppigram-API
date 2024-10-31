@@ -42,7 +42,7 @@ where o.id = $1
     or wa.owner_external_id = $2);
 
 -- name: GetOrderAmount :one
-select sum(p.price * op.quantity) as amount
+select sum(p.price * op.quantity)::float8 as amount
 from orders o
          join order_products op on o.id = op.order_id
          join products p on op.product_id = p.id
