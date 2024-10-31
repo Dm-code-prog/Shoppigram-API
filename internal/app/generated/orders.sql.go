@@ -154,16 +154,16 @@ func (q *Queries) GetOrder(ctx context.Context, arg GetOrderParams) ([]GetOrderR
 }
 
 const getOrderAmount = `-- name: GetOrderAmount :one
-select sum(p.price * op.quantity) as amount
+select sum(p.price * op.quantity)::float8 as amount
 from orders o
          join order_products op on o.id = op.order_id
          join products p on op.product_id = p.id
 where o.id = $1
 `
 
-func (q *Queries) GetOrderAmount(ctx context.Context, id uuid.UUID) (int64, error) {
+func (q *Queries) GetOrderAmount(ctx context.Context, id uuid.UUID) (float64, error) {
 	row := q.db.QueryRow(ctx, getOrderAmount, id)
-	var amount int64
+	var amount float64
 	err := row.Scan(&amount)
 	return amount, err
 }
