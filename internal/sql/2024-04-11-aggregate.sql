@@ -48,12 +48,12 @@ create table products
         primary key,
     web_app_id     uuid
         references web_apps,
-    name           varchar(50)                                      not null,
+    name           varchar(255)                                      not null,
     description    text,
     price          double precision                                 not null,
     price_currency product_currency default 'rub'::product_currency not null,
     image_url      text,
-    category       varchar(30)
+    category       varchar(255)
 );
 
 create table orders

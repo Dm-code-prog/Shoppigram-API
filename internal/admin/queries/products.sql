@@ -4,7 +4,7 @@ values (@web_app_id::uuid,
         $1,
         nullif(@description::text, ''),
         $2,
-        nullif(@category::varchar(30), ''))
+        nullif(@category::varchar(255), ''))
 returning id;
 
 -- name: SetProductExternalLinks :batchexec
@@ -28,7 +28,7 @@ update products
 set name        = $1,
     description = nullif(@description::text, ''),
     price       = $2,
-    category    = nullif(@category::varchar(30), '')
+    category    = nullif(@category::varchar(255), '')
 where web_app_id = @web_app_id::uuid
   and id = $3;
 

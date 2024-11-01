@@ -32,7 +32,7 @@ values ($3::uuid,
         $1,
         nullif($4::text, ''),
         $2,
-        nullif($5::varchar(30), ''))
+        nullif($5::varchar(255), ''))
 returning id
 `
 
@@ -126,7 +126,7 @@ update products
 set name        = $1,
     description = nullif($4::text, ''),
     price       = $2,
-    category    = nullif($5::varchar(30), '')
+    category    = nullif($5::varchar(255), '')
 where web_app_id = $6::uuid
   and id = $3
 `
