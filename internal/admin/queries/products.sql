@@ -5,7 +5,7 @@ values (@web_app_id::uuid,
         nullif(@description::text, ''),
         $2,
         $3,
-        nullif(@category::varchar(30), ''),
+        nullif(@category::varchar(255), ''),
         '')
 returning id;
 
@@ -31,7 +31,7 @@ set name           = $1,
     description    = nullif(@description::text, ''),
     price          = $2,
     price_currency = $3,
-    category       = nullif(@category::varchar(30), '')
+    category       = nullif(@category::varchar(255), '')
 where web_app_id = @web_app_id::uuid
   and id = $4;
 

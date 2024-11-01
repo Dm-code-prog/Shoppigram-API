@@ -33,7 +33,7 @@ values ($4::uuid,
         nullif($5::text, ''),
         $2,
         $3,
-        nullif($6::varchar(30), ''),
+        nullif($6::varchar(255), ''),
         '')
 returning id
 `
@@ -131,7 +131,7 @@ set name           = $1,
     description    = nullif($5::text, ''),
     price          = $2,
     price_currency = $3,
-    category       = nullif($6::varchar(30), '')
+    category       = nullif($6::varchar(255), '')
 where web_app_id = $7::uuid
   and id = $4
 `
