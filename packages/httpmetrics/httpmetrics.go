@@ -37,15 +37,27 @@ func replaceUUIDs(input string) string {
 
 // MakeObservabilityMiddleware is a middleware that collects metrics for each request.
 // and publishes to AWS CloudWatch periodically.
-func MakeObservabilityMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ri := &responseInterceptor{ResponseWriter: w}
-		next.ServeHTTP(ri, r)
+func MakeObservabilityMiddleware(patterns ...*regexp.Regexp) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			ri := &responseInterceptor{ResponseWriter: w}
+			next.ServeHTTP(ri, r)
 
-		cloudwatchcollector.Increment("http_requests", cloudwatchcollector.Dimensions{
-			"method": r.Method,
-			"path":   replaceUUIDs(r.URL.Path),
-			"status": strconv.Itoa(ri.StatusCode()),
+			var matches bool
+			for _, pattern := range patterns {
+				if pattern.MatchString(r.URL.Path) {
+					matches = true
+					break
+				}
+			}
+
+			if matches || len(patterns) == 0 {
+				cloudwatchcollector.Increment("http_requests", cloudwatchcollector.Dimensions{
+					"method": r.Method,
+					"path":   replaceUUIDs(r.URL.Path),
+					"status": strconv.Itoa(ri.StatusCode()),
+				})
+			}
 		})
-	})
+	}
 }

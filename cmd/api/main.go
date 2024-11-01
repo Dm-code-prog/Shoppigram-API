@@ -11,6 +11,7 @@ import (
 	"github.com/shoppigram-com/marketplace-api/packages/logger"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 	"syscall"
 	"time"
@@ -81,7 +82,9 @@ func main() {
 			},
 			nil,
 		),
-		httpmetrics.MakeObservabilityMiddleware,
+		httpmetrics.MakeObservabilityMiddleware(
+			regexp.MustCompile("^/api/v.*$"),
+		),
 		middleware.Throttle(100),
 	)
 
