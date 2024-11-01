@@ -21,7 +21,7 @@ SELECT o.id                       AS id,
        o.created_at               AS created_at,
        o.updated_at               AS updated_at,
        wa.currency                AS currency,
-       (SELECT SUM(p.price * op.quantity)
+       (SELECT SUM(p.price * op.quantity)::float8
         FROM order_products op
                  JOIN products p ON p.id = op.product_id
         WHERE op.order_id = o.id) AS total_price,
@@ -71,7 +71,7 @@ type GetOrdersRow struct {
 	CreatedAt     pgtype.Timestamp
 	UpdatedAt     pgtype.Timestamp
 	Currency      ProductCurrency
-	TotalPrice    int64
+	TotalPrice    float64
 	BuyerUsername pgtype.Text
 	Products      []byte
 }

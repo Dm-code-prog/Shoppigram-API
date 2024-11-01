@@ -261,7 +261,7 @@ func (p *Pg) GetOrders(ctx context.Context, req GetOrdersRequest) (GetOrdersResp
 			ID:            v.ID,
 			MarketplaceID: v.MarketplaceID.Bytes,
 			ReadableID:    int(v.ReadableID.Int64),
-			TotalPrice:    float64(v.TotalPrice),
+			TotalPrice:    v.TotalPrice,
 			BuyerUsername: v.BuyerUsername.String,
 			Products:      products,
 			State:         string(v.State),
