@@ -35,6 +35,19 @@ func (s *ServiceWithObservability) GetShops(ctx context.Context, request GetShop
 	return res, err
 }
 
+// GetShop calls the underlying service's GetShop method
+func (s *ServiceWithObservability) GetShop(ctx context.Context, request GetShopRequest) (GetShopResponse, error) {
+	res, err := s.service.GetShop(ctx, request)
+	if err != nil {
+		s.log.
+			With(zap.String("external_user_id", strconv.FormatInt(request.ExternalUserID, 10))).
+			With(zap.String("web_app_id", request.WebAppID.String())).
+			Error("s.service.GetShop", logger.SilentError(err))
+	}
+
+	return res, err
+}
+
 // CreateShop calls the underlying service's CreateShop method
 func (s *ServiceWithObservability) CreateShop(ctx context.Context, request CreateShopRequest) (CreateShopResponse, error) {
 	res, err := s.service.CreateShop(ctx, request)
@@ -68,6 +81,18 @@ func (s *ServiceWithObservability) DeleteShop(ctx context.Context, request Delet
 			With(zap.String("external_user_id", strconv.FormatInt(request.ExternalUserID, 10))).
 			With(zap.String("web_app_id", request.WebAppId.String())).
 			Error("s.service.SoftDeleteShop", logger.SilentError(err))
+	}
+
+	return err
+}
+
+// ConfigureShopSync calls the underlying service's ConfigureShopSync method
+func (s *ServiceWithObservability) ConfigureShopSync(ctx context.Context, request ConfigureShopSyncRequest) error {
+	err := s.service.ConfigureShopSync(ctx, request)
+	if err != nil {
+		s.log.
+			With(zap.String("web_app_id", request.WebAppID.String())).
+			Error("s.service.ConfigureShopSync", logger.SilentError(err))
 	}
 
 	return err

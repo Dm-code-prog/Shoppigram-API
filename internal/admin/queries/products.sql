@@ -1,12 +1,10 @@
 -- name: CreateProduct :one
-insert into products (web_app_id, name, description, price, price_currency, category, image_url)
+insert into products (web_app_id, name, description, price, category)
 values (@web_app_id::uuid,
         $1,
         nullif(@description::text, ''),
         $2,
-        $3,
-        nullif(@category::varchar(255), ''),
-        '')
+        nullif(@category::varchar(255), ''))
 returning id;
 
 -- name: SetProductExternalLinks :batchexec
@@ -27,13 +25,12 @@ where web_app_id = @web_app_id::uuid;
 
 -- name: UpdateProduct :execresult
 update products
-set name           = $1,
-    description    = nullif(@description::text, ''),
-    price          = $2,
-    price_currency = $3,
-    category       = nullif(@category::varchar(255), '')
+set name        = $1,
+    description = nullif(@description::text, ''),
+    price       = $2,
+    category    = nullif(@category::varchar(255), '')
 where web_app_id = @web_app_id::uuid
-  and id = $4;
+  and id = $3;
 
 -- name: DeleteProduct :execresult
 update products

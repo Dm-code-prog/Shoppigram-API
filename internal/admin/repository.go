@@ -3,13 +3,11 @@ package admin
 import (
 	"context"
 	"encoding/json"
-	"strings"
-
 	"github.com/google/uuid"
 	"github.com/jackc/pgerrcode"
-
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"strings"
 
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/pkg/errors"
@@ -53,13 +51,24 @@ func (p *Pg) GetShops(ctx context.Context, req GetShopsRequest) (GetShopsRespons
 	}
 
 	for _, v := range rows {
+		var syncDetails *SyncDetails
+		if v.SyncProvider.Valid {
+			syncDetails = &SyncDetails{
+				ExternalProvider: string(v.SyncProvider.ExternalProvider),
+				IsActive:         v.SyncIsActive.Bool,
+				LastSyncedAt:     v.LastSyncAt.Time,
+				LastStatus:       string(v.LastSyncStatus.ExtenalSyncStatus),
+			}
+		}
+
 		shops = append(shops, Shop{
-			ID:         v.ID,
-			Name:       v.Name,
-			IsVerified: v.IsVerified.Bool,
-			ShortName:  v.ShortName,
-			Type:       shopType(v.Type),
-			Currency:   string(v.Currency),
+			ID:          v.ID,
+			Name:        v.Name,
+			IsVerified:  v.IsVerified.Bool,
+			ShortName:   v.ShortName,
+			Type:        shopType(v.Type),
+			Currency:    string(v.Currency),
+			SyncDetails: syncDetails,
 		})
 	}
 
@@ -68,18 +77,43 @@ func (p *Pg) GetShops(ctx context.Context, req GetShopsRequest) (GetShopsRespons
 	}, nil
 }
 
-// CreateShop creates a new shop in database
-func (p *Pg) CreateShop(ctx context.Context, req CreateShopRequest) (CreateShopResponse, error) {
-	count, err := p.gen.CountUserShops(ctx, pgtype.Int8{
-		Int64: req.ExternalUserID,
-		Valid: true,
-	})
+// GetShop returns a shop by ID
+func (p *Pg) GetShop(ctx context.Context, req GetShopRequest) (GetShopResponse, error) {
+	shop, err := p.gen.GetShop(ctx, req.WebAppID)
 	if err != nil {
-		return CreateShopResponse{}, errors.Wrap(err, "p.gen.CountUserMarketplaces")
+		return GetShopResponse{}, errors.Wrap(err, "p.gen.GetShop")
 	}
 
-	if count > maxShops {
-		return CreateShopResponse{}, ErrorMaxMarketplacesExceeded
+	var syncDetails *SyncDetails
+	if shop.SyncProvider.Valid {
+		syncDetails = &SyncDetails{
+			ExternalProvider: string(shop.SyncProvider.ExternalProvider),
+			IsActive:         shop.SyncIsActive.Bool,
+			LastSyncedAt:     shop.LastSyncAt.Time,
+			LastStatus:       string(shop.LastSyncStatus.ExtenalSyncStatus),
+		}
+	}
+
+	return GetShopResponse{
+		ID:          shop.ID,
+		Name:        shop.Name,
+		IsVerified:  shop.IsVerified.Bool,
+		ShortName:   shop.ShortName,
+		Type:        shopType(shop.Type),
+		Currency:    string(shop.Currency),
+		SyncDetails: syncDetails,
+	}, nil
+}
+
+// CreateShop creates a new shop in database
+func (p *Pg) CreateShop(ctx context.Context, req CreateShopRequest) (CreateShopResponse, error) {
+	if count, err := p.gen.CountUserShops(ctx, pgtype.Int8{
+		Int64: req.ExternalUserID,
+		Valid: true,
+	}); err != nil {
+		return CreateShopResponse{}, errors.Wrap(err, "p.gen.CountUserMarketplaces")
+	} else if count > maxShops {
+		return CreateShopResponse{}, MaxShopsLimitExceeded
 	}
 
 	id, err := p.gen.CreateShop(ctx, generated.CreateShopParams{
@@ -127,8 +161,31 @@ func (p *Pg) SoftDeleteShop(ctx context.Context, req DeleteShopRequest) error {
 	return nil
 }
 
+// ConfigureShopSync enables the shop synchronization
+func (p *Pg) ConfigureShopSync(ctx context.Context, req ConfigureShopSyncRequest) error {
+	ok, err := p.gen.IsShopSyncSupported(ctx, req.WebAppID)
+	if err != nil {
+		return errors.Wrap(err, "p.gen.IsShopSyncSupported")
+	}
+	if !ok {
+		return ErrorShopSyncNotSupported
+	}
+
+	err = p.gen.EnableShopSync(ctx, generated.EnableShopSyncParams{
+		WebAppID:         req.WebAppID,
+		ApiKey:           req.APIKey,
+		ExternalProvider: generated.ExternalProvider(req.ExternalProvider),
+		IsActive:         req.IsActive,
+	})
+	if err != nil {
+		return errors.Wrap(err, "pg.gen.ConfigureShopSync")
+	}
+
+	return nil
+}
+
 // CreateProduct saves a product to the database
-// and returns the ID that it assigned to it
+// and returns the ShopID that it assigned to it
 func (p *Pg) CreateProduct(ctx context.Context, req CreateProductRequest) (CreateProductResponse, error) {
 	tx, err := p.pool.Begin(ctx)
 	if err != nil {
@@ -232,7 +289,7 @@ func (p *Pg) GetOrders(ctx context.Context, req GetOrdersRequest) (GetOrdersResp
 		Limit:           int32(req.Limit),
 		Offset:          int32(req.Offset),
 		OwnerExternalID: pgtype.Int8{Int64: req.ExternalUserID, Valid: true},
-		MarketplaceID:   req.MarketplaceID,
+		MarketplaceID:   req.ShopID,
 		State:           req.State,
 	}
 	if req.Limit == 0 {
@@ -306,22 +363,6 @@ func (p *Pg) IsShopOwner(ctx context.Context, userID int64, webAppID uuid.UUID) 
 	return ok, nil
 }
 
-// IsProductOwner checks if the user is the owner of the product
-func (p *Pg) IsProductOwner(ctx context.Context, userID int64, productID uuid.UUID) (bool, error) {
-	ok, err := p.gen.IsUserTheOwnerOfProduct(ctx, generated.IsUserTheOwnerOfProductParams{
-		OwnerExternalID: pgtype.Int8{Int64: userID, Valid: true},
-		ID:              productID,
-	})
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return false, ErrorOpNotAllowed
-		}
-		return false, errors.Wrap(err, "p.gen.IsProductOwner")
-	}
-
-	return ok, nil
-}
-
 // IsTelegramChannelOwner checks if the user is the owner of the Telegram channel
 func (p *Pg) IsTelegramChannelOwner(ctx context.Context, externalUserID, channelID int64) (bool, error) {
 	ok, err := p.gen.IsUserTheOwnerOfTelegramChannel(ctx, generated.IsUserTheOwnerOfTelegramChannelParams{
@@ -333,11 +374,6 @@ func (p *Pg) IsTelegramChannelOwner(ctx context.Context, externalUserID, channel
 	}
 
 	return ok, nil
-}
-
-// GetShortName returns the short name of the marketplace
-func (p *Pg) GetShortName(ctx context.Context, id uuid.UUID) (string, error) {
-	return p.gen.GetShortname(ctx, id)
 }
 
 // GetTelegramChannels gets a user's Telegram channels

@@ -1,0 +1,2729 @@
+openapi: 3.0.1
+info:
+  description: |
+    С помощью этих методов можно устанавливать цены и скидки. Максимум — 10 запросов за 6 секунд суммарно для всех методов раздела **Цены и скидки**.
+  title: API цен и скидок
+  version: ""
+servers:
+- url: /
+security:
+- HeaderApiKey: []
+tags:
+- description: |2
+
+    Проверяйте статусы обновлений с помощью методов из раздела [Состояния загрузок](./#tag/Sostoyaniya-zagruzok). У методов может быть ответ Успешно (200), даже если не обновились данные у каких-то товаров или размеров (например, из-за слишком низкой цены или скидки)
+  name: Установка цен и скидок
+- description: |
+    Когда вы обновляете цены или скидки, данные по каким-то товарам могут не обновиться. Например, если вы передали неправильную цену или скидку. Проверяйте статус загрузки с помощью метода [Состояние обработанной загрузки](./#tag/Istoriya-zagruzok/paths/~1api~1v2~1history~1tasks/get).
+    Статусы загрузки:
+
+      * `3` — обработана, в товарах нет ошибок, цены и скидки обновились.
+      * `4` — отменена.
+      * `5` — обработана, но в товарах есть ошибки. Для товаров без ошибок цены и скидки обновились, а ошибки в остальных товарах можно получить с помощью метода [Детализация обработанной загрузки](./#tag/Sostoyaniya-zagruzok/paths/~1api~1v2~1history~1goods~1task/get).
+      * `6` — обработана, но во всех товарах есть ошибки. Их тоже можно получить с помощью метода [Детализация обработанной загрузки](#tag/Sostoyaniya-zagruzok/paths/~1api~1v2~1history~1goods~1task/get).
+
+
+    Если вы задаёте цены и скидки [в календаре акций](https://seller.wildberries.ru/dp-promo-calendar), загрузка с такими товарами попадает в обработку. Цены и скидки изменятся к началу акции.
+
+    У такой загрузки статус `1`, а получить информацию про нее можно с помощью методов [Детализация необработанной загрузки](./#tag/Istoriya-zagruzok/paths/~1api~1v2~1buffer~1goods~1task/get) и [Состояние необработанной загрузки](#tag/Istoriya-zagruzok/paths/~1api~1v2~1buffer~1tasks/get)
+    <blockquote class="spoiler">
+      <p class="descr">У загрузки не может быть статуса <code>2</code>.</p>
+    </blockquote>
+  name: Состояния загрузок
+- name: Списки товаров
+- name: Карантин
+- description: |
+    С помощью этих методов можно получать информацию об акциях и принимать в них участие.<br>Максимум 10 запросов за 6 секунд суммарно для всех методов
+  name: Календарь акций
+paths:
+  /api/v2/upload/task:
+    post:
+      description: |
+        Устанавливает цены и скидки для товаров
+      requestBody:
+        $ref: '#/components/requestBodies/SupplierTaskRequest'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskCreated'
+          description: Успешно
+        "208":
+          content:
+            application/json:
+              examples:
+                TaskAlreadyExists:
+                  description: Такая загрузка уже есть
+                  value:
+                    data:
+                      id: 1111111
+                      alreadyExists: true
+                    error: false
+                    errorText: Task already exists
+              schema:
+                $ref: '#/components/schemas/TaskAlreadyExistsError'
+          description: ""
+        "400":
+          content:
+            application/json:
+              examples:
+                GoodsNumberLimitExceeded:
+                  $ref: '#/components/examples/GoodsNumberLimitExceeded'
+                DuplicatedNmIdInTask:
+                  $ref: '#/components/examples/DuplicatedNmIdInTask'
+                NoGoodsForProcess:
+                  $ref: '#/components/examples/NoGoodsForProcess'
+                FailedToParseData:
+                  $ref: '#/components/examples/FailedToParseData'
+                PriceHasDecimalPlaces:
+                  $ref: '#/components/examples/PriceHasDecimalPlaces'
+                WrongPriceValue:
+                  $ref: '#/components/examples/WrongPriceValue'
+                WrongNmValue:
+                  $ref: '#/components/examples/WrongNmValue'
+                BothDiscountAndPriceAreNotSet:
+                  $ref: '#/components/examples/PriceNotSet'
+                EmptyData:
+                  $ref: '#/components/examples/EmptyData'
+                NoValidGoodsInTask:
+                  $ref: '#/components/examples/NoValidGoodsInTask'
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+          description: Неправильный запрос
+        "401": {}
+        "429": {}
+        "500":
+          description: Внутренняя ошибка сервиса
+      security:
+      - HeaderApiKey: []
+      summary: Установить цены и скидки
+      tags:
+      - Установка цен и скидок
+    servers:
+    - url: https://discounts-prices-api.wildberries.ru
+  /api/v2/upload/task/size:
+    post:
+      description: |
+        Устанавливает цены отдельно для размеров. Работает только для товаров из категорий, где можно устанавливать цены отдельно для разных размеров. Для таких товаров в ответе метода [Получить товары по артикулам](./#tag/Spiski-tovarov/paths/~1api~1v2~1list~1goods~1filter/get) `editableSizePrice: true`.
+      requestBody:
+        $ref: '#/components/requestBodies/SupplierTaskRequestSize'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskCreated'
+          description: Успешно
+        "208":
+          content:
+            application/json:
+              examples:
+                TaskAlreadyExists:
+                  description: Такая загрузка уже есть
+                  value:
+                    data:
+                      id: 1111111
+                      alreadyExists: true
+                    error: false
+                    errorText: Task already exists
+              schema:
+                $ref: '#/components/schemas/TaskAlreadyExistsError'
+          description: ""
+        "400":
+          content:
+            application/json:
+              examples:
+                GoodsNumberLimitExceeded:
+                  $ref: '#/components/examples/GoodsNumberLimitExceeded'
+                DuplicatedNmIdInTask:
+                  $ref: '#/components/examples/DuplicatedNmIdInTask'
+                NoGoodsForProcess:
+                  $ref: '#/components/examples/NoGoodsForProcess'
+                FailedToParseData:
+                  $ref: '#/components/examples/FailedToParseData'
+                PriceHasDecimalPlaces:
+                  $ref: '#/components/examples/PriceHasDecimalPlaces'
+                WrongPriceValue:
+                  $ref: '#/components/examples/WrongPriceValue'
+                WrongNmValue:
+                  $ref: '#/components/examples/WrongNmValue'
+                BothDiscountAndPriceAreNotSet:
+                  $ref: '#/components/examples/BothDiscountAndPriceAreNotSet'
+                EmptyData:
+                  $ref: '#/components/examples/EmptyData'
+                NoValidGoodsInTask:
+                  $ref: '#/components/examples/NoValidGoodsInTask'
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+          description: Неправильный запрос
+        "401": {}
+        "429": {}
+        "500":
+          description: Внутренняя ошибка сервиса
+      security:
+      - HeaderApiKey: []
+      summary: Установить цены для размеров
+      tags:
+      - Установка цен и скидок
+    servers:
+    - url: https://discounts-prices-api.wildberries.ru
+  /api/v2/history/tasks:
+    get:
+      description: Возвращает информацию про обработанную загрузку
+      parameters:
+      - description: ID загрузки
+        explode: true
+        in: query
+        name: uploadID
+        required: true
+        schema:
+          example: 146567
+          type: integer
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_history_tasks_get_200_response'
+          description: Состояние загрузки
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_history_tasks_get_400_response'
+          description: Некорректный запрос
+        "401": {}
+        "429": {}
+        "4XX":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_history_tasks_get_4XX_response'
+          description: Прочие ошибки
+        "5XX":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_history_tasks_get_5XX_response'
+          description: Прочие ошибки
+      security:
+      - HeaderApiKey: []
+      summary: Состояние обработанной загрузки
+      tags:
+      - Состояния загрузок
+    servers:
+    - url: https://discounts-prices-api.wildberries.ru
+  /api/v2/history/goods/task:
+    get:
+      description: "Возвращает информацию о товарах в обработанной загрузке, в том\
+        \ числе, об ошибках в них"
+      parameters:
+      - description: Сколько элементов вывести на одной странице (пагинация). Максимум
+          1 000 элементов
+        explode: true
+        in: query
+        name: limit
+        required: true
+        schema:
+          example: 10
+          format: uint
+          type: integer
+        style: form
+      - description: После какого элемента выдавать данные
+        explode: true
+        in: query
+        name: offset
+        required: false
+        schema:
+          example: 0
+          format: uint
+          minimum: 0
+          type: integer
+        style: form
+      - description: ID загрузки
+        explode: true
+        in: query
+        name: uploadID
+        required: true
+        schema:
+          example: 146567
+          type: integer
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_history_goods_task_get_200_response'
+          description: Информация о товарах в загрузке
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_history_tasks_get_400_response'
+          description: Некорректный запрос
+        "401": {}
+        "429": {}
+        "4XX":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_history_tasks_get_4XX_response'
+          description: Прочие ошибки
+        "5XX":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_history_tasks_get_5XX_response'
+          description: Прочие ошибки
+      security:
+      - HeaderApiKey: []
+      summary: Детализация обработанной загрузки
+      tags:
+      - Состояния загрузок
+    servers:
+    - url: https://discounts-prices-api.wildberries.ru
+  /api/v2/buffer/tasks:
+    get:
+      description: Возвращает информацию про загрузку в обработке
+      parameters:
+      - description: ID загрузки
+        explode: true
+        in: query
+        name: uploadID
+        required: true
+        schema:
+          example: 146567
+          type: integer
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_buffer_tasks_get_200_response'
+          description: Состояние загрузки
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_history_tasks_get_400_response'
+          description: Некорректный запрос
+        "401": {}
+        "429": {}
+        "4XX":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_history_tasks_get_4XX_response'
+          description: Прочие ошибки
+        "5XX":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_history_tasks_get_5XX_response'
+          description: Прочие ошибки
+      security:
+      - HeaderApiKey: []
+      summary: Состояние необработанной загрузки
+      tags:
+      - Состояния загрузок
+    servers:
+    - url: https://discounts-prices-api.wildberries.ru
+  /api/v2/buffer/goods/task:
+    get:
+      description: "Возвращает информацию о товарах из загрузки в обработке, в том\
+        \ числе, об ошибках в них"
+      parameters:
+      - description: Сколько элементов вывести на одной странице (пагинация). Максимум
+          1 000 элементов
+        explode: true
+        in: query
+        name: limit
+        required: true
+        schema:
+          example: 10
+          format: uint
+          type: integer
+        style: form
+      - description: После какого элемента выдавать данные
+        explode: true
+        in: query
+        name: offset
+        required: false
+        schema:
+          example: 0
+          format: uint
+          minimum: 0
+          type: integer
+        style: form
+      - description: ID загрузки
+        explode: true
+        in: query
+        name: uploadID
+        required: true
+        schema:
+          example: 146567
+          type: integer
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_buffer_goods_task_get_200_response'
+          description: Информация о товарах в загрузке
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_history_tasks_get_400_response'
+          description: Некорректный запрос
+        "401": {}
+        "429": {}
+        "4XX":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_history_tasks_get_4XX_response'
+          description: Прочие ошибки
+        "5XX":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_history_tasks_get_5XX_response'
+          description: Прочие ошибки
+      security:
+      - HeaderApiKey: []
+      summary: Детализация необработанной загрузки
+      tags:
+      - Состояния загрузок
+    servers:
+    - url: https://discounts-prices-api.wildberries.ru
+  /api/v2/list/goods/filter:
+    get:
+      description: "Возвращает информацию о товаре по его артикулу. Чтобы получить\
+        \ информацию обо всех товарах, оставьте артикул пустым"
+      parameters:
+      - description: Сколько элементов вывести на одной странице (пагинация). Максимум
+          1 000 элементов
+        explode: true
+        in: query
+        name: limit
+        required: true
+        schema:
+          example: 10
+          format: uint
+          type: integer
+        style: form
+      - description: После какого элемента выдавать данные
+        explode: true
+        in: query
+        name: offset
+        required: false
+        schema:
+          example: 0
+          format: uint
+          minimum: 0
+          type: integer
+        style: form
+      - description: "Артикул Wildberries, по которому искать товар"
+        example: 44589768676
+        explode: true
+        in: query
+        name: filterNmID
+        required: false
+        schema:
+          type: integer
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_list_goods_filter_get_200_response'
+          description: Товары
+        "400":
+          content:
+            application/json:
+              examples:
+                SortError:
+                  $ref: '#/components/examples/SortError'
+                InvalidQueryParams:
+                  $ref: '#/components/examples/InvalidQueryParams'
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+          description: Неправильный запрос
+        "401": {}
+        "429": {}
+        "500":
+          description: Внутренняя ошибка сервиса
+      security:
+      - HeaderApiKey: []
+      summary: Получить товары
+      tags:
+      - Списки товаров
+    servers:
+    - url: https://discounts-prices-api.wildberries.ru
+  /api/v2/list/goods/size/nm:
+    get:
+      description: |
+        Возвращает информацию о всех размерах одного товара. Работает только для товаров из категорий, где можно устанавливать цены отдельно для разных размеров. Для таких товаров в ответе метода [Получить товары по артикулам](./#tag/Spiski-tovarov/paths/~1api~1v2~1list~1goods~1filter/get) `editableSizePrice: true`.
+      parameters:
+      - description: Сколько элементов вывести на одной странице (пагинация). Максимум
+          1 000 элементов
+        explode: true
+        in: query
+        name: limit
+        required: true
+        schema:
+          example: 10
+          format: uint
+          type: integer
+        style: form
+      - description: После какого элемента выдавать данные
+        explode: true
+        in: query
+        name: offset
+        required: false
+        schema:
+          example: 0
+          format: uint
+          minimum: 0
+          type: integer
+        style: form
+      - description: Артикул Wildberries
+        explode: true
+        in: query
+        name: nmID
+        required: true
+        schema:
+          example: 1
+          type: integer
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_list_goods_size_nm_get_200_response'
+          description: Размеры
+        "400":
+          content:
+            application/json:
+              examples:
+                InvalidQueryParams:
+                  $ref: '#/components/examples/InvalidQueryParams'
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+          description: Неправильный запрос
+        "401": {}
+        "429": {}
+        "500":
+          description: Внутренняя ошибка сервиса
+      security:
+      - HeaderApiKey: []
+      summary: Получить размеры товара
+      tags:
+      - Списки товаров
+    servers:
+    - url: https://discounts-prices-api.wildberries.ru
+  /api/v2/quarantine/goods:
+    get:
+      description: |
+        Возвращает информацию о товарах в карантине. <br><br> Если новая цена товара со скидкой будет минимум в 3 раза меньше старой, товар попадёт [в карантин](https://seller.wildberries.ru/discount-and-prices/quarantine) и будет продаваться по старой цене. Ошибка об этом будет в ответах методов [состояний загрузок](./#tag/Sostoyaniya-zagruzok). <br><br> Вы можете изменить цену или скидку с помощью API либо вывести товар из карантина [в личном кабинете](https://seller.wildberries.ru/discount-and-prices/quarantine). <br><br> Для товаров с [поразмерной установкой цен](https://openapi.wb.ru/prices/api/ru/#tag/Ustanovka-cen-i-skidok/paths/~1api~1v2~1upload~1task~1size/post) карантин не применяется
+      parameters:
+      - description: Сколько элементов вывести на одной странице (пагинация). Максимум
+          1 000 элементов
+        explode: true
+        in: query
+        name: limit
+        required: true
+        schema:
+          example: 10
+          format: uint
+          type: integer
+        style: form
+      - description: После какого элемента выдавать данные
+        explode: true
+        in: query
+        name: offset
+        required: false
+        schema:
+          example: 0
+          format: uint
+          minimum: 0
+          type: integer
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_quarantine_goods_get_200_response'
+          description: Успешно
+        "400":
+          content:
+            application/json:
+              examples:
+                InvalidQueryParams:
+                  $ref: '#/components/examples/InvalidQueryParams'
+              schema:
+                $ref: '#/components/schemas/ResponseError'
+          description: Неправильный запрос
+        "401": {}
+        "429": {}
+      security:
+      - HeaderApiKey: []
+      summary: Получить товары в карантине
+      tags:
+      - Карантин
+    servers:
+    - url: https://discounts-prices-api.wildberries.ru
+  /api/v1/calendar/promotions:
+    get:
+      description: Возвращает список акций с датами и временем проведения
+      parameters:
+      - description: "Начало периода, формат `YYYY-MM-DDTHH:MM:SSZ`"
+        explode: true
+        in: query
+        name: startDateTime
+        required: true
+        schema:
+          example: 2023-09-01T00:00:00Z
+          format: RFC3339
+          type: string
+        style: form
+      - description: "Конец периода, формат `YYYY-MM-DDTHH:MM:SSZ`"
+        explode: true
+        in: query
+        name: endDateTime
+        required: true
+        schema:
+          example: 2024-08-01T23:59:59Z
+          format: RFC3339
+          type: string
+        style: form
+      - description: |
+          Показать акции:
+            - `false` — доступные для участия
+            - `true` — все акции
+        explode: true
+        in: query
+        name: allPromo
+        required: true
+        schema:
+          default: false
+          type: boolean
+        style: form
+      - description: Количество запрашиваемых акций
+        explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          example: 10
+          format: uint
+          maximum: 1000
+          minimum: 1
+          type: integer
+        style: form
+      - description: После какого элемента выдавать данные
+        explode: true
+        in: query
+        name: offset
+        required: false
+        schema:
+          example: 0
+          format: uint
+          minimum: 0
+          type: integer
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v1_calendar_promotions_get_200_response'
+          description: Успешно
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v1_calendar_promotions_get_400_response'
+          description: Ошибка обработки данных
+        "401": {}
+        "429": {}
+        "4XX":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_history_tasks_get_4XX_response'
+          description: Прочие ошибки
+        "5XX":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_history_tasks_get_5XX_response'
+          description: Прочие ошибки
+      security:
+      - HeaderApiKey: []
+      summary: Список акций
+      tags:
+      - Календарь акций
+    servers:
+    - url: https://dp-calendar-api.wildberries.ru
+  /api/v1/calendar/promotions/details:
+    get:
+      description: Возвращает подробную информацию о выбранных акциях
+      parameters:
+      - description: "ID акций, по которым нужно вернуть информацию"
+        explode: true
+        in: query
+        name: promotionIDs
+        required: true
+        schema:
+          example:
+          - 1
+          - 3
+          - 64
+          items:
+            type: integer
+          maxItems: 100
+          minItems: 1
+          type: array
+          uniqueItems: true
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v1_calendar_promotions_details_get_200_response'
+          description: Успешно
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v1_calendar_promotions_get_400_response'
+          description: Ошибка обработки данных
+        "401": {}
+        "429": {}
+        "4XX":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_history_tasks_get_4XX_response'
+          description: Прочие ошибки
+        "5XX":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_history_tasks_get_5XX_response'
+          description: Прочие ошибки
+      security:
+      - HeaderApiKey: []
+      summary: Детальная информация по акциям
+      tags:
+      - Календарь акций
+    servers:
+    - url: https://dp-calendar-api.wildberries.ru
+  /api/v1/calendar/promotions/nomenclatures:
+    get:
+      description: |
+        Возвращает список товаров, подходящих для участия в акции.
+
+        Неприменимо для автоакций
+      parameters:
+      - description: ID акции
+        explode: true
+        in: query
+        name: promotionID
+        required: true
+        schema:
+          example: 1
+          type: integer
+        style: form
+      - description: |
+          Участвует в акции:
+            - `true` — да
+            - `false` — нет
+        explode: true
+        in: query
+        name: inAction
+        required: true
+        schema:
+          default: false
+          example: true
+          type: boolean
+        style: form
+      - description: Количество запрашиваемых товаров
+        explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          example: 10
+          format: uint
+          maximum: 1000
+          minimum: 1
+          type: integer
+        style: form
+      - description: После какого элемента выдавать данные
+        explode: true
+        in: query
+        name: offset
+        required: false
+        schema:
+          example: 0
+          format: uint
+          minimum: 0
+          type: integer
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v1_calendar_promotions_nomenclatures_get_200_response'
+          description: Список товаров
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_history_tasks_get_400_response'
+          description: Некорректный запрос
+        "401": {}
+        "422":
+          content:
+            application/json:
+              examples:
+                PromotionCompletedOrNotExist:
+                  description: "Акция завершена, или акция с данным id не существу\
+                    ет"
+                  value:
+                    errorText: Unprocessable entity
+              schema:
+                $ref: '#/components/schemas/_api_v1_calendar_promotions_nomenclatures_get_422_response'
+          description: Значения параметров некорректны
+        "429": {}
+        "4XX":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_history_tasks_get_4XX_response'
+          description: Прочие ошибки
+        "5XX":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_history_tasks_get_5XX_response'
+          description: Прочие ошибки
+      security:
+      - HeaderApiKey: []
+      summary: Список товаров для участия в акции
+      tags:
+      - Календарь акций
+    servers:
+    - url: https://dp-calendar-api.wildberries.ru
+  /api/v1/calendar/promotions/upload:
+    post:
+      description: |
+        Создаёт загрузку товара в акцию.<br>
+        Состояние загрузки можно проверить с помощью [отдельных методов](./#tag/Sostoyaniya-zagruzok)
+
+        Неприменимо для автоакций
+      requestBody:
+        $ref: '#/components/requestBodies/PromotionsSupplierTaskRequest'
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v1_calendar_promotions_upload_post_200_response'
+          description: Успешно
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_history_tasks_get_400_response'
+          description: Некорректный запрос
+        "401": {}
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v1_calendar_promotions_upload_post_422_response'
+          description: Значения параметров некорректны
+        "429": {}
+        "4XX":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_history_tasks_get_4XX_response'
+          description: Прочие ошибки
+        "5XX":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_api_v2_history_tasks_get_5XX_response'
+          description: Прочие ошибки
+      security:
+      - HeaderApiKey: []
+      summary: Добавить товар в акцию
+      tags:
+      - Календарь акций
+    servers:
+    - url: https://dp-calendar-api.wildberries.ru
+components:
+  examples:
+    InvalidQueryParams:
+      description: Неправильные параметры запроса
+      value:
+        data: null
+        error: true
+        errorText: Invalid query params
+    GoodsNumberLimitExceeded:
+      description: В запросе слишком много товаров
+      value:
+        data: null
+        error: true
+        errorText: Goods number limit exceeded
+    DuplicatedNmIdInTask:
+      description: В запросе несколько одинаковых `nmid`
+      value:
+        data: null
+        error: true
+        errorText: Duplicated nm_id in task
+    NoGoodsForProcess:
+      description: "Цены и скидки такие же, как сейчас"
+      value:
+        data: null
+        error: true
+        errorText: No goods for process
+    FailedToParseData:
+      description: "Не удалось обработать данные, проверьте, что запрос правильный"
+      value:
+        data: null
+        error: true
+        errorText: Failed to parse data
+    PriceHasDecimalPlaces:
+      description: "У цены дробное значение, исправьте на целое"
+      value:
+        data: null
+        error: true
+        errorText: Price has decimal places
+    WrongPriceValue:
+      description: Некорректная цена
+      value:
+        data: null
+        error: true
+        errorText: Wrong price value
+    WrongNmValue:
+      description: Неправильный `nmID`
+      value:
+        data: null
+        error: true
+        errorText: Wrong nm value
+    BothDiscountAndPriceAreNotSet:
+      description: Цена и скидка не установлены
+      value:
+        data: null
+        error: true
+        errorText: Both discount and price are not set
+    PriceNotSet:
+      description: Цена не установлена
+      value:
+        data: null
+        error: true
+        errorText: Both discount and price are not set
+    EmptyData:
+      description: Нет данных
+      value:
+        data: null
+        error: true
+        errorText: Empty data
+    NoValidGoodsInTask:
+      description: "Таких товаров или размеров нет (например, их удалили)"
+      value:
+        data: null
+        error: true
+        errorText: No valid goods in task
+    SortError:
+      description: "Можно сортировать либо по цене, либо по скидке"
+      value:
+        data: null
+        error: true
+        errorText: Can sort only by price or discount at the same time
+  parameters:
+    inAction:
+      description: |
+        Участвует в акции:
+          - `true` — да
+          - `false` — нет
+      explode: true
+      in: query
+      name: inAction
+      required: true
+      schema:
+        default: false
+        example: true
+        type: boolean
+      style: form
+    promotionID:
+      description: ID акции
+      explode: true
+      in: query
+      name: promotionID
+      required: true
+      schema:
+        example: 1
+        type: integer
+      style: form
+    limitNomenclature:
+      description: Количество запрашиваемых товаров
+      explode: true
+      in: query
+      name: limit
+      required: false
+      schema:
+        example: 10
+        format: uint
+        maximum: 1000
+        minimum: 1
+        type: integer
+      style: form
+    promotionIDs:
+      description: "ID акций, по которым нужно вернуть информацию"
+      explode: true
+      in: query
+      name: promotionIDs
+      required: true
+      schema:
+        example:
+        - 1
+        - 3
+        - 64
+        items:
+          type: integer
+        maxItems: 100
+        minItems: 1
+        type: array
+        uniqueItems: true
+      style: form
+    uploadID:
+      description: ID загрузки
+      explode: true
+      in: query
+      name: uploadID
+      required: true
+      schema:
+        example: 146567
+        type: integer
+      style: form
+    limit:
+      description: Сколько элементов вывести на одной странице (пагинация). Максимум
+        1 000 элементов
+      explode: true
+      in: query
+      name: limit
+      required: true
+      schema:
+        example: 10
+        format: uint
+        type: integer
+      style: form
+    nmID:
+      description: Артикул Wildberries
+      explode: true
+      in: query
+      name: nmID
+      required: true
+      schema:
+        example: 1
+        type: integer
+      style: form
+    filterNmID:
+      description: "Артикул Wildberries, по которому искать товар"
+      example: 44589768676
+      explode: true
+      in: query
+      name: filterNmID
+      required: false
+      schema:
+        type: integer
+      style: form
+    offset:
+      description: После какого элемента выдавать данные
+      explode: true
+      in: query
+      name: offset
+      required: false
+      schema:
+        example: 0
+        format: uint
+        minimum: 0
+        type: integer
+      style: form
+    startDateTime:
+      description: "Начало периода, формат `YYYY-MM-DDTHH:MM:SSZ`"
+      explode: true
+      in: query
+      name: startDateTime
+      required: true
+      schema:
+        example: 2023-09-01T00:00:00Z
+        format: RFC3339
+        type: string
+      style: form
+    endDateTime:
+      description: "Конец периода, формат `YYYY-MM-DDTHH:MM:SSZ`"
+      explode: true
+      in: query
+      name: endDateTime
+      required: true
+      schema:
+        example: 2024-08-01T23:59:59Z
+        format: RFC3339
+        type: string
+      style: form
+    allPromo:
+      description: |
+        Показать акции:
+          - `false` — доступные для участия
+          - `true` — все акции
+      explode: true
+      in: query
+      name: allPromo
+      required: true
+      schema:
+        default: false
+        type: boolean
+      style: form
+    limitPromotion:
+      description: Количество запрашиваемых акций
+      explode: true
+      in: query
+      name: limit
+      required: false
+      schema:
+        example: 10
+        format: uint
+        maximum: 1000
+        minimum: 1
+        type: integer
+      style: form
+  requestBodies:
+    PromotionsSupplierTaskRequest:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/_api_v1_calendar_promotions_upload_post_request'
+      required: true
+    SupplierTaskRequest:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/_api_v2_upload_task_post_request'
+      required: true
+    SupplierTaskRequestSize:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/_api_v2_upload_task_size_post_request'
+      required: true
+  responses:
+    ResponsePromotionsGoodsLists:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/_api_v1_calendar_promotions_nomenclatures_get_200_response'
+      description: Список товаров
+    UploadSuccessResponse:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/_api_v1_calendar_promotions_upload_post_200_response'
+      description: Успешно
+    UnprocessableEntity:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/_api_v1_calendar_promotions_upload_post_422_response'
+      description: Значения параметров некорректны
+    PromotionsGetByIDSuccessResponse:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/_api_v1_calendar_promotions_details_get_200_response'
+      description: Успешно
+    PromotionsSuccessResponse:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/_api_v1_calendar_promotions_get_200_response'
+      description: Успешно
+    ErrorFailedParseData:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/_api_v1_calendar_promotions_get_400_response'
+      description: Ошибка обработки данных
+    ResponseGoodsLists:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/_api_v2_list_goods_filter_get_200_response'
+      description: Товары
+    ResponseGoodHistories:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/_api_v2_history_goods_task_get_200_response'
+      description: Информация о товарах в загрузке
+    ResponseGoodBufferHistories:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/_api_v2_buffer_goods_task_get_200_response'
+      description: Информация о товарах в загрузке
+    ResponseTaskHistory:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/_api_v2_history_tasks_get_200_response'
+      description: Состояние загрузки
+    ResponseTaskBuffer:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/_api_v2_buffer_tasks_get_200_response'
+      description: Состояние загрузки
+    ResponseSizeLists:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/_api_v2_list_goods_size_nm_get_200_response'
+      description: Размеры
+    ErrorResponse:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/_api_v2_history_tasks_get_4XX_response'
+      description: Прочие ошибки
+    ErrorInternalResponse:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/_api_v2_history_tasks_get_5XX_response'
+      description: Прочие ошибки
+    ErrorUnknownUser:
+      content:
+        application/json:
+          schema:
+            properties:
+              code:
+                description: Код ошибки
+                example: 401
+                type: integer
+              errorText:
+                description: Текст ошибки
+                example: Текст ошибки
+                type: string
+            type: object
+      description: Ошибка авторизации
+    ErrorWrongParameters:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/_api_v2_history_tasks_get_400_response'
+      description: Некорректный запрос
+    ErrParameterValuesIncorrect:
+      content:
+        application/json:
+          examples:
+            PromotionCompletedOrNotExist:
+              description: "Акция завершена, или акция с данным id не существует"
+              value:
+                errorText: Unprocessable entity
+          schema:
+            $ref: '#/components/schemas/_api_v1_calendar_promotions_nomenclatures_get_422_response'
+      description: Значения параметров некорректны
+    SuccessTaskResponse:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/TaskCreated'
+      description: Успешно
+    ResponseQuarantineGoods:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/_api_v2_quarantine_goods_get_200_response'
+      description: Успешно
+    Responses500:
+      description: Внутренняя ошибка сервиса
+    ExceededLimitRequests429:
+      content:
+        application/json:
+          example:
+            title: too many requests
+            detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+            code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+            requestId: 9d3c02cc698f8b041c661a7c28bed293
+            origin: s2s-api-auth-stat
+            status: 429
+            statusText: Too Many Requests
+          schema:
+            properties:
+              title:
+                description: Заголовок ошибки
+                type: string
+              detail:
+                description: Детализация ошибки
+                type: string
+              code:
+                description: Внутренний код ошибки
+                type: string
+              requestId:
+                description: Уникальный идентификатор запроса
+                type: string
+              origin:
+                description: Идентификатор внутреннего сервиса WB
+                type: string
+              status:
+                description: HTTP статус-код
+                type: number
+              statusText:
+                description: Расшифровка HTTP статус-кода
+                type: string
+            type: object
+      description: Слишком много запросов
+    Responses208:
+      content:
+        application/json:
+          examples:
+            TaskAlreadyExists:
+              description: Такая загрузка уже есть
+              value:
+                data:
+                  id: 1111111
+                  alreadyExists: true
+                error: false
+                errorText: Task already exists
+          schema:
+            $ref: '#/components/schemas/TaskAlreadyExistsError'
+      description: ""
+    "401": {}
+    "429": {}
+  schemas:
+    PromotionsGoodsList:
+      example:
+        inAction: true
+        price: 1500
+        planDiscount: 34
+        discount: 15
+        id: 162579635
+        currencyCode: RUB
+        planPrice: 1000
+      properties:
+        id:
+          description: ID номенклатуры
+          example: 162579635
+          type: integer
+        inAction:
+          description: |
+            Участвует в акции:
+              - `true` — да
+              - `false` — нет
+          example: true
+          type: boolean
+        price:
+          description: Текущая розничная цена
+          example: 1500
+          format: float
+          type: number
+        currencyCode:
+          description: Валюта в формате ISO 4217
+          example: RUB
+          type: string
+        planPrice:
+          description: Плановая цена (цена во время акции)
+          example: 1000
+          format: float
+          type: number
+        discount:
+          description: Текущая скидка
+          example: 15
+          type: integer
+        planDiscount:
+          description: Рекомендуемая скидка для участия в акции
+          example: 34
+          type: integer
+      type: object
+    ResponseError:
+      example:
+        errorText: errorText
+        data: "{}"
+        error: true
+      properties:
+        data:
+          nullable: true
+          type: object
+        error:
+          type: boolean
+        errorText:
+          type: string
+      type: object
+    TaskAlreadyExistsError:
+      example:
+        errorText: errorText
+        data:
+          id: 6
+          alreadyExists: true
+        error: true
+      properties:
+        data:
+          $ref: '#/components/schemas/TaskAlreadyExistsError_data'
+        error:
+          description: Флаг ошибки
+          type: boolean
+        errorText:
+          description: Текст ошибки
+          type: string
+      type: object
+    TaskCreated:
+      example:
+        errorText: ""
+        data:
+          id: 0
+          alreadyExists: false
+        error: false
+      properties:
+        data:
+          $ref: '#/components/schemas/TaskCreated_data'
+        error:
+          description: Флаг ошибки
+          example: false
+          type: boolean
+        errorText:
+          description: Текст ошибки
+          example: ""
+          type: string
+      type: object
+    Goods:
+      description: |
+        Товары, цены и скидки для них. Максимум 1 000 товаров. Цена и скидка не могут быть пустыми одновременно.
+        <br><br>
+        Если новая цена со скидкой будет хотя бы в 3 раза меньше старой, она попадёт [в карантин](https://seller.wildberries.ru/discount-and-prices/quarantine) и товар будет продаваться по старой цене. Ошибка об этом будет в ответах методов [Состояния загрузок](./#tag/Sostoyaniya-zagruzok)
+        <br><br>
+        Вы можете изменить цену или скидку с помощью API либо вывести товар из карантина [в личном кабинете](https://seller.wildberries.ru/discount-and-prices/quarantine)
+      items:
+        $ref: '#/components/schemas/Good'
+      type: array
+    Good:
+      properties:
+        nmID:
+          description: Артикул Wildberries
+          example: 123
+          type: integer
+        price:
+          description: "Цена. Валюту можно получить с помощью метода [Получение сп\
+            иска товаров по\_артикулам](./#tag/Spiski-tovarov/paths/~1api~1v2~1list~1goods~1filter/get),\
+            \ поле `currencyIsoCode4217`"
+          example: 999
+          type: integer
+        discount:
+          description: "Скидка,\_%"
+          example: 30
+          type: integer
+      required:
+      - nmID
+      type: object
+    SizeGoodsBody:
+      description: |
+        Размеры и цены для них. Максимум 1 000 размеров
+        <br><br>
+        Для товаров с поразмерной установкой цен карантин не применяется
+      items:
+        $ref: '#/components/schemas/SizeGoodReq'
+      type: array
+    SizeGoodReq:
+      properties:
+        nmID:
+          description: Артикул Wildberries
+          example: 123
+          type: integer
+        sizeID:
+          description: "ID размера. Можно получить с помощью метода [Получение спи\
+            ска товаров по\_артикулам](./#tag/Spiski-tovarov/paths/~1api~1v2~1list~1goods~1filter/get),\
+            \ поле `sizeID`. В методах контента это поле `chrtID`"
+          example: 98989887
+          type: integer
+        price:
+          description: "Цена. Валюту можно получить с помощью метода [Получение сп\
+            иска товаров по\_артикулам](./#tag/Spiski-tovarov/paths/~1api~1v2~1list~1goods~1filter/get),\
+            \ поле `currencyIsoCode4217`"
+          example: 999
+          type: integer
+      required:
+      - nmID
+      - price
+      - sizeID
+      type: object
+    GoodsList:
+      description: Размеры товара
+      example:
+        sizes:
+        - sizeID: 3123515574
+          techSizeName: "42"
+          discountedPrice: 350
+          price: 500
+        - sizeID: 3123515574
+          techSizeName: "42"
+          discountedPrice: 350
+          price: 500
+        editableSizePrice: true
+        nmID: 98486
+        discount: 30
+        currencyIsoCode4217: RUB
+        vendorCode: "07326060"
+      properties:
+        nmID:
+          description: Артикул Wildberries
+          example: 98486
+          type: integer
+        vendorCode:
+          description: Артикул продавца
+          example: "07326060"
+          type: string
+        sizes:
+          description: Размер
+          items:
+            $ref: '#/components/schemas/GoodsList_sizes_inner'
+          type: array
+        currencyIsoCode4217:
+          description: "Валюта, по стандарту ISO 4217"
+          example: RUB
+          type: string
+        discount:
+          description: "Скидка,\_%"
+          example: 30
+          type: integer
+        editableSizePrice:
+          description: |
+            Можно ли устанавливать цены отдельно для разных размеров: `true` — можно, `false` — нельзя. Эта возможность зависит от категории товара
+          example: true
+          type: boolean
+      type: object
+    SizeGood:
+      description: Информация о размере
+      example:
+        sizeID: 98989887
+        techSizeName: "42"
+        discountedPrice: 14250
+        price: 25000
+        editableSizePrice: true
+        nmID: 123
+        discount: 43
+        currencyIsoCode4217: RUB
+        vendorCode: "34552332"
+      properties:
+        nmID:
+          description: Артикул Wildberries
+          example: 123
+          type: integer
+        sizeID:
+          description: "ID размера. Можно получить с помощью метода [Получение спи\
+            ска товаров по\_артикулам](./#tag/Spiski-tovarov/paths/~1api~1v2~1list~1goods~1filter/get),\
+            \ поле `sizeID`. В методах контента это поле `chrtID`"
+          example: 98989887
+          type: integer
+        vendorCode:
+          description: Артикул продавца
+          example: "34552332"
+          type: string
+        price:
+          description: Цена
+          example: 25000
+          type: integer
+        currencyIsoCode4217:
+          description: "Валюта, по стандарту ISO 4217"
+          example: RUB
+          type: string
+        discountedPrice:
+          description: Цена со скидкой
+          example: 14250
+          type: number
+        discount:
+          description: "Скидка,\_%"
+          example: 43
+          type: integer
+        techSizeName:
+          description: Размер товара
+          example: "42"
+          type: string
+        editableSizePrice:
+          description: |
+            Можно ли устанавливать цены отдельно для разных размеров: `true` — можно, `false` — нельзя. Эта возможность зависит от категории товара
+          example: true
+          type: boolean
+      type: object
+    GoodBufferHistory:
+      example:
+        sizeID: 54483342
+        errorText: errorText
+        techSizeName: XXL
+        price: 1500
+        nmID: 544833232
+        discount: 25
+        currencyIsoCode4217: RUB
+        vendorCode: "34552332"
+        status: 1
+      properties:
+        nmID:
+          description: Артикул Wildberries
+          example: 544833232
+          type: integer
+        vendorCode:
+          description: Артикул продавца
+          example: "34552332"
+          type: string
+        sizeID:
+          description: ID размера. В методах контента это поле `chrtID`
+          example: 54483342
+          type: integer
+        techSizeName:
+          description: Размер
+          example: XXL
+          type: string
+        price:
+          description: Цена
+          example: 1500
+          type: integer
+        currencyIsoCode4217:
+          description: "Валюта, по стандарту ISO 4217"
+          example: RUB
+          type: string
+        discount:
+          description: "Скидка,\_%"
+          example: 25
+          type: integer
+        status:
+          description: |
+            Статус товара: `1` — в обработке
+          example: 1
+          type: integer
+        errorText:
+          description: Текст ошибки
+          type: string
+          example: null
+      type: object
+    GoodHistory:
+      example:
+        sizeID: 54483342
+        errorText: The product is in quarantine
+        techSizeName: "42"
+        price: 1500
+        nmID: 544833232
+        discount: 25
+        currencyIsoCode4217: RUB
+        vendorCode: "34552332"
+        status: 1
+      properties:
+        nmID:
+          description: Артикул Wildberries
+          example: 544833232
+          type: integer
+        vendorCode:
+          description: Артикул продавца
+          example: "34552332"
+          type: string
+        sizeID:
+          description: ID размера. В методах контента это поле `chrtID`
+          example: 54483342
+          type: integer
+        techSizeName:
+          description: Размер
+          example: "42"
+          type: string
+        price:
+          description: Цена
+          example: 1500
+          type: integer
+        currencyIsoCode4217:
+          description: "Валюта, по стандарту ISO 4217"
+          example: RUB
+          type: string
+        discount:
+          description: "Скидка,\_%"
+          example: 25
+          type: integer
+        status:
+          description: "Статус товара: \n  * `2`\_— товар без ошибок, цена и/или с\
+            кидка обновилась\n  * `3`\_— есть ошибки, данные не обновились\n"
+          example: 1
+          type: integer
+        errorText:
+          description: |
+            Текст ошибки
+
+            <blockquote class="spoiler">
+              <p class="descr">Ошибка <code>The product is in quarantine</code> возникает, если новая цена со скидкой хотя бы в 3 раза меньше старой. Вы можете изменить цену или скидку с помощью API либо вывести товар из карантина <a href="https://seller.wildberries.ru/discount-and-prices/quarantine">в личном кабинете</a></p>
+            </blockquote>
+          example: The product is in quarantine
+          type: string
+      type: object
+    SupplierTaskMetadata:
+      example:
+        uploadID: 395643565
+        uploadDate: 2000-01-23
+        successGoodsNumber: 6
+        overAllGoodsNumber: 0
+        activationDate: 2000-01-23
+        status: 3
+      properties:
+        uploadID:
+          description: ID загрузки
+          example: 395643565
+          type: integer
+        status:
+          description: "Статус загрузки: \n  * `3`\_— обработана, в товарах нет ош\
+            ибок, цены и скидки обновились\n  * `4`\_— отменена\n  * `5`\_— обрабо\
+            тана, но в\_товарах есть ошибки. Для товаров без ошибок цены и скидки\
+            \ обновились, а ошибки в\_остальных товарах можно получить с\_помощью\
+            \ метода [Детализация обработанной загрузки](#tag/Istoriya-zagruzok/paths/~1api~1v2~1history~1goods~1task/get)\n\
+            \  * `6`\_— обработана, но\_во всех товарах есть ошибки. Их тоже можно\
+            \ получить с\_помощью метода [Детализация обработанной загрузки](#tag/Istoriya-zagruzok/paths/~1api~1v2~1history~1goods~1task/get)\n"
+          example: 3
+          type: integer
+        uploadDate:
+          description: "Дата и время, когда загрузка создана"
+          format: date
+          pattern: YYYY-MM-DDTHH:MM:SSZ
+          type: string
+        activationDate:
+          description: "Дата и время, когда загрузка отправляется в\_обработку"
+          format: date
+          pattern: YYYY-MM-DDTHH:MM:SSZ
+          type: string
+        overAllGoodsNumber:
+          description: Всего товаров
+          type: integer
+        successGoodsNumber:
+          description: Товаров без ошибок
+          type: integer
+    SupplierTaskMetadataBuffer:
+      example:
+        uploadID: 395643565
+        uploadDate: 2000-01-23
+        successGoodsNumber: 0
+        overAllGoodsNumber: 100
+        activationDate: 2000-01-23
+        status: 1
+      properties:
+        uploadID:
+          description: ID загрузки
+          example: 395643565
+          type: integer
+        status:
+          description: |
+            Статус загрузки: `1` — в обработке
+          example: 1
+          type: integer
+        uploadDate:
+          description: "Дата и время, когда загрузка создана"
+          format: date
+          pattern: YYYY-MM-DDTHH:MM:SSZ
+          type: string
+        activationDate:
+          description: "Дата и время, когда загрузка отправляется в\_обработку"
+          format: date
+          pattern: YYYY-MM-DDTHH:MM:SSZ
+          type: string
+        overAllGoodsNumber:
+          description: Всего товаров
+          example: 100
+          type: integer
+        successGoodsNumber:
+          description: "Товаров без ошибок (0, потому что загрузка в обработке)"
+          example: 0
+          type: integer
+    Date:
+      description: "Дата и время, когда загрузка создана"
+      format: date
+      pattern: YYYY-MM-DDTHH:MM:SSZ
+      type: string
+    Date1:
+      description: "Дата и время, когда загрузка отправляется в\_обработку"
+      format: date
+      pattern: YYYY-MM-DDTHH:MM:SSZ
+      type: string
+    TaskStatus:
+      description: "Статус загрузки: \n  * `3`\_— обработана, в товарах нет ошибок\
+        , цены и скидки обновились\n  * `4`\_— отменена\n  * `5`\_— обработана, но\
+        \ в\_товарах есть ошибки. Для товаров без ошибок цены и скидки обновились\
+        , а ошибки в\_остальных товарах можно получить с\_помощью метода [Детализа\
+        ция обработанной загрузки](#tag/Istoriya-zagruzok/paths/~1api~1v2~1history~1goods~1task/get)\n\
+        \  * `6`\_— обработана, но\_во всех товарах есть ошибки. Их тоже можно пол\
+        учить с\_помощью метода [Детализация обработанной загрузки](#tag/Istoriya-zagruzok/paths/~1api~1v2~1history~1goods~1task/get)\n"
+      example: 3
+      type: integer
+    TaskStatusBuffer:
+      description: |
+        Статус загрузки: `1` — в обработке
+      example: 1
+      type: integer
+    GoodStatus:
+      description: "Статус товара: \n  * `2`\_— товар без ошибок, цена и/или скидк\
+        а обновилась\n  * `3`\_— есть ошибки, данные не обновились\n"
+      example: 1
+      type: integer
+    GoodStatusBuffer:
+      description: |
+        Статус товара: `1` — в обработке
+      example: 1
+      type: integer
+    QuarantineGoods:
+      example:
+        sizeID: 0
+        newDiscount: 25
+        techSizeName: ""
+        oldPrice: 4000
+        nmID: 206025152
+        priceDiff: -2899.5
+        oldDiscount: 25
+        currencyIsoCode4217: RUB
+        newPrice: 134
+      properties:
+        nmID:
+          description: Артикул WB
+          example: 206025152
+          type: integer
+        sizeID:
+          description: Не используется
+          type: integer
+          example: null
+        techSizeName:
+          description: Не используется
+          example: ""
+          type: string
+        currencyIsoCode4217:
+          description: Валюта по стандарту ISO 4217
+          example: RUB
+          type: string
+        newPrice:
+          description: Новая цена продавца до скидки
+          example: 134
+          format: float
+          type: number
+        oldPrice:
+          description: Текущая цена продавца до скидки
+          example: 4000
+          format: float
+          type: number
+        newDiscount:
+          description: "Новая скидка продавца, %"
+          example: 25
+          type: integer
+        oldDiscount:
+          description: "Текущая скидка продавца, %"
+          example: 25
+          type: integer
+        priceDiff:
+          description: "Разница: `newPrice` * (1 - `newDiscount` / 100) - `oldPrice`\
+            \ * (1 - `oldDiscount` / 100)"
+          example: -2899.5
+          format: float
+          type: number
+      type: object
+    _api_v2_upload_task_post_request:
+      properties:
+        data:
+          description: |
+            Товары, цены и скидки для них. Максимум 1 000 товаров. Цена и скидка не могут быть пустыми одновременно.
+            <br><br>
+            Если новая цена со скидкой будет хотя бы в 3 раза меньше старой, она попадёт [в карантин](https://seller.wildberries.ru/discount-and-prices/quarantine) и товар будет продаваться по старой цене. Ошибка об этом будет в ответах методов [Состояния загрузок](./#tag/Sostoyaniya-zagruzok)
+            <br><br>
+            Вы можете изменить цену или скидку с помощью API либо вывести товар из карантина [в личном кабинете](https://seller.wildberries.ru/discount-and-prices/quarantine)
+          items:
+            $ref: '#/components/schemas/Good'
+          type: array
+      type: object
+    _api_v2_upload_task_size_post_request:
+      properties:
+        data:
+          description: |
+            Размеры и цены для них. Максимум 1 000 размеров
+            <br><br>
+            Для товаров с поразмерной установкой цен карантин не применяется
+          items:
+            $ref: '#/components/schemas/SizeGoodReq'
+          type: array
+      type: object
+    _api_v2_history_tasks_get_200_response:
+      example:
+        errorText: The product is in quarantine
+        data:
+          uploadID: 395643565
+          uploadDate: 2000-01-23
+          successGoodsNumber: 6
+          overAllGoodsNumber: 0
+          activationDate: 2000-01-23
+          status: 3
+        error: false
+      properties:
+        data:
+          $ref: '#/components/schemas/SupplierTaskMetadata'
+        error:
+          description: Флаг ошибки
+          example: false
+          type: boolean
+        errorText:
+          description: |
+            Текст ошибки
+
+            <blockquote class="spoiler">
+              <p class="descr">Ошибка <code>The product is in quarantine</code> возникает, если новая цена со скидкой хотя бы в 3 раза меньше старой. Вы можете изменить цену или скидку с помощью API либо вывести товар из карантина <a href="https://seller.wildberries.ru/discount-and-prices/quarantine">в личном кабинете</a></p>
+            </blockquote>
+          example: The product is in quarantine
+          type: string
+      type: object
+    _api_v2_history_tasks_get_400_response:
+      example:
+        errorText: Invalid query params
+      properties:
+        errorText:
+          description: Текст ошибки
+          example: Invalid query params
+          type: string
+      type: object
+    _api_v2_history_tasks_get_4XX_response:
+      example:
+        errorText: Unknown error
+      properties:
+        errorText:
+          description: Текст ошибки
+          example: Unknown error
+          type: string
+      type: object
+    _api_v2_history_tasks_get_5XX_response:
+      example:
+        errorText: Internal server error
+      properties:
+        errorText:
+          description: Текст ошибки
+          example: Internal server error
+          type: string
+      type: object
+    _api_v2_history_goods_task_get_200_response_data:
+      example:
+        uploadID: 3235236546
+        historyGoods:
+        - sizeID: 54483342
+          errorText: The product is in quarantine
+          techSizeName: "42"
+          price: 1500
+          nmID: 544833232
+          discount: 25
+          currencyIsoCode4217: RUB
+          vendorCode: "34552332"
+          status: 1
+        - sizeID: 54483342
+          errorText: The product is in quarantine
+          techSizeName: "42"
+          price: 1500
+          nmID: 544833232
+          discount: 25
+          currencyIsoCode4217: RUB
+          vendorCode: "34552332"
+          status: 1
+      properties:
+        uploadID:
+          description: ID загрузки
+          example: 3235236546
+          type: integer
+        historyGoods:
+          description: Информация о товарах в загрузке
+          items:
+            $ref: '#/components/schemas/GoodHistory'
+          type: array
+      type: object
+    _api_v2_history_goods_task_get_200_response:
+      example:
+        data:
+          uploadID: 3235236546
+          historyGoods:
+          - sizeID: 54483342
+            errorText: The product is in quarantine
+            techSizeName: "42"
+            price: 1500
+            nmID: 544833232
+            discount: 25
+            currencyIsoCode4217: RUB
+            vendorCode: "34552332"
+            status: 1
+          - sizeID: 54483342
+            errorText: The product is in quarantine
+            techSizeName: "42"
+            price: 1500
+            nmID: 544833232
+            discount: 25
+            currencyIsoCode4217: RUB
+            vendorCode: "34552332"
+            status: 1
+      properties:
+        data:
+          $ref: '#/components/schemas/_api_v2_history_goods_task_get_200_response_data'
+      type: object
+    _api_v2_buffer_tasks_get_200_response:
+      example:
+        errorText: ""
+        data:
+          uploadID: 395643565
+          uploadDate: 2000-01-23
+          successGoodsNumber: 0
+          overAllGoodsNumber: 100
+          activationDate: 2000-01-23
+          status: 1
+        error: false
+      properties:
+        data:
+          $ref: '#/components/schemas/SupplierTaskMetadataBuffer'
+        error:
+          description: Флаг ошибки
+          example: false
+          type: boolean
+        errorText:
+          description: Текст ошибки
+          example: ""
+          type: string
+      type: object
+    _api_v2_buffer_goods_task_get_200_response_data:
+      example:
+        uploadID: 3235236546
+        bufferGoods:
+        - sizeID: 54483342
+          errorText: errorText
+          techSizeName: XXL
+          price: 1500
+          nmID: 544833232
+          discount: 25
+          currencyIsoCode4217: RUB
+          vendorCode: "34552332"
+          status: 1
+        - sizeID: 54483342
+          errorText: errorText
+          techSizeName: XXL
+          price: 1500
+          nmID: 544833232
+          discount: 25
+          currencyIsoCode4217: RUB
+          vendorCode: "34552332"
+          status: 1
+      properties:
+        uploadID:
+          description: ID загрузки
+          example: 3235236546
+          type: integer
+        bufferGoods:
+          description: Информация о товарах в загрузке
+          items:
+            $ref: '#/components/schemas/GoodBufferHistory'
+          type: array
+      type: object
+    _api_v2_buffer_goods_task_get_200_response:
+      example:
+        errorText: ""
+        data:
+          uploadID: 3235236546
+          bufferGoods:
+          - sizeID: 54483342
+            errorText: errorText
+            techSizeName: XXL
+            price: 1500
+            nmID: 544833232
+            discount: 25
+            currencyIsoCode4217: RUB
+            vendorCode: "34552332"
+            status: 1
+          - sizeID: 54483342
+            errorText: errorText
+            techSizeName: XXL
+            price: 1500
+            nmID: 544833232
+            discount: 25
+            currencyIsoCode4217: RUB
+            vendorCode: "34552332"
+            status: 1
+        error: false
+      properties:
+        data:
+          $ref: '#/components/schemas/_api_v2_buffer_goods_task_get_200_response_data'
+        error:
+          description: Флаг ошибки
+          example: false
+          type: boolean
+        errorText:
+          description: Текст ошибки
+          example: ""
+          type: string
+      type: object
+    _api_v2_list_goods_filter_get_200_response_data:
+      example:
+        listGoods:
+        - sizes:
+          - sizeID: 3123515574
+            techSizeName: "42"
+            discountedPrice: 350
+            price: 500
+          - sizeID: 3123515574
+            techSizeName: "42"
+            discountedPrice: 350
+            price: 500
+          editableSizePrice: true
+          nmID: 98486
+          discount: 30
+          currencyIsoCode4217: RUB
+          vendorCode: "07326060"
+        - sizes:
+          - sizeID: 3123515574
+            techSizeName: "42"
+            discountedPrice: 350
+            price: 500
+          - sizeID: 3123515574
+            techSizeName: "42"
+            discountedPrice: 350
+            price: 500
+          editableSizePrice: true
+          nmID: 98486
+          discount: 30
+          currencyIsoCode4217: RUB
+          vendorCode: "07326060"
+      properties:
+        listGoods:
+          description: Информация о товарах
+          items:
+            $ref: '#/components/schemas/GoodsList'
+          type: array
+      type: object
+    _api_v2_list_goods_filter_get_200_response:
+      example:
+        data:
+          listGoods:
+          - sizes:
+            - sizeID: 3123515574
+              techSizeName: "42"
+              discountedPrice: 350
+              price: 500
+            - sizeID: 3123515574
+              techSizeName: "42"
+              discountedPrice: 350
+              price: 500
+            editableSizePrice: true
+            nmID: 98486
+            discount: 30
+            currencyIsoCode4217: RUB
+            vendorCode: "07326060"
+          - sizes:
+            - sizeID: 3123515574
+              techSizeName: "42"
+              discountedPrice: 350
+              price: 500
+            - sizeID: 3123515574
+              techSizeName: "42"
+              discountedPrice: 350
+              price: 500
+            editableSizePrice: true
+            nmID: 98486
+            discount: 30
+            currencyIsoCode4217: RUB
+            vendorCode: "07326060"
+      properties:
+        data:
+          $ref: '#/components/schemas/_api_v2_list_goods_filter_get_200_response_data'
+      type: object
+    _api_v2_list_goods_size_nm_get_200_response_data:
+      example:
+        listGoods:
+        - sizeID: 98989887
+          techSizeName: "42"
+          discountedPrice: 14250
+          price: 25000
+          editableSizePrice: true
+          nmID: 123
+          discount: 43
+          currencyIsoCode4217: RUB
+          vendorCode: "34552332"
+        - sizeID: 98989887
+          techSizeName: "42"
+          discountedPrice: 14250
+          price: 25000
+          editableSizePrice: true
+          nmID: 123
+          discount: 43
+          currencyIsoCode4217: RUB
+          vendorCode: "34552332"
+      properties:
+        listGoods:
+          description: Размеры товара
+          items:
+            $ref: '#/components/schemas/SizeGood'
+          type: array
+      type: object
+    _api_v2_list_goods_size_nm_get_200_response:
+      example:
+        errorText: errorText
+        data:
+          listGoods:
+          - sizeID: 98989887
+            techSizeName: "42"
+            discountedPrice: 14250
+            price: 25000
+            editableSizePrice: true
+            nmID: 123
+            discount: 43
+            currencyIsoCode4217: RUB
+            vendorCode: "34552332"
+          - sizeID: 98989887
+            techSizeName: "42"
+            discountedPrice: 14250
+            price: 25000
+            editableSizePrice: true
+            nmID: 123
+            discount: 43
+            currencyIsoCode4217: RUB
+            vendorCode: "34552332"
+        error: false
+      properties:
+        data:
+          $ref: '#/components/schemas/_api_v2_list_goods_size_nm_get_200_response_data'
+        error:
+          description: Флаг ошибки
+          example: false
+          type: boolean
+        errorText:
+          description: Текст ошибки
+          type: string
+      type: object
+    _api_v2_quarantine_goods_get_200_response_data:
+      example:
+        quarantineGoods:
+        - sizeID: 0
+          newDiscount: 25
+          techSizeName: ""
+          oldPrice: 4000
+          nmID: 206025152
+          priceDiff: -2899.5
+          oldDiscount: 25
+          currencyIsoCode4217: RUB
+          newPrice: 134
+        - sizeID: 0
+          newDiscount: 25
+          techSizeName: ""
+          oldPrice: 4000
+          nmID: 206025152
+          priceDiff: -2899.5
+          oldDiscount: 25
+          currencyIsoCode4217: RUB
+          newPrice: 134
+      properties:
+        quarantineGoods:
+          description: Информация о товарах в карантине
+          items:
+            $ref: '#/components/schemas/QuarantineGoods'
+          type: array
+      type: object
+    _api_v2_quarantine_goods_get_200_response:
+      example:
+        errorText: ""
+        data:
+          quarantineGoods:
+          - sizeID: 0
+            newDiscount: 25
+            techSizeName: ""
+            oldPrice: 4000
+            nmID: 206025152
+            priceDiff: -2899.5
+            oldDiscount: 25
+            currencyIsoCode4217: RUB
+            newPrice: 134
+          - sizeID: 0
+            newDiscount: 25
+            techSizeName: ""
+            oldPrice: 4000
+            nmID: 206025152
+            priceDiff: -2899.5
+            oldDiscount: 25
+            currencyIsoCode4217: RUB
+            newPrice: 134
+        error: false
+      properties:
+        data:
+          $ref: '#/components/schemas/_api_v2_quarantine_goods_get_200_response_data'
+        error:
+          description: Флаг ошибки
+          example: false
+          type: boolean
+        errorText:
+          description: Текст ошибки
+          example: ""
+          type: string
+      type: object
+    _api_v1_calendar_promotions_get_200_response_data_promotions_inner:
+      example:
+        startDateTime: 2023-06-05T21:00:00Z
+        name: скидки
+        id: 123
+        endDateTime: 2023-06-05T21:00:00Z
+        type: regular
+      properties:
+        id:
+          description: ID акции
+          example: 123
+          type: integer
+        name:
+          description: Название акции
+          example: скидки
+          type: string
+        startDateTime:
+          description: Начало акции
+          example: 2023-06-05T21:00:00Z
+          format: RFC3339
+          type: string
+        endDateTime:
+          description: Конец акции
+          example: 2023-06-05T21:00:00Z
+          format: RFC3339
+          type: string
+        type:
+          description: |
+            Тип акции:
+              - `regular` — акция
+              - `auto` — автоакция
+          enum:
+          - regular
+          - auto
+          type: string
+      type: object
+    _api_v1_calendar_promotions_get_200_response_data:
+      example:
+        promotions:
+        - startDateTime: 2023-06-05T21:00:00Z
+          name: скидки
+          id: 123
+          endDateTime: 2023-06-05T21:00:00Z
+          type: regular
+        - startDateTime: 2023-06-05T21:00:00Z
+          name: скидки
+          id: 123
+          endDateTime: 2023-06-05T21:00:00Z
+          type: regular
+      properties:
+        promotions:
+          items:
+            $ref: '#/components/schemas/_api_v1_calendar_promotions_get_200_response_data_promotions_inner'
+          type: array
+      type: object
+    _api_v1_calendar_promotions_get_200_response:
+      example:
+        data:
+          promotions:
+          - startDateTime: 2023-06-05T21:00:00Z
+            name: скидки
+            id: 123
+            endDateTime: 2023-06-05T21:00:00Z
+            type: regular
+          - startDateTime: 2023-06-05T21:00:00Z
+            name: скидки
+            id: 123
+            endDateTime: 2023-06-05T21:00:00Z
+            type: regular
+      properties:
+        data:
+          $ref: '#/components/schemas/_api_v1_calendar_promotions_get_200_response_data'
+      type: object
+    _api_v1_calendar_promotions_get_400_response:
+      example:
+        errorText: Failed to parse data
+      properties:
+        errorText:
+          description: Текст ошибки
+          example: Failed to parse data
+          type: string
+      type: object
+    _api_v1_calendar_promotions_details_get_200_response_data_promotions_inner:
+      example:
+        inPromoActionLeftovers: 45
+        description: "В акции принимают участие самые популярные товары 2023 года\
+          . Карточки товаров будут выделены плашкой «ХИТ ГОДА», чтобы покупатели з\
+          амечали эти товары среди других. Также они будут размещены под баннерами\
+          \ на главной странице и примут участие в PUSH-уведомлениях. С ценами для\
+          \ вступления в акцию вы можете ознакомиться ниже."
+        notInPromoActionLeftovers: 3
+        endDateTime: 2023-06-05T21:00:00Z
+        type: auto
+        inPromoActionTotal: 123
+        advantages:
+        - Плашка
+        - Баннер
+        - Топ выдачи товаров
+        startDateTime: 2023-06-05T21:00:00Z
+        exceptionProductsCount: 10
+        name: ХИТЫ ГОДА
+        id: 123
+        participationPercentage: 10
+        notInPromoActionTotal: 10
+      properties:
+        id:
+          description: ID акции
+          example: 123
+          type: integer
+        name:
+          description: Название акции
+          example: ХИТЫ ГОДА
+          type: string
+        description:
+          description: Описание акции
+          example: "В акции принимают участие самые популярные товары 2023 года. К\
+            арточки товаров будут выделены плашкой «ХИТ ГОДА», чтобы покупатели за\
+            мечали эти товары среди других. Также они будут размещены под баннерам\
+            и на главной странице и примут участие в PUSH-уведомлениях. С ценами д\
+            ля вступления в акцию вы можете ознакомиться ниже."
+          type: string
+        advantages:
+          description: Преимущества акции
+          example:
+          - Плашка
+          - Баннер
+          - Топ выдачи товаров
+          items:
+            type: string
+          type: array
+        startDateTime:
+          description: Начало акции
+          example: 2023-06-05T21:00:00Z
+          type: string
+        endDateTime:
+          description: Конец акции
+          example: 2023-06-05T21:00:00Z
+          type: string
+        inPromoActionLeftovers:
+          description: "Количество товаров с остатками, участвующих в акции"
+          example: 45
+          type: integer
+        inPromoActionTotal:
+          description: "Общее количество товаров, участвующих в акции"
+          example: 123
+          type: integer
+        notInPromoActionLeftovers:
+          description: "Количество товаров с остатками, не участвующих в акции"
+          example: 3
+          type: integer
+        notInPromoActionTotal:
+          description: "Общее количество товаров, не участвующих в акции"
+          example: 10
+          type: integer
+        participationPercentage:
+          description: "Уже участвующие в акции товары, %. Рассчитывается по товар\
+            ам в акции и с остатком"
+          example: 10
+          type: integer
+        type:
+          description: |
+            Тип акции:
+              - `regular` — акция
+              - `auto` — автоакция
+          enum:
+          - regular
+          - auto
+          example: auto
+          type: string
+        exceptionProductsCount:
+          description: |
+            Количество товаров, исключенных из автоакции до её старта. Только при `"type": "auto"`.
+            <br>В момент старта акции эти товары автоматически будут без скидки
+          example: 10
+          format: uint
+          type: integer
+      type: object
+    _api_v1_calendar_promotions_details_get_200_response_data:
+      example:
+        promotions:
+        - inPromoActionLeftovers: 45
+          description: "В акции принимают участие самые популярные товары 2023 год\
+            а. Карточки товаров будут выделены плашкой «ХИТ ГОДА», чтобы покупател\
+            и замечали эти товары среди других. Также они будут размещены под банн\
+            ерами на главной странице и примут участие в PUSH-уведомлениях. С цена\
+            ми для вступления в акцию вы можете ознакомиться ниже."
+          notInPromoActionLeftovers: 3
+          endDateTime: 2023-06-05T21:00:00Z
+          type: auto
+          inPromoActionTotal: 123
+          advantages:
+          - Плашка
+          - Баннер
+          - Топ выдачи товаров
+          startDateTime: 2023-06-05T21:00:00Z
+          exceptionProductsCount: 10
+          name: ХИТЫ ГОДА
+          id: 123
+          participationPercentage: 10
+          notInPromoActionTotal: 10
+        - inPromoActionLeftovers: 45
+          description: "В акции принимают участие самые популярные товары 2023 год\
+            а. Карточки товаров будут выделены плашкой «ХИТ ГОДА», чтобы покупател\
+            и замечали эти товары среди других. Также они будут размещены под банн\
+            ерами на главной странице и примут участие в PUSH-уведомлениях. С цена\
+            ми для вступления в акцию вы можете ознакомиться ниже."
+          notInPromoActionLeftovers: 3
+          endDateTime: 2023-06-05T21:00:00Z
+          type: auto
+          inPromoActionTotal: 123
+          advantages:
+          - Плашка
+          - Баннер
+          - Топ выдачи товаров
+          startDateTime: 2023-06-05T21:00:00Z
+          exceptionProductsCount: 10
+          name: ХИТЫ ГОДА
+          id: 123
+          participationPercentage: 10
+          notInPromoActionTotal: 10
+      properties:
+        promotions:
+          description: Список акций
+          items:
+            $ref: '#/components/schemas/_api_v1_calendar_promotions_details_get_200_response_data_promotions_inner'
+          type: array
+      type: object
+    _api_v1_calendar_promotions_details_get_200_response:
+      example:
+        data:
+          promotions:
+          - inPromoActionLeftovers: 45
+            description: "В акции принимают участие самые популярные товары 2023 г\
+              ода. Карточки товаров будут выделены плашкой «ХИТ ГОДА», чтобы покуп\
+              атели замечали эти товары среди других. Также они будут размещены по\
+              д баннерами на главной странице и примут участие в PUSH-уведомлениях\
+              . С ценами для вступления в акцию вы можете ознакомиться ниже."
+            notInPromoActionLeftovers: 3
+            endDateTime: 2023-06-05T21:00:00Z
+            type: auto
+            inPromoActionTotal: 123
+            advantages:
+            - Плашка
+            - Баннер
+            - Топ выдачи товаров
+            startDateTime: 2023-06-05T21:00:00Z
+            exceptionProductsCount: 10
+            name: ХИТЫ ГОДА
+            id: 123
+            participationPercentage: 10
+            notInPromoActionTotal: 10
+          - inPromoActionLeftovers: 45
+            description: "В акции принимают участие самые популярные товары 2023 г\
+              ода. Карточки товаров будут выделены плашкой «ХИТ ГОДА», чтобы покуп\
+              атели замечали эти товары среди других. Также они будут размещены по\
+              д баннерами на главной странице и примут участие в PUSH-уведомлениях\
+              . С ценами для вступления в акцию вы можете ознакомиться ниже."
+            notInPromoActionLeftovers: 3
+            endDateTime: 2023-06-05T21:00:00Z
+            type: auto
+            inPromoActionTotal: 123
+            advantages:
+            - Плашка
+            - Баннер
+            - Топ выдачи товаров
+            startDateTime: 2023-06-05T21:00:00Z
+            exceptionProductsCount: 10
+            name: ХИТЫ ГОДА
+            id: 123
+            participationPercentage: 10
+            notInPromoActionTotal: 10
+      properties:
+        data:
+          $ref: '#/components/schemas/_api_v1_calendar_promotions_details_get_200_response_data'
+      type: object
+    _api_v1_calendar_promotions_nomenclatures_get_200_response_data:
+      example:
+        nomenclatures:
+        - inAction: true
+          price: 1500
+          planDiscount: 34
+          discount: 15
+          id: 162579635
+          currencyCode: RUB
+          planPrice: 1000
+        - inAction: true
+          price: 1500
+          planDiscount: 34
+          discount: 15
+          id: 162579635
+          currencyCode: RUB
+          planPrice: 1000
+      properties:
+        nomenclatures:
+          items:
+            $ref: '#/components/schemas/PromotionsGoodsList'
+          type: array
+      type: object
+    _api_v1_calendar_promotions_nomenclatures_get_200_response:
+      example:
+        data:
+          nomenclatures:
+          - inAction: true
+            price: 1500
+            planDiscount: 34
+            discount: 15
+            id: 162579635
+            currencyCode: RUB
+            planPrice: 1000
+          - inAction: true
+            price: 1500
+            planDiscount: 34
+            discount: 15
+            id: 162579635
+            currencyCode: RUB
+            planPrice: 1000
+      properties:
+        data:
+          $ref: '#/components/schemas/_api_v1_calendar_promotions_nomenclatures_get_200_response_data'
+      type: object
+    _api_v1_calendar_promotions_nomenclatures_get_422_response:
+      example:
+        errorText: errorText
+      properties:
+        errorText:
+          description: Текст ошибки
+          type: string
+      type: object
+    _api_v1_calendar_promotions_upload_post_request_data:
+      properties:
+        promotionID:
+          description: ID акции
+          example: 1
+          minimum: 1
+          type: integer
+        uploadNow:
+          description: |
+            Установить скидку:
+              - `true` — сейчас
+              - `false` — в момент старта акции
+          example: true
+          type: boolean
+        nomenclatures:
+          description: "ID номенклатур, которые можно добавить в акцию"
+          items:
+            minimum: 1
+            type: integer
+          maxItems: 1000
+          minItems: 1
+          type: array
+          uniqueItems: true
+      type: object
+    _api_v1_calendar_promotions_upload_post_request:
+      properties:
+        data:
+          $ref: '#/components/schemas/_api_v1_calendar_promotions_upload_post_request_data'
+      type: object
+    _api_v1_calendar_promotions_upload_post_200_response_data:
+      example:
+        uploadID: 11
+        alreadyExists: false
+      properties:
+        alreadyExists:
+          description: Загрузка с такими данными уже существует
+          example: false
+          type: boolean
+        uploadID:
+          description: ID загрузки
+          example: 11
+          type: integer
+      type: object
+    _api_v1_calendar_promotions_upload_post_200_response:
+      example:
+        data:
+          uploadID: 11
+          alreadyExists: false
+      properties:
+        data:
+          $ref: '#/components/schemas/_api_v1_calendar_promotions_upload_post_200_response_data'
+      type: object
+    _api_v1_calendar_promotions_upload_post_422_response:
+      example:
+        errorText: Unprocessable entity
+      properties:
+        errorText:
+          example: Unprocessable entity
+          type: string
+      type: object
+    TaskAlreadyExistsError_data:
+      example:
+        id: 6
+        alreadyExists: true
+      properties:
+        id:
+          description: ID загрузки
+          type: integer
+        alreadyExists:
+          description: |
+            Флаг дублирования загрузки: `true` — такая загрузка уже есть
+          type: boolean
+      type: object
+    TaskCreated_data:
+      example:
+        id: 0
+        alreadyExists: false
+      properties:
+        id:
+          description: ID загрузки
+          type: integer
+        alreadyExists:
+          description: |
+            Флаг дублирования загрузки: `true` — такая загрузка уже есть
+          example: false
+          type: boolean
+      type: object
+    GoodsList_sizes_inner:
+      example:
+        sizeID: 3123515574
+        techSizeName: "42"
+        discountedPrice: 350
+        price: 500
+      properties:
+        sizeID:
+          description: ID размера. В методах контента это поле `chrtID`
+          example: 3123515574
+          format: int64
+          type: integer
+        price:
+          description: Цена
+          example: 500
+          type: integer
+        discountedPrice:
+          description: Цена со скидкой
+          example: 350
+          type: number
+        techSizeName:
+          description: Размер товара
+          example: "42"
+          type: string
+      type: object
+  securitySchemes:
+    HeaderApiKey:
+      in: header
+      name: Authorization
+      type: apiKey
+x-tagGroups:
+- name: Цены и скидки
+  tags:
+  - Установка цен и скидок
+  - Состояния загрузок
+  - Списки товаров
+  - Карантин
+- name: Календарь акций
+  tags:
+  - Календарь акций

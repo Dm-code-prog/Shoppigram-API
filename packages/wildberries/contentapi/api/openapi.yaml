@@ -1,0 +1,4876 @@
+openapi: 3.0.1
+info:
+  description: "\n<dl>\n<dt>Словарь сокращений:</dt>\n<dd>КТ — карточка товара</dd>\n\
+    <dd>НМ — номенклатура</dd>\n</dl>\nОграничения по количеству запросов:\n<dd>До\
+    пускается максимум 100 запросов в минуту на методы контента в целом.</dd>\n\n\
+    <br>\nПубличное API Контента создано для синхронизации данных между серверами\
+    \ Wildberries и серверами продавцов.\n<br>\nВы загружаете данные на свои носит\
+    ели, работаете с ними на своих мощностях и синхронизируетесь с нашими серверам\
+    и по мере необходимости.\n<br>\n<code>Не допускается использование API Контент\
+    а в качестве внешней базы данных. При превышении лимитов на запросы доступ к API\
+    \ будет ограничен.</code>\n<br> \n<br>\n"
+  title: Описание API Контента
+  version: ""
+servers:
+- url: /
+security:
+- HeaderApiKey: []
+tags:
+- description: Создание и редактирование КТ
+  name: Загрузка
+- description: "Получение информации о созданных КТ, НМ и размерах"
+  name: Просмотр
+- name: Конфигуратор
+- description: Работа с медиафайлами
+  name: Медиафайлы
+- description: Сервис для работы с тегами КТ. Теги предназначены для быстрого поиска
+    КТ в личном кабинете
+  name: Теги
+- name: Корзина
+paths:
+  /content/v2/cards/upload:
+    post:
+      description: |
+        Создание карточки товара происходит асинхронно, при отправке запроса на создание карточки ваш запрос становится в очередь на создание.
+
+
+        **Внимание**. Карточка считается созданной, если создалась хотя бы одна номенклатура в ней. Если во время обработки запроса в очереди выявляются ошибки, то номенклатура считается ошибочной.
+
+
+        Как создать карточку:
+
+          1. Получите список всех категорий с помощью метода `Родительские категории товаров`
+          2. Получите список доступных предметов (подкатегорий) с помощью метода `Список предметов (подкатегорий)`
+          3. Получите характеристики, которые можно задавать в этом предмете (подкатегории), с помощью метода `Характеристики предмета (подкатегории)`. Для характеристик Цвет, Страна производства, Сезон, Ставка НДС, ТНВЭД используйте значения из раздела `Конфигуратор`.
+          4. Отправьте запрос. Если ответ Успешно (200), но какие-то карточки не создались, проверьте ошибки с помощью метода `Список несозданных номенклатур (НМ) с ошибками`.
+
+
+        В одном запросе можно создать максимум 100 карточек (`imtID`) и по 30 номенклатур (`nmID`) в каждой. Максимальный размер запроса 10 Мб.
+
+        Габариты товаров можно указать только в **сантиметрах**.
+      requestBody:
+        content:
+          application/json:
+            examples:
+              creatingOneCard:
+                $ref: '#/components/examples/creatingOneCard'
+              creatingMergedCards:
+                $ref: '#/components/examples/creatingMergedCards'
+              creatingGroupOfIndividualCards:
+                $ref: '#/components/examples/creatingGroupOfIndividualCards'
+            schema:
+              items:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_request_inner'
+              type: array
+      responses:
+        "200":
+          content:
+            application/json:
+              example:
+                data: null
+                error: false
+                errorText: ""
+                additionalErrors: {}
+              schema:
+                $ref: '#/components/schemas/responseCardCreate'
+          description: Успех
+        "400":
+          content:
+            application/json:
+              examples:
+                InvalidRequestFormatContent:
+                  $ref: '#/components/examples/InvalidRequestFormatContent'
+                CardCreatedWithoutVendorCode:
+                  $ref: '#/components/examples/CardCreatedWithoutVendorCode'
+                CardsVendorCodeUsedInOtherCards:
+                  $ref: '#/components/examples/CardsVendorCodeUsedInOtherCards'
+                ThisCategoryDoesNotExist:
+                  $ref: '#/components/examples/ThisCategoryDoesNotExist'
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError400'
+          description: ""
+        "401":
+          content:
+            application/json:
+              example:
+                title: unauthorized
+                detail: "token problem; token is malformed: could not base64 decode\
+                  \ signature: illegal base64 data at input byte 84"
+                code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+                requestId: 7b80742415072fe8b6b7f7761f1d1211
+                origin: s2s-api-auth-catalog
+                status: 401
+                statusText: Unauthorized
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Пользователь не авторизован
+        "413":
+          content:
+            application/json:
+              example:
+                title: request body too long
+                detail: https://openapi.wildberries.ru/content/api/ru/
+                code: 71d3de1b-001e-488f-bbf5-55c31254fbeb
+                requestId: MN8usr6RfrzWHZfucSvNgb
+                origin: s2s-api-auth-content
+                status: 413
+                statusText: Request Entity Too Large
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_413_response'
+          description: Превышен лимит объёма данных в запросе
+        "429":
+          content:
+            application/json:
+              example:
+                title: too many requests
+                detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+                code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+                requestId: 9d3c02cc698f8b041c661a7c28bed293
+                origin: s2s-api-auth-catalog
+                status: 429
+                statusText: Too Many Requests
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Слишком много запросов
+      summary: Создание карточки товара
+      tags:
+      - Загрузка
+    servers:
+    - url: https://content-api.wildberries.ru
+    - description: '**Deprecated URL**'
+      url: https://suppliers-api.wildberries.ru
+  /content/v2/cards/update:
+    post:
+      description: |
+        Обновляет карточку товара. Данные для обновления можно получить с помощью метода [Список номенклатур (НМ)](./#tag/Prosmotr/paths/~1content~1v2~1get~1cards~1list/post)
+
+        Нельзя редактировать или удалить баркоды, но можно добавить баркод к существующему. Параметры `photos`, `video` и `tags` передавать не обязательно, их нельзя редактировать или удалять в этом методе.
+
+        Если ответ Успешно (200), но какие-то карточки не изменились, проверьте ошибки с помощью метода `Список несозданных номенклатур (НМ) с ошибками`.
+
+        В одном запросе можно отредактировать максимум 3000 номенклатур (`nmID`). Максимальный размер запроса 10 Мб.
+
+        Габариты товаров можно указать только в **сантиметрах**.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              example:
+              - nmID: 11111111
+                vendorCode: wbiz72wmro
+                brand: ""
+                title: Свитер женский оверсайз с горлом
+                description: "12345"
+                dimensions:
+                  length: 0
+                  width: 0
+                  height: 0
+                characteristics:
+                - id: 14177450
+                  value:
+                  - хлопок 50% акрил 50%
+                - id: 50
+                  value:
+                  - свободный крой
+                sizes:
+                - chrtID: 12345678
+                  techSize: ONE SIZE
+                  wbSize: 78-90
+                  skus:
+                  - "123487653460134"
+              items:
+                $ref: '#/components/schemas/_content_v2_cards_update_post_request_inner'
+              type: array
+      responses:
+        "200":
+          content:
+            application/json:
+              example:
+                data: null
+                error: false
+                errorText: ""
+                additionalErrors: {}
+              schema:
+                $ref: '#/components/schemas/responseCardCreate'
+          description: Карточка обновлена
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError400'
+          description: Неверная форма запроса
+        "401":
+          content:
+            application/json:
+              example:
+                title: unauthorized
+                detail: "token problem; token is malformed: could not base64 decode\
+                  \ signature: illegal base64 data at input byte 84"
+                code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+                requestId: 7b80742415072fe8b6b7f7761f1d1211
+                origin: s2s-api-auth-catalog
+                status: 401
+                statusText: Unauthorized
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Пользователь не авторизован
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError403'
+          description: Доступ запрещен
+        "413":
+          content:
+            application/json:
+              example:
+                title: request body too long
+                detail: https://openapi.wildberries.ru/content/api/ru/
+                code: 71d3de1b-001e-488f-bbf5-55c31254fbeb
+                requestId: MN8usr6RfrzWHZfucSvNgb
+                origin: s2s-api-auth-content
+                status: 413
+                statusText: Request Entity Too Large
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_413_response'
+          description: Превышен лимит объёма данных в запросе
+        "429":
+          content:
+            application/json:
+              example:
+                title: too many requests
+                detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+                code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+                requestId: 9d3c02cc698f8b041c661a7c28bed293
+                origin: s2s-api-auth-catalog
+                status: 429
+                statusText: Too Many Requests
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Слишком много запросов
+      summary: Редактирование КТ
+      tags:
+      - Загрузка
+    servers:
+    - url: https://content-api.wildberries.ru
+    - description: '**Deprecated URL**'
+      url: https://suppliers-api.wildberries.ru
+  /content/v2/cards/upload/add:
+    post:
+      description: "Метод позволяет добавить к карточке товара новую номенклатуру\
+        . <br> \nДобавление НМ к КТ происходит асинхронно, после отправки запрос с\
+        тановится в очередь на обработку.<br> \n`Важно!` Если после успешной отпра\
+        вки запроса номенклатура не создалась, то необходимо проверить раздел \"Сп\
+        исок несозданных НМ с ошибками\". <br> \nДля того чтобы убрать НМ из ошибо\
+        чных, необходимо повторно сделать запрос с исправленными ошибками.<br>\nМа\
+        ксимальный размер запроса 10 Мб.\n\nГабариты товаров можно указать только\
+        \ в **сантиметрах**.\n"
+      requestBody:
+        content:
+          application/json:
+            example:
+              imtID: 987654321
+              cardsToAdd:
+              - vendorCode: myVariant1
+                title: Наименование товара
+                description: Описание товара
+                brand: Бренд
+                dimensions:
+                  length: 55
+                  width: 40
+                  height: 15
+                characteristics:
+                - id: 12
+                  value:
+                  - Russian flag
+                - id: 25471
+                  value: 1300
+                - id: 14177449
+                  value:
+                  - blue
+                sizes:
+                - skus:
+                  - "12345678"
+              - vendorCode: myVariant2
+                title: Наименование товара
+                description: Описание товаров
+                brand: Бренд
+                dimensions:
+                  length: 55
+                  width: 40
+                  height: 15
+                characteristics:
+                - id: 12
+                  value:
+                  - Russian flag
+                - id: 25471
+                  value: 1300
+                - id: 14177449
+                  value:
+                  - blue
+                sizes:
+                - skus:
+                  - "222222222222"
+            schema:
+              $ref: '#/components/schemas/_content_v2_cards_upload_add_post_request'
+      responses:
+        "200":
+          content:
+            application/json:
+              example:
+                data: null
+                error: false
+                errorText: ""
+                additionalErrors: {}
+              schema:
+                $ref: '#/components/schemas/responseCardCreate'
+          description: Успех
+        "400":
+          content:
+            application/json:
+              examples:
+                InvalidRequestFormatContent:
+                  $ref: '#/components/examples/InvalidRequestFormatContent'
+                CardCreatedWithoutVendorCode:
+                  $ref: '#/components/examples/CardCreatedWithoutVendorCode'
+                CardsVendorCodeUsedInOtherCards:
+                  $ref: '#/components/examples/CardsVendorCodeUsedInOtherCards'
+                ThisCategoryDoesNotExist:
+                  $ref: '#/components/examples/ThisCategoryDoesNotExist'
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError400'
+          description: ""
+        "401":
+          content:
+            application/json:
+              example:
+                title: unauthorized
+                detail: "token problem; token is malformed: could not base64 decode\
+                  \ signature: illegal base64 data at input byte 84"
+                code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+                requestId: 7b80742415072fe8b6b7f7761f1d1211
+                origin: s2s-api-auth-catalog
+                status: 401
+                statusText: Unauthorized
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Пользователь не авторизован
+        "413":
+          content:
+            application/json:
+              example:
+                title: request body too long
+                detail: https://openapi.wildberries.ru/content/api/ru/
+                code: 71d3de1b-001e-488f-bbf5-55c31254fbeb
+                requestId: MN8usr6RfrzWHZfucSvNgb
+                origin: s2s-api-auth-content
+                status: 413
+                statusText: Request Entity Too Large
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_413_response'
+          description: Превышен лимит объёма данных в запросе
+        "429":
+          content:
+            application/json:
+              example:
+                title: too many requests
+                detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+                code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+                requestId: 9d3c02cc698f8b041c661a7c28bed293
+                origin: s2s-api-auth-catalog
+                status: 429
+                statusText: Too Many Requests
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Слишком много запросов
+      summary: Добавление НМ к КТ
+      tags:
+      - Загрузка
+    servers:
+    - url: https://content-api.wildberries.ru
+    - description: '**Deprecated URL**'
+      url: https://suppliers-api.wildberries.ru
+  /content/v2/cards/moveNm:
+    post:
+      description: "Метод позволяет объединять номенклатуры (`nmID`) под одним `imtID`\
+        \ и разъединять их.<br>\n\nДля объединения НМ необходимо отправить запрос\
+        \ со списком НМ с заполненным параметром `targetIMT` в теле запроса. \nПри\
+        \ этом все НМ объединятся под `imtID` указанном в `targetIMT`. <br>\n<br>\n\
+        Чтобы отсоединить НМ от карточки, необходимо передать эту НМ без параметра\
+        \ `targetIMT` в теле запроса.<br>\nПри этом для передаваемой НМ создается\
+        \ новый `imtID`. <br>\nЕсли в запросе на <b>разъединение</b> передается не\
+        сколько НМ, то все они автоматически <b>объединятся</b> под <b>одним</b> н\
+        овым `imtID`. <br>\nЧтобы присвоить каждой НМ уникальный `imtID` необходим\
+        о передавать по одной НМ за запрос.\nДля НМ, не участвующих в запросе, ник\
+        аких изменений не происходит.<br>\nМаксимальный размер запроса 10 Мб.<br>\n\
+        <br>\n`ВАЖНО:` Объединить можно только номенклатуры с одинаковыми предмета\
+        ми.<br>\n`ВАЖНО:` В одной КТ (под одним `imtID`) не может быть больше 30 н\
+        оменклатур (`nmID`).\n"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/_content_v2_cards_moveNm_post_request'
+      responses:
+        "200":
+          content:
+            application/json:
+              example:
+                data: null
+                error: false
+                errorText: ""
+                additionalErrors: {}
+              schema:
+                $ref: '#/components/schemas/responseCardCreate'
+          description: Успех
+        "400":
+          content:
+            application/json:
+              examples:
+                responseExceededLimit:
+                  $ref: '#/components/examples/responseExceededLimit'
+                responseCombining:
+                  $ref: '#/components/examples/responseCombining'
+                responseIncorrectRequestFormat:
+                  $ref: '#/components/examples/responseIncorrectRequestFormat'
+                responseNonExistentNmId:
+                  $ref: '#/components/examples/responseNonExistentNmId'
+                responseNonExistentImt:
+                  $ref: '#/components/examples/responseNonExistentImt'
+                responseCardCreate1:
+                  $ref: '#/components/examples/responseCardCreate1'
+                responseDuplicateRequests:
+                  $ref: '#/components/examples/responseDuplicateRequests'
+                responseAllCardsInSameGroup:
+                  $ref: '#/components/examples/responseAllCardsInSameGroup'
+                responseIncorrectBeginDate:
+                  $ref: '#/components/examples/responseIncorrectBeginDate'
+                responseIncorrectEndDate:
+                  $ref: '#/components/examples/responseIncorrectEndDate'
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_moveNm_post_400_response'
+          description: Некорректный формат запроса
+        "401":
+          content:
+            application/json:
+              example:
+                title: unauthorized
+                detail: "token problem; token is malformed: could not base64 decode\
+                  \ signature: illegal base64 data at input byte 84"
+                code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+                requestId: 7b80742415072fe8b6b7f7761f1d1211
+                origin: s2s-api-auth-catalog
+                status: 401
+                statusText: Unauthorized
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Пользователь не авторизован
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseCardCreate'
+          description: Доступ запрещен
+        "413":
+          content:
+            application/json:
+              examples:
+                BodySizeExceedsTheGivenLimit:
+                  $ref: '#/components/examples/BodySizeExceedsTheGivenLimit'
+              schema:
+                type: string
+          description: Превышен лимит объёма данных в запросе
+        "429":
+          content:
+            application/json:
+              example:
+                title: too many requests
+                detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+                code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+                requestId: 9d3c02cc698f8b041c661a7c28bed293
+                origin: s2s-api-auth-catalog
+                status: 429
+                statusText: Too Many Requests
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Слишком много запросов
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseCardCreate'
+          description: Внутренняя ошибка сервера
+      summary: Объединение / Разъединение НМ
+      tags:
+      - Загрузка
+    servers:
+    - url: https://content-api.wildberries.ru
+    - description: '**Deprecated URL**'
+      url: https://suppliers-api.wildberries.ru
+  /content/v2/barcodes:
+    post:
+      description: Метод позволяет сгенерировать массив уникальных баркодов для создания
+        размера НМ в КТ.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/_content_v2_barcodes_post_request'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_content_v2_barcodes_post_200_response'
+          description: ""
+        "401":
+          content:
+            application/json:
+              example:
+                title: unauthorized
+                detail: "token problem; token is malformed: could not base64 decode\
+                  \ signature: illegal base64 data at input byte 84"
+                code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+                requestId: 7b80742415072fe8b6b7f7761f1d1211
+                origin: s2s-api-auth-catalog
+                status: 401
+                statusText: Unauthorized
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Пользователь не авторизован
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError403'
+          description: Доступ запрещен
+        "429":
+          content:
+            application/json:
+              example:
+                title: too many requests
+                detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+                code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+                requestId: 9d3c02cc698f8b041c661a7c28bed293
+                origin: s2s-api-auth-catalog
+                status: 429
+                statusText: Too Many Requests
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Слишком много запросов
+      security:
+      - HeaderApiKey: []
+      summary: Генерация баркодов
+      tags:
+      - Загрузка
+    servers:
+    - url: https://content-api.wildberries.ru
+    - description: '**Deprecated URL**'
+      url: https://suppliers-api.wildberries.ru
+  /content/v2/get/cards/list:
+    post:
+      description: "Метод позволяет получить список созданных НМ с фильтрацией по\
+        \ разным параметрам, пагинацией и сортировкой.  <br> <br> **Метод доступен\
+        \ по токену с опцией `Продвижение`**  <br>  <br>  *Важно*. Карточки, наход\
+        ящиеся в корзине, в ответе метода не выдаются. <br> Получить такие карточк\
+        и можно только методом \"Список НМ, находящихся в корзине\".<br> <br> Поря\
+        док работы с `get/cards/list`: <br> Чтобы получить полный список номенклат\
+        ур, <b>если их больше 100</b>, необходимо воспользоваться пагинацией.\n  <ol>\n\
+        \    <li>Сделать первый запрос (все указанные ниже параметры обязательны):\
+        \ <br>\n      <pre style=\"background-color: rgb(38 50 56 / 5%); color: #e53935\"\
+        >\n        {\n          \"settings\": {                      \n          \
+        \  \"cursor\": {\n              \"limit\": 100\n            },\n         \
+        \   \"filter\": {\n              \"withPhoto\": -1\n            }\n      \
+        \    }\n        }</pre>                               \n    </li>\n    <li>П\
+        ройти в конец полученного списка номенклатур, скопировать из <code>cursor</code>\
+        \ две строки:\n      <ul>\n        <li><code>\"updatedAt\": \"***\"</code>,</li>\n\
+        \        <li><code>\"nmID\": ***</code>,</li>\n      </ul>\n    <li>Встави\
+        ть скопированные строки в <code>cursor</code> запроса, повторить вызов мет\
+        ода. </li>\n    <li>Повторять пункты <b>2</b> и <b>3</b>, пока <code>total</code>\
+        \ в ответе не станет меньше чем <code>limit</code> в запросе.\n      <br>Э\
+        то будет означать, что Вы получили все карточки.\n  </ol>\n  <br> По желан\
+        ию можно добавить поиск и сортировку. См описание в <b>Request Body schema</b>\n\
+        \  <br> В <b>Request samples</b> представлен пример запроса со всеми возмо\
+        жными параметрами.\n"
+      parameters:
+      - description: |
+          Язык для перевода полей ответа `name`, `value` и `object`:  `ru` - русский, `en` - английский, `zh` - китайский.
+
+          Не используется в песочнице.
+        explode: true
+        in: query
+        name: locale
+        required: false
+        schema:
+          example: ru
+          type: string
+        style: form
+      requestBody:
+        content:
+          application/json:
+            example:
+              settings:
+                sort:
+                  ascending: false
+                filter:
+                  textSearch: ""
+                  allowedCategoriesOnly: true
+                  tagIDs: []
+                  objectIDs: []
+                  brands: []
+                  imtID: 0
+                  withPhoto: -1
+                cursor:
+                  updatedAt: ""
+                  nmID: 0
+                  limit: 11
+            schema:
+              $ref: '#/components/schemas/_content_v2_get_cards_list_post_request'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              example:
+                cards:
+                - nmID: 12345678
+                  imtID: 123654789
+                  nmUUID: 01bda0b1-5c0b-736c-b2be-d0a6543e9be
+                  subjectID: 7771
+                  subjectName: AKF системы
+                  vendorCode: wb7f6mumjr1
+                  brand: ""
+                  title: ""
+                  description: ""
+                  photos:
+                  - big: https://basket-10.wbbasket.ru/vol1592/part159206/159206280/images/big/1.webp
+                    c246x328: https://basket-10.wbbasket.ru/vol1592/part159206/159206280/images/c246x328/1.webp
+                    c516x688: https://basket-10.wbbasket.ru/vol1592/part159206/159206280/images/c516x688/1.webp
+                    square: https://basket-10.wbbasket.ru/vol1592/part159206/159206280/images/square/1.webp
+                    tm: https://basket-10.wbbasket.ru/vol1592/part159206/159206280/images/tm/1.webp
+                  video: https://videonme-basket-12.wbbasket.ru/vol137/part22557/225577433/hls/1440p/index.m3u8
+                  dimensions:
+                    length: 0
+                    width: 0
+                    height: 0
+                    isValid: false
+                  characteristics:
+                  - id: 14177449
+                    name: Цвет
+                    value:
+                    - красно-сиреневый
+                  sizes:
+                  - chrtID: 316399238
+                    techSize: "0"
+                    skus:
+                    - "987456321654"
+                  tags:
+                  - id: 592569
+                    name: Популярный
+                    color: D1CFD7
+                  createdAt: 2023-12-06T11:17:00.96577Z
+                  updatedAt: 2023-12-06T11:17:00.96577Z
+                cursor:
+                  updatedAt: 2023-12-06T11:17:00.96577Z
+                  nmID: 123654123
+                  total: 1
+              schema:
+                $ref: '#/components/schemas/_content_v2_get_cards_list_post_200_response'
+          description: Ответ
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError400'
+          description: Неверная форма запроса.
+        "401":
+          content:
+            application/json:
+              example:
+                title: unauthorized
+                detail: "token problem; token is malformed: could not base64 decode\
+                  \ signature: illegal base64 data at input byte 84"
+                code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+                requestId: 7b80742415072fe8b6b7f7761f1d1211
+                origin: s2s-api-auth-catalog
+                status: 401
+                statusText: Unauthorized
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Пользователь не авторизован
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError403'
+          description: Доступ запрещен.
+        "429":
+          content:
+            application/json:
+              example:
+                title: too many requests
+                detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+                code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+                requestId: 9d3c02cc698f8b041c661a7c28bed293
+                origin: s2s-api-auth-catalog
+                status: 429
+                statusText: Too Many Requests
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Слишком много запросов
+      security:
+      - HeaderApiKey: []
+      summary: Список номенклатур (НМ)
+      tags:
+      - Просмотр
+    servers:
+    - url: https://content-api.wildberries.ru
+    - description: '**Deprecated URL**'
+      url: https://suppliers-api.wildberries.ru
+  /content/v2/cards/error/list:
+    get:
+      description: |
+        Метод позволяет получить список НМ и список ошибок которые произошли во время создания КТ. <br>`ВАЖНО`: Для того чтобы убрать НМ из ошибочных, надо повторно сделать запрос с исправленными ошибками на создание КТ.
+      parameters:
+      - description: |2
+
+          Параметр выбора языка значений полей ответа (для которых предусмотрена мультиязычность).
+
+          Не используется в песочнице.
+        explode: true
+        in: query
+        name: locale
+        required: false
+        schema:
+          example: en
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_error_list_get_200_response'
+          description: ""
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError400'
+          description: Неверная форма запроса.
+        "401":
+          content:
+            application/json:
+              example:
+                title: unauthorized
+                detail: "token problem; token is malformed: could not base64 decode\
+                  \ signature: illegal base64 data at input byte 84"
+                code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+                requestId: 7b80742415072fe8b6b7f7761f1d1211
+                origin: s2s-api-auth-catalog
+                status: 401
+                statusText: Unauthorized
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Пользователь не авторизован
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError403'
+          description: Доступ запрещен.
+        "429":
+          content:
+            application/json:
+              example:
+                title: too many requests
+                detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+                code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+                requestId: 9d3c02cc698f8b041c661a7c28bed293
+                origin: s2s-api-auth-catalog
+                status: 429
+                statusText: Too Many Requests
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Слишком много запросов
+      security:
+      - HeaderApiKey: []
+      summary: Список несозданных номенклатур (НМ) с ошибками
+      tags:
+      - Просмотр
+    servers:
+    - url: https://content-api.wildberries.ru
+    - description: '**Deprecated URL**'
+      url: https://suppliers-api.wildberries.ru
+  /content/v2/cards/limits:
+    get:
+      description: |
+        Метод позволяет получить отдельно бесплатные и платные лимиты продавца на создание карточек товаров. <br> Формула для получения количества карточек, которые можно создать: (`freeLimits` + `paidLimits`) - Количество созданных карточек.<br> Созданными считаются все карточки, которые можно получить методами "Список НМ" и "Список НМ, находящихся в корзине".
+      responses:
+        "200":
+          content:
+            application/json:
+              example:
+                data:
+                  freeLimits: 1500
+                  paidLimits: 10
+                error: false
+                errorText: ""
+                additionalErrors: null
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_limits_get_200_response'
+          description: ""
+        "401":
+          content:
+            application/json:
+              example:
+                title: unauthorized
+                detail: "token problem; token is malformed: could not base64 decode\
+                  \ signature: illegal base64 data at input byte 84"
+                code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+                requestId: 7b80742415072fe8b6b7f7761f1d1211
+                origin: s2s-api-auth-catalog
+                status: 401
+                statusText: Unauthorized
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Пользователь не авторизован
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError403'
+          description: Доступ запрещен
+        "429":
+          content:
+            application/json:
+              example:
+                title: too many requests
+                detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+                code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+                requestId: 9d3c02cc698f8b041c661a7c28bed293
+                origin: s2s-api-auth-catalog
+                status: 429
+                statusText: Too Many Requests
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Слишком много запросов
+      security:
+      - HeaderApiKey: []
+      summary: Лимиты по КТ
+      tags:
+      - Просмотр
+    servers:
+    - url: https://content-api.wildberries.ru
+    - description: '**Deprecated URL**'
+      url: https://suppliers-api.wildberries.ru
+  /content/v2/object/parent/all:
+    get:
+      description: С помощью данного метода можно получить список всех родительских
+        категорий товаров.
+      parameters:
+      - description: "Параметр выбора языка (ru, en, zh) значений поля name. Не\_и\
+          спользуется в\_песочнице"
+        explode: true
+        in: query
+        name: locale
+        required: false
+        schema:
+          example: en
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_content_v2_object_parent_all_get_200_response'
+          description: ""
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError400'
+          description: Неверная форма запроса
+        "401":
+          content:
+            application/json:
+              example:
+                title: unauthorized
+                detail: "token problem; token is malformed: could not base64 decode\
+                  \ signature: illegal base64 data at input byte 84"
+                code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+                requestId: 7b80742415072fe8b6b7f7761f1d1211
+                origin: s2s-api-auth-catalog
+                status: 401
+                statusText: Unauthorized
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Пользователь не авторизован
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError403'
+          description: Доступ запрещен
+        "429":
+          content:
+            application/json:
+              example:
+                title: too many requests
+                detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+                code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+                requestId: 9d3c02cc698f8b041c661a7c28bed293
+                origin: s2s-api-auth-catalog
+                status: 429
+                statusText: Too Many Requests
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Слишком много запросов
+      security:
+      - HeaderApiKey: []
+      summary: Родительские категории товаров
+      tags:
+      - Конфигуратор
+    servers:
+    - url: https://content-api.wildberries.ru
+    - description: '**Deprecated URL**'
+      url: https://suppliers-api.wildberries.ru
+  /content/v2/object/all:
+    get:
+      description: "С помощью данного метода можно получить список всех доступных\
+        \ предметов, родительских категорий предметов, и их идентификаторов."
+      parameters:
+      - description: "Поиск по наименованию предмета (Носки), поиск работает по по\
+          дстроке, искать можно на любом из поддерживаемых языков."
+        explode: true
+        in: query
+        name: name
+        required: false
+        schema:
+          example: Носки
+          type: string
+        style: form
+      - description: "Количество подкатегорий (предметов), максимум 1\_000"
+        explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          example: 1000
+          type: integer
+        style: form
+      - description: "Язык полей ответа (ru, en, zh). Не\_используется в\_песочниц\
+          е"
+        explode: true
+        in: query
+        name: locale
+        required: false
+        schema:
+          example: en
+          type: string
+        style: form
+      - description: "Номер позиции, с которой необходимо получить ответ"
+        explode: true
+        in: query
+        name: offset
+        required: false
+        schema:
+          example: 5000
+          type: integer
+        style: form
+      - description: Идентификатор родительской категории предмета
+        explode: true
+        in: query
+        name: parentID
+        required: false
+        schema:
+          example: 1000
+          type: integer
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              example:
+                data:
+                - subjectID: 2560
+                  parentID: 479
+                  subjectName: 3D очки
+                  parentName: Электроника
+                - subjectID: 1152
+                  parentID: 858
+                  subjectName: 3D-принтеры
+                  parentName: Оргтехника
+                error: false
+                errorText: ""
+                additionalErrors: null
+              schema:
+                $ref: '#/components/schemas/_content_v2_object_all_get_200_response'
+          description: ""
+        "401":
+          content:
+            application/json:
+              example:
+                title: unauthorized
+                detail: "token problem; token is malformed: could not base64 decode\
+                  \ signature: illegal base64 data at input byte 84"
+                code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+                requestId: 7b80742415072fe8b6b7f7761f1d1211
+                origin: s2s-api-auth-catalog
+                status: 401
+                statusText: Unauthorized
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Пользователь не авторизован
+        "429":
+          content:
+            application/json:
+              example:
+                title: too many requests
+                detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+                code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+                requestId: 9d3c02cc698f8b041c661a7c28bed293
+                origin: s2s-api-auth-catalog
+                status: 429
+                statusText: Too Many Requests
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Слишком много запросов
+      security:
+      - HeaderApiKey: []
+      summary: Список предметов (подкатегорий)
+      tags:
+      - Конфигуратор
+    servers:
+    - url: https://content-api.wildberries.ru
+    - description: '**Deprecated URL**'
+      url: https://suppliers-api.wildberries.ru
+  /content/v2/object/charcs/{subjectId}:
+    get:
+      description: Получение списка характеристик предмета по его ID.
+      parameters:
+      - description: Идентификатор предмета
+        explode: false
+        in: path
+        name: subjectId
+        required: true
+        schema:
+          example: 105
+          type: integer
+        style: simple
+      - description: "Параметр выбора языка (ru, en, zh) значений полей `subjectName`,\
+          \ `name`. Не\_используется в\_песочнице"
+        explode: true
+        in: query
+        name: locale
+        required: false
+        schema:
+          example: en
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_content_v2_object_charcs__subjectId__get_200_response'
+          description: ""
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError400'
+          description: Неверная форма запроса
+        "401":
+          content:
+            application/json:
+              example:
+                title: unauthorized
+                detail: "token problem; token is malformed: could not base64 decode\
+                  \ signature: illegal base64 data at input byte 84"
+                code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+                requestId: 7b80742415072fe8b6b7f7761f1d1211
+                origin: s2s-api-auth-catalog
+                status: 401
+                statusText: Unauthorized
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Пользователь не авторизован
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError403'
+          description: Доступ запрещен
+        "429":
+          content:
+            application/json:
+              example:
+                title: too many requests
+                detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+                code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+                requestId: 9d3c02cc698f8b041c661a7c28bed293
+                origin: s2s-api-auth-catalog
+                status: 429
+                statusText: Too Many Requests
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Слишком много запросов
+      security:
+      - HeaderApiKey: []
+      summary: Характеристики предмета (подкатегории)
+      tags:
+      - Конфигуратор
+    servers:
+    - url: https://content-api.wildberries.ru
+    - description: '**Deprecated URL**'
+      url: https://suppliers-api.wildberries.ru
+  /content/v2/directory/colors:
+    get:
+      description: Получение значения характеристики цвет.
+      parameters:
+      - description: "Параметр выбора языка (ru, en, zh) значений полей `subjectName`,\
+          \ `name`. Не\_используется в\_песочнице"
+        explode: true
+        in: query
+        name: locale
+        required: false
+        schema:
+          example: en
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_content_v2_directory_colors_get_200_response'
+          description: ""
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError400'
+          description: Неверная форма запроса
+        "401":
+          content:
+            application/json:
+              example:
+                title: unauthorized
+                detail: "token problem; token is malformed: could not base64 decode\
+                  \ signature: illegal base64 data at input byte 84"
+                code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+                requestId: 7b80742415072fe8b6b7f7761f1d1211
+                origin: s2s-api-auth-catalog
+                status: 401
+                statusText: Unauthorized
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Пользователь не авторизован
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError403'
+          description: Доступ запрещен
+        "429":
+          content:
+            application/json:
+              example:
+                title: too many requests
+                detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+                code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+                requestId: 9d3c02cc698f8b041c661a7c28bed293
+                origin: s2s-api-auth-catalog
+                status: 429
+                statusText: Too Many Requests
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Слишком много запросов
+      security:
+      - HeaderApiKey: []
+      summary: Цвет
+      tags:
+      - Конфигуратор
+    servers:
+    - url: https://content-api.wildberries.ru
+    - description: '**Deprecated URL**'
+      url: https://suppliers-api.wildberries.ru
+  /content/v2/directory/kinds:
+    get:
+      description: Получение значения характеристики пол.
+      parameters:
+      - description: "Параметр выбора языка (ru, en, zh) значений полей `subjectName`,\
+          \ `name`. Не\_используется в\_песочнице"
+        explode: true
+        in: query
+        name: locale
+        required: false
+        schema:
+          example: en
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_content_v2_directory_kinds_get_200_response'
+          description: ""
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError400'
+          description: Неверная форма запроса
+        "401":
+          content:
+            application/json:
+              example:
+                title: unauthorized
+                detail: "token problem; token is malformed: could not base64 decode\
+                  \ signature: illegal base64 data at input byte 84"
+                code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+                requestId: 7b80742415072fe8b6b7f7761f1d1211
+                origin: s2s-api-auth-catalog
+                status: 401
+                statusText: Unauthorized
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Пользователь не авторизован
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError403'
+          description: Доступ запрещен
+        "429":
+          content:
+            application/json:
+              example:
+                title: too many requests
+                detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+                code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+                requestId: 9d3c02cc698f8b041c661a7c28bed293
+                origin: s2s-api-auth-catalog
+                status: 429
+                statusText: Too Many Requests
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Слишком много запросов
+      security:
+      - HeaderApiKey: []
+      summary: Пол
+      tags:
+      - Конфигуратор
+    servers:
+    - url: https://content-api.wildberries.ru
+    - description: '**Deprecated URL**'
+      url: https://suppliers-api.wildberries.ru
+  /content/v2/directory/countries:
+    get:
+      description: Получение значения характеристики Страна Производства.
+      parameters:
+      - description: "Параметр выбора языка (ru, en, zh) значений полей `subjectName`,\
+          \ `name`. Не\_используется в\_песочнице"
+        explode: true
+        in: query
+        name: locale
+        required: false
+        schema:
+          example: en
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_content_v2_directory_countries_get_200_response'
+          description: ""
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError400'
+          description: Неверная форма запроса
+        "401":
+          content:
+            application/json:
+              example:
+                title: unauthorized
+                detail: "token problem; token is malformed: could not base64 decode\
+                  \ signature: illegal base64 data at input byte 84"
+                code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+                requestId: 7b80742415072fe8b6b7f7761f1d1211
+                origin: s2s-api-auth-catalog
+                status: 401
+                statusText: Unauthorized
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Пользователь не авторизован
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError403'
+          description: Доступ запрещен
+        "429":
+          content:
+            application/json:
+              example:
+                title: too many requests
+                detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+                code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+                requestId: 9d3c02cc698f8b041c661a7c28bed293
+                origin: s2s-api-auth-catalog
+                status: 429
+                statusText: Too Many Requests
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Слишком много запросов
+      security:
+      - HeaderApiKey: []
+      summary: Страна Производства
+      tags:
+      - Конфигуратор
+    servers:
+    - url: https://content-api.wildberries.ru
+    - description: '**Deprecated URL**'
+      url: https://suppliers-api.wildberries.ru
+  /content/v2/directory/seasons:
+    get:
+      description: Получение значения характеристики Сезон.
+      parameters:
+      - description: "Параметр выбора языка (ru, en, zh) значений полей `subjectName`,\
+          \ `name`. Не\_используется в\_песочнице"
+        explode: true
+        in: query
+        name: locale
+        required: false
+        schema:
+          example: en
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/_content_v2_directory_seasons_get_200_response'
+          description: ""
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError400'
+          description: Неверная форма запроса
+        "401":
+          content:
+            application/json:
+              example:
+                title: unauthorized
+                detail: "token problem; token is malformed: could not base64 decode\
+                  \ signature: illegal base64 data at input byte 84"
+                code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+                requestId: 7b80742415072fe8b6b7f7761f1d1211
+                origin: s2s-api-auth-catalog
+                status: 401
+                statusText: Unauthorized
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Пользователь не авторизован
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError403'
+          description: Доступ запрещен
+        "429":
+          content:
+            application/json:
+              example:
+                title: too many requests
+                detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+                code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+                requestId: 9d3c02cc698f8b041c661a7c28bed293
+                origin: s2s-api-auth-catalog
+                status: 429
+                statusText: Too Many Requests
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Слишком много запросов
+      security:
+      - HeaderApiKey: []
+      summary: Сезон
+      tags:
+      - Конфигуратор
+    servers:
+    - url: https://content-api.wildberries.ru
+    - description: '**Deprecated URL**'
+      url: https://suppliers-api.wildberries.ru
+  /content/v2/directory/tnved:
+    get:
+      description: С помощью данного метода можно получить список ТНВЭД кодов по ID
+        предмета и фильтру по ТНВЭД коду.
+      parameters:
+      - description: Идентификатор предмета
+        explode: true
+        in: query
+        name: subjectID
+        required: true
+        schema:
+          example: 105
+          type: integer
+        style: form
+      - description: Поиск по ТНВЭД-коду. Работает только в паре с subjectID
+        explode: true
+        in: query
+        name: search
+        required: false
+        schema:
+          example: 6106903000
+          type: integer
+        style: form
+      - description: "Язык (`ru`, `en`, `zh`) для значений полей `subjectName`, `name`.\
+          \ Не\_используется в\_песочнице"
+        explode: true
+        in: query
+        name: locale
+        required: false
+        schema:
+          example: en
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              example:
+                data:
+                - tnved: "6106903000"
+                  isKiz: true
+                error: false
+                errorText: ""
+                additionalErrors: null
+              schema:
+                $ref: '#/components/schemas/_content_v2_directory_tnved_get_200_response'
+          description: Успешно
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError400'
+          description: Неверная форма запроса
+        "401":
+          content:
+            application/json:
+              example:
+                title: unauthorized
+                detail: "token problem; token is malformed: could not base64 decode\
+                  \ signature: illegal base64 data at input byte 84"
+                code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+                requestId: 7b80742415072fe8b6b7f7761f1d1211
+                origin: s2s-api-auth-catalog
+                status: 401
+                statusText: Unauthorized
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Пользователь не авторизован
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError403'
+          description: Доступ запрещен
+        "429":
+          content:
+            application/json:
+              example:
+                title: too many requests
+                detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+                code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+                requestId: 9d3c02cc698f8b041c661a7c28bed293
+                origin: s2s-api-auth-catalog
+                status: 429
+                statusText: Too Many Requests
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Слишком много запросов
+      security:
+      - HeaderApiKey: []
+      summary: ТНВЭД код
+      tags:
+      - Конфигуратор
+    servers:
+    - url: https://content-api.wildberries.ru
+    - description: '**Deprecated URL**'
+      url: https://suppliers-api.wildberries.ru
+  /content/v2/directory/vat:
+    get:
+      description: С помощью данного метода можно получить список значений для характеристики
+        **Ставка НДС**.
+      parameters:
+      - description: "Язык значения элементов `data` (`ru`, `en`, `zh`). Не\_испол\
+          ьзуется в\_песочнице"
+        explode: true
+        in: query
+        name: locale
+        required: true
+        schema:
+          example: ru
+          type: string
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              example:
+                data:
+                - "0"
+                - "10"
+                - "20"
+                - Без НДС
+                - "13"
+                error: false
+                errorText: ""
+                additionalErrors: null
+              schema:
+                $ref: '#/components/schemas/_content_v2_directory_vat_get_200_response'
+          description: ""
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError400'
+          description: Неверная форма запроса
+        "401":
+          content:
+            application/json:
+              example:
+                title: unauthorized
+                detail: "token problem; token is malformed: could not base64 decode\
+                  \ signature: illegal base64 data at input byte 84"
+                code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+                requestId: 7b80742415072fe8b6b7f7761f1d1211
+                origin: s2s-api-auth-catalog
+                status: 401
+                statusText: Unauthorized
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Пользователь не авторизован
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError403'
+          description: Доступ запрещен
+        "429":
+          content:
+            application/json:
+              example:
+                title: too many requests
+                detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+                code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+                requestId: 9d3c02cc698f8b041c661a7c28bed293
+                origin: s2s-api-auth-catalog
+                status: 429
+                statusText: Too Many Requests
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Слишком много запросов
+      security:
+      - HeaderApiKey: []
+      summary: Ставка НДС
+      tags:
+      - Конфигуратор
+    servers:
+    - url: https://content-api.wildberries.ru
+    - description: '**Deprecated URL**'
+      url: https://suppliers-api.wildberries.ru
+  /content/v3/media/save:
+    post:
+      description: "Изменяет набор медиафайлов для товара (номенклатуры).\n\n**Вни\
+        мание**. Новые медиафайлы (`data`) полностью заменяют старые (`mediaFiles`).\
+        \ Чтобы добавить новые медиафайлы, укажите ссылки не\_только на\_них, но и\
+        \ на\_старые файлы. \n\n\nТребования к изображениям:\n\n\n  * максимум изо\
+        бражений для одного товара (номенклатуры)\_— 30;\n  * минимальное разрешен\
+        ие – 700\_×\_900 пикселей;\n  * максимальный размер\_— 32\_Мб;\n  * минима\
+        льное качество\_— 65%;\n  * форматы\_— JPG, PNG, BMP, GIF (статичные), WebP.\n\
+        \n\nТребования к видео:\n\n\n  * максимум 1\_видео для одного товара (номе\
+        нклатуры).\n  * максимальный размер\_— 50\_Мб;\n  * форматы\_— MOV, MP4.\n\
+        \n\nЕсли хотя бы одно изображение в запросе не соответствует требованиям,\
+        \ то даже при успешном ответе (200) ни\_одно изображение не загрузится\n"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/_content_v3_media_save_post_request'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              example:
+                data: {}
+                error: false
+                errorText: ""
+                additionalErrors: null
+              schema:
+                $ref: '#/components/schemas/_content_v3_media_save_post_200_response'
+          description: Успешно
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mediaErrors'
+          description: Некорректный запрос
+        "401":
+          content:
+            application/json:
+              example:
+                title: unauthorized
+                detail: "token problem; token is malformed: could not base64 decode\
+                  \ signature: illegal base64 data at input byte 84"
+                code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+                requestId: 7b80742415072fe8b6b7f7761f1d1211
+                origin: s2s-api-auth-catalog
+                status: 401
+                statusText: Unauthorized
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Пользователь не авторизован
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mediaErrors'
+          description: Доступ запрещён
+        "409":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mediaErrors'
+          description: Ошибка сохранения для части ссылок
+        "422":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mediaErrors'
+          description: Отсутствие в запросе параметра nmId
+        "429":
+          content:
+            application/json:
+              example:
+                title: too many requests
+                detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+                code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+                requestId: 9d3c02cc698f8b041c661a7c28bed293
+                origin: s2s-api-auth-catalog
+                status: 429
+                statusText: Too Many Requests
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Слишком много запросов
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mediaErrors'
+          description: Внутренняя ошибка сервиса
+      security:
+      - HeaderApiKey: []
+      summary: Изменить медиафайлы
+      tags:
+      - Медиафайлы
+    servers:
+    - url: https://content-api.wildberries.ru
+    - description: '**Deprecated URL**'
+      url: https://suppliers-api.wildberries.ru
+  /content/v3/media/file:
+    post:
+      description: |
+        Добавляет один медиафайл для товара (номенклатуры).
+
+        Требования к изображениям:
+
+          * максимум изображений для одного товара (номенклатуры) — 30;
+          * минимальное разрешение – 700 × 900 пикселей;
+          * максимальный размер — 32 Мб;
+          * минимальное качество — 65%;
+          * форматы — JPG, PNG, BMP, GIF (статичные), WebP.
+
+        Требования к видео:
+
+          * максимум 1 видео для одного товара (номенклатуры);
+          * максимальный размер — 50 Мб;
+          * форматы — MOV, MP4.
+      parameters:
+      - description: Артикул Wildberries
+        explode: false
+        in: header
+        name: X-Nm-Id
+        required: true
+        schema:
+          example: "213864079"
+          type: string
+        style: simple
+      - description: |
+          Номер медиафайла на загрузку, начинается с `1`. При загрузке видео всегда указывайте `1`.
+
+          Чтобы добавить изображение к уже загруженным, номер медиафайла должен быть больше количества уже загруженных медиафайлов.
+        explode: false
+        in: header
+        name: X-Photo-Number
+        required: true
+        schema:
+          example: 2
+          type: integer
+        style: simple
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/_content_v3_media_file_post_request'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              example:
+                data: {}
+                error: false
+                errorText: ""
+                additionalErrors: null
+              schema:
+                $ref: '#/components/schemas/_content_v3_media_save_post_200_response'
+          description: Успешно
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mediaErrors'
+          description: Некорректный запрос
+        "401":
+          content:
+            application/json:
+              example:
+                title: unauthorized
+                detail: "token problem; token is malformed: could not base64 decode\
+                  \ signature: illegal base64 data at input byte 84"
+                code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+                requestId: 7b80742415072fe8b6b7f7761f1d1211
+                origin: s2s-api-auth-catalog
+                status: 401
+                statusText: Unauthorized
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Пользователь не авторизован
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mediaErrors'
+          description: Доступ запрещён
+        "429":
+          content:
+            application/json:
+              example:
+                title: too many requests
+                detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+                code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+                requestId: 9d3c02cc698f8b041c661a7c28bed293
+                origin: s2s-api-auth-catalog
+                status: 429
+                statusText: Too Many Requests
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Слишком много запросов
+        "500":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/mediaErrors'
+          description: Внутренняя ошибка сервиса
+      security:
+      - HeaderApiKey: []
+      summary: Добавить медиафайлы
+      tags:
+      - Медиафайлы
+    servers:
+    - url: https://content-api.wildberries.ru
+    - description: '**Deprecated URL**'
+      url: https://suppliers-api.wildberries.ru
+  /content/v2/tags:
+    get:
+      description: Метод позволяет получить список существующих тегов продавца.
+      responses:
+        "200":
+          content:
+            application/json:
+              example:
+                data:
+                - id: 1
+                  color: D1CFD7
+                  name: Sale
+                error: false
+                errorText: ""
+                additionalErrors: ""
+              schema:
+                $ref: '#/components/schemas/_content_v2_tags_get_200_response'
+          description: ""
+        "401":
+          content:
+            application/json:
+              example:
+                title: unauthorized
+                detail: "token problem; token is malformed: could not base64 decode\
+                  \ signature: illegal base64 data at input byte 84"
+                code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+                requestId: 7b80742415072fe8b6b7f7761f1d1211
+                origin: s2s-api-auth-catalog
+                status: 401
+                statusText: Unauthorized
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Пользователь не авторизован
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError403'
+          description: Доступ запрещен
+        "429":
+          content:
+            application/json:
+              example:
+                title: too many requests
+                detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+                code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+                requestId: 9d3c02cc698f8b041c661a7c28bed293
+                origin: s2s-api-auth-catalog
+                status: 429
+                statusText: Too Many Requests
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Слишком много запросов
+      security:
+      - HeaderApiKey: []
+      summary: Список тегов
+      tags:
+      - Теги
+    servers:
+    - url: https://content-api.wildberries.ru
+    - description: '**Deprecated URL**'
+      url: https://suppliers-api.wildberries.ru
+  /content/v2/tag:
+    post:
+      description: |
+        Метод позволяет создать тег.<br> Завести можно 15 тегов.<br> Максимальная длина тега 15 символов.
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/_content_v2_tag_post_request'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              examples:
+                responseOK200:
+                  $ref: '#/components/examples/responseOK200'
+              schema:
+                $ref: '#/components/schemas/responseContentError6'
+          description: ""
+        "400":
+          content:
+            application/json:
+              examples:
+                responseBodyContentError400:
+                  $ref: '#/components/examples/responseBodyContentError400'
+                responseBody400LenName:
+                  $ref: '#/components/examples/responseBody400LenName'
+                responseBodyLimitTag:
+                  $ref: '#/components/examples/responseBodyLimitTag'
+                responseBodyNameNotExist:
+                  $ref: '#/components/examples/responseBodyNameNotExist'
+              schema:
+                $ref: '#/components/schemas/_content_v2_tag_post_400_response'
+          description: Неверная форма запроса
+        "401":
+          content:
+            application/json:
+              example:
+                title: unauthorized
+                detail: "token problem; token is malformed: could not base64 decode\
+                  \ signature: illegal base64 data at input byte 84"
+                code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+                requestId: 7b80742415072fe8b6b7f7761f1d1211
+                origin: s2s-api-auth-catalog
+                status: 401
+                statusText: Unauthorized
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Пользователь не авторизован
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError403'
+          description: Доступ запрещен
+        "429":
+          content:
+            application/json:
+              example:
+                title: too many requests
+                detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+                code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+                requestId: 9d3c02cc698f8b041c661a7c28bed293
+                origin: s2s-api-auth-catalog
+                status: 429
+                statusText: Too Many Requests
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Слишком много запросов
+      security:
+      - HeaderApiKey: []
+      summary: Создание тега
+      tags:
+      - Теги
+    servers:
+    - url: https://content-api.wildberries.ru
+    - description: '**Deprecated URL**'
+      url: https://suppliers-api.wildberries.ru
+  /content/v2/tag/{id}:
+    delete:
+      description: Метод позволяет удалить тег   
+      parameters:
+      - description: Числовой идентификатор тега
+        explode: false
+        in: path
+        name: id
+        required: true
+        schema:
+          example: 1
+          type: integer
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              examples:
+                responseOK200:
+                  $ref: '#/components/examples/responseOK200'
+                responseNotFound200Del:
+                  $ref: '#/components/examples/responseNotFound200Del'
+              schema:
+                $ref: '#/components/schemas/_content_v2_tag__id__delete_200_response'
+          description: ""
+        "400":
+          content:
+            application/json:
+              examples:
+                responseBodyContentError400:
+                  $ref: '#/components/examples/responseBodyContentError400'
+                responseBodyTagNotExist:
+                  $ref: '#/components/examples/responseBodyTagNotExist'
+              schema:
+                $ref: '#/components/schemas/_content_v2_tag__id__delete_400_response'
+          description: Неверная форма запроса
+        "401":
+          content:
+            application/json:
+              example:
+                title: unauthorized
+                detail: "token problem; token is malformed: could not base64 decode\
+                  \ signature: illegal base64 data at input byte 84"
+                code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+                requestId: 7b80742415072fe8b6b7f7761f1d1211
+                origin: s2s-api-auth-catalog
+                status: 401
+                statusText: Unauthorized
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Пользователь не авторизован
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError403'
+          description: Доступ запрещен
+        "429":
+          content:
+            application/json:
+              example:
+                title: too many requests
+                detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+                code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+                requestId: 9d3c02cc698f8b041c661a7c28bed293
+                origin: s2s-api-auth-catalog
+                status: 429
+                statusText: Too Many Requests
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Слишком много запросов
+      security:
+      - HeaderApiKey: []
+      summary: Удаление тега
+      tags:
+      - Теги
+    patch:
+      description: Метод позволяет изменять информацию о теге (имя и цвет).
+      parameters:
+      - description: Числовой идентификатор тега
+        explode: false
+        in: path
+        name: id
+        required: true
+        schema:
+          example: 1
+          type: integer
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/_content_v2_tag__id__patch_request'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              examples:
+                responseOK200:
+                  $ref: '#/components/examples/responseOK200'
+                responseNotFound200:
+                  $ref: '#/components/examples/responseNotFound200'
+              schema:
+                $ref: '#/components/schemas/_content_v2_tag__id__patch_200_response'
+          description: ""
+        "400":
+          content:
+            application/json:
+              examples:
+                responseBodyContentError400:
+                  $ref: '#/components/examples/responseBodyContentError400'
+                responseBody400LenName:
+                  $ref: '#/components/examples/responseBody400LenName'
+              schema:
+                $ref: '#/components/schemas/_content_v2_tag__id__patch_400_response'
+          description: Неверная форма запроса
+        "401":
+          content:
+            application/json:
+              example:
+                title: unauthorized
+                detail: "token problem; token is malformed: could not base64 decode\
+                  \ signature: illegal base64 data at input byte 84"
+                code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+                requestId: 7b80742415072fe8b6b7f7761f1d1211
+                origin: s2s-api-auth-catalog
+                status: 401
+                statusText: Unauthorized
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Пользователь не авторизован
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError403'
+          description: Доступ запрещен
+        "429":
+          content:
+            application/json:
+              example:
+                title: too many requests
+                detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+                code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+                requestId: 9d3c02cc698f8b041c661a7c28bed293
+                origin: s2s-api-auth-catalog
+                status: 429
+                statusText: Too Many Requests
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Слишком много запросов
+      security:
+      - HeaderApiKey: []
+      summary: Изменение тега
+      tags:
+      - Теги
+    servers:
+    - url: https://content-api.wildberries.ru
+    - description: '**Deprecated URL**'
+      url: https://suppliers-api.wildberries.ru
+  /content/v2/tag/nomenclature/link:
+    post:
+      description: |
+        Метод позволяет добавить теги к КТ и снять их с КТ.<br> При снятии тега с КТ сам тег не удаляется.<br> К карточке можно добавить 15 тегов.
+      requestBody:
+        content:
+          application/json:
+            example:
+              nmID: 179891389
+              tagsIDs:
+              - 123456
+            schema:
+              $ref: '#/components/schemas/_content_v2_tag_nomenclature_link_post_request'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              examples:
+                responseOK200:
+                  $ref: '#/components/examples/responseOK200'
+              schema:
+                $ref: '#/components/schemas/responseContentError6'
+          description: ""
+        "400":
+          content:
+            application/json:
+              examples:
+                IncorrectRequest4:
+                  $ref: '#/components/examples/IncorrectRequest4'
+              schema:
+                $ref: '#/components/schemas/responseContentError4'
+          description: ""
+        "401":
+          content:
+            application/json:
+              example:
+                title: unauthorized
+                detail: "token problem; token is malformed: could not base64 decode\
+                  \ signature: illegal base64 data at input byte 84"
+                code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+                requestId: 7b80742415072fe8b6b7f7761f1d1211
+                origin: s2s-api-auth-catalog
+                status: 401
+                statusText: Unauthorized
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Пользователь не авторизован
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError403'
+          description: Доступ запрещен
+        "429":
+          content:
+            application/json:
+              example:
+                title: too many requests
+                detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+                code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+                requestId: 9d3c02cc698f8b041c661a7c28bed293
+                origin: s2s-api-auth-catalog
+                status: 429
+                statusText: Too Many Requests
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Слишком много запросов
+        "500":
+          content:
+            application/json:
+              examples:
+                responseBodyError500:
+                  $ref: '#/components/examples/responseBodyError500'
+              schema:
+                $ref: '#/components/schemas/responseContentError6'
+          description: ""
+      security:
+      - HeaderApiKey: []
+      summary: Управление тегами в КТ
+      tags:
+      - Теги
+    servers:
+    - url: https://content-api.wildberries.ru
+    - description: '**Deprecated URL**'
+      url: https://suppliers-api.wildberries.ru
+  /content/v2/cards/delete/trash:
+    post:
+      description: |
+        Метод позволяет перенести НМ в корзину. Перенос карточки в корзину не является удалением карточки.<br> <code>ВАЖНО</code>: При переносе НМ в корзину, данная НМ выходит из КТ, то есть ей присваивается новый <code>imtID</code>.<br> Карточка товара удаляется автоматически, если лежит в корзине больше 30 дней.<br> Корзина зачищается от карточек, лежащих в ней более 30 дней, каждую ночь по Московскому времени.
+      requestBody:
+        content:
+          application/json:
+            example:
+              nmIDs:
+              - 987654321
+              - 123456789
+            schema:
+              items:
+                $ref: '#/components/schemas/_content_v2_cards_delete_trash_post_request_inner'
+              type: array
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              example:
+                data: null
+                error: false
+                errorText: ""
+                additionalErrors: {}
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_delete_trash_post_200_response'
+          description: ""
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError400'
+          description: Неверная форма запроса
+        "401":
+          content:
+            application/json:
+              example:
+                title: unauthorized
+                detail: "token problem; token is malformed: could not base64 decode\
+                  \ signature: illegal base64 data at input byte 84"
+                code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+                requestId: 7b80742415072fe8b6b7f7761f1d1211
+                origin: s2s-api-auth-catalog
+                status: 401
+                statusText: Unauthorized
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Пользователь не авторизован
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError403'
+          description: Доступ запрещен
+        "429":
+          content:
+            application/json:
+              example:
+                title: too many requests
+                detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+                code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+                requestId: 9d3c02cc698f8b041c661a7c28bed293
+                origin: s2s-api-auth-catalog
+                status: 429
+                statusText: Too Many Requests
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Слишком много запросов
+      security:
+      - HeaderApiKey: []
+      summary: Перенос НМ в корзину
+      tags:
+      - Корзина
+    servers:
+    - url: https://content-api.wildberries.ru
+    - description: '**Deprecated URL**'
+      url: https://suppliers-api.wildberries.ru
+  /content/v2/cards/recover:
+    post:
+      description: |
+        Метод позволяет восстановить НМ из корзины.<br> <code>ВАЖНО</code>: При восстановлении НМ из корзины она не возвращается в КТ в которой была до переноса в корзину, то есть <code>imtID</code> остается тот же, что и был у НМ в корзине.
+      requestBody:
+        content:
+          application/json:
+            example:
+              nmIDs:
+              - 123456789
+              - 987654321
+            schema:
+              items:
+                $ref: '#/components/schemas/_content_v2_cards_recover_post_request_inner'
+              type: array
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              example:
+                data: null
+                error: false
+                errorText: ""
+                additionalErrors: {}
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_delete_trash_post_200_response'
+          description: ""
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError400'
+          description: Неверная форма запроса
+        "401":
+          content:
+            application/json:
+              example:
+                title: unauthorized
+                detail: "token problem; token is malformed: could not base64 decode\
+                  \ signature: illegal base64 data at input byte 84"
+                code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+                requestId: 7b80742415072fe8b6b7f7761f1d1211
+                origin: s2s-api-auth-catalog
+                status: 401
+                statusText: Unauthorized
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Пользователь не авторизован
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError403'
+          description: Доступ запрещен
+        "429":
+          content:
+            application/json:
+              example:
+                title: too many requests
+                detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+                code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+                requestId: 9d3c02cc698f8b041c661a7c28bed293
+                origin: s2s-api-auth-catalog
+                status: 429
+                statusText: Too Many Requests
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Слишком много запросов
+      security:
+      - HeaderApiKey: []
+      summary: Восстановление НМ из корзины
+      tags:
+      - Корзина
+    servers:
+    - url: https://content-api.wildberries.ru
+    - description: '**Deprecated URL**'
+      url: https://suppliers-api.wildberries.ru
+  /content/v2/get/cards/trash:
+    post:
+      description: "Метод позволяет получить список НМ, находящихся в корзине.  <br>\
+        \ <br> **Метод доступен по токену с опцией `Продвижение`**   <br>  <br>  <br>П\
+        орядок работы. <br> Чтобы получить полный список номенклатур, <b>если их б\
+        ольше 100</b>, необходимо воспользоваться пагинацией.\n  <ol>\n    <li>Сде\
+        лать первый запрос (все указанные ниже параметры обязательны): <br>\n    \
+        \  <pre style=\"background-color: rgb(38 50 56 / 5%); color: #e53935\">\n\
+        \        {\n          \"settings\": {                      \n            \"\
+        cursor\": {\n              \"limit\": 100\n            }\n          }\n  \
+        \      }</pre>                               \n    </li>\n    <li>Пройти в\
+        \ конец полученного списка номенклатур, скопировать из <code>cursor</code>\
+        \ две строки:\n      <ul>\n        <li><code>\"trashedAt\": \"***\"</code>,</li>\n\
+        \        <li><code>\"nmID\": ***</code>,</li>\n      </ul>\n    <li>Встави\
+        ть скопированные строки в <code>cursor</code> запроса, повторить вызов мет\
+        ода. </li>\n    <li>Повторять пункты <b>2</b> и <b>3</b>, пока <code>total</code>\
+        \ в ответе не станет меньше чем <code>limit</code> в запросе.\n      <br>Э\
+        то будет означать, что Вы получили все карточки.\n  </ol>\n  <br> По желан\
+        ию можно добавить поиск и сортировку. См описание в <b>Request Body schema</b>\n\
+        \  <br> В <b>Request samples</b> представлен пример запроса со всеми возмо\
+        жными параметрами.\n"
+      parameters:
+      - description: |
+          Язык полей ответа `name`, `value` и `object`: `ru`, `en`, `zh`.
+
+          Не используется в песочнице
+        explode: true
+        in: query
+        name: locale
+        required: false
+        schema:
+          enum:
+          - ru
+          - en
+          - zh
+          type: string
+        style: form
+      requestBody:
+        content:
+          application/json:
+            example:
+              settings:
+                sort:
+                  ascending: false
+                filter:
+                  textSearch: ""
+                cursor:
+                  limit: 11
+            schema:
+              $ref: '#/components/schemas/_content_v2_get_cards_trash_post_request'
+        required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              example:
+                cards:
+                - nmID: 1234567
+                  vendorCode: wb5xsy5ftj
+                  subjectID: 1436
+                  subjectName: Ведра хозяйственные
+                  photos:
+                  - big: https://basket-10.wbbasket.ru/vol1592/part159206/159206280/images/big/1.webp
+                    c246x328: https://basket-10.wbbasket.ru/vol1592/part159206/159206280/images/c246x328/1.webp
+                    c516x688: https://basket-10.wbbasket.ru/vol1592/part159206/159206280/images/c516x688/1.webp
+                    square: https://basket-10.wbbasket.ru/vol1592/part159206/159206280/images/square/1.webp
+                    tm: https://basket-10.wbbasket.ru/vol1592/part159206/159206280/images/tm/1.webp
+                  video: https://videonme-basket-12.wbbasket.ru/vol137/part22557/225577433/hls/1440p/index.m3u8
+                  sizes:
+                  - chrtID: 111111111
+                    techSize: "0"
+                    skus:
+                    - xxxxxxxxxxxx
+                  dimensions:
+                    length: 0
+                    width: 0
+                    height: 0
+                    isValid: false
+                  createdAt: 2023-12-05T14:55:09.323462Z
+                  trashedAt: 2023-12-06T10:57:42.193028Z
+                cursor:
+                  trashedAt: 2023-12-06T10:57:42.193028Z
+                  nmID: 194128521
+                  total: 1
+              schema:
+                $ref: '#/components/schemas/_content_v2_get_cards_trash_post_200_response'
+          description: Успешно
+        "400":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError400'
+          description: Неверная форма запроса
+        "401":
+          content:
+            application/json:
+              example:
+                title: unauthorized
+                detail: "token problem; token is malformed: could not base64 decode\
+                  \ signature: illegal base64 data at input byte 84"
+                code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+                requestId: 7b80742415072fe8b6b7f7761f1d1211
+                origin: s2s-api-auth-catalog
+                status: 401
+                statusText: Unauthorized
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Пользователь не авторизован
+        "403":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/responseBodyContentError403'
+          description: Доступ запрещен
+        "429":
+          content:
+            application/json:
+              example:
+                title: too many requests
+                detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+                code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+                requestId: 9d3c02cc698f8b041c661a7c28bed293
+                origin: s2s-api-auth-catalog
+                status: 429
+                statusText: Too Many Requests
+                timestamp: 2024-09-30T06:52:38Z
+              schema:
+                $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+          description: Слишком много запросов
+      security:
+      - HeaderApiKey: []
+      summary: "Список НМ, находящихся в корзине"
+      tags:
+      - Корзина
+    servers:
+    - url: https://content-api.wildberries.ru
+    - description: '**Deprecated URL**'
+      url: https://suppliers-api.wildberries.ru
+components:
+  examples:
+    creatingOneCard:
+      description: ""
+      value:
+      - subjectID: 105
+        variants:
+        - vendorCode: АртикулПродавца
+          title: Наименование товара
+          description: Описание товара
+          brand: Бренд
+          dimensions:
+            length: 55
+            width: 40
+            height: 15
+          characteristics:
+          - id: 12
+            value:
+            - Turkish flag
+          - id: 25471
+            value: 1200
+          - id: 14177449
+            value:
+            - red
+          sizes:
+          - techSize: S
+            wbSize: "42"
+            price: 5000
+            skus:
+            - "88005553535"
+    creatingMergedCards:
+      description: ""
+      value:
+      - subjectID: 3091
+        variants:
+        - vendorCode: АртикулПродавца11
+          title: Наименование товара 1
+          description: Описание товара 1
+          brand: Бренд
+          dimensions:
+            length: 55
+            width: 40
+            height: 15
+          characteristics:
+          - id: 12
+            value:
+            - Turkish flag
+          - id: 25471
+            value: 1200
+          - id: 14177449
+            value:
+            - red
+          sizes:
+          - skus:
+            - "111111111133111"
+        - vendorCode: АртикулПродавца22
+          title: Наименование товара 2
+          description: Описание товара 2
+          brand: БрендДругой
+          dimensions:
+            length: 55
+            width: 40
+            height: 15
+          characteristics:
+          - id: 12
+            value:
+            - Turkish flag
+          - id: 25471
+            value: 1200
+          - id: 14177449
+            value:
+            - red
+          sizes:
+          - skus:
+            - "111111111441111"
+    creatingGroupOfIndividualCards:
+      description: ""
+      value:
+      - subjectID: 3091
+        variants:
+        - vendorCode: АртикулПродавца1
+          title: Наименование товара 1
+          description: Описание товара 1
+          brand: Бренд
+          dimensions:
+            length: 55
+            width: 40
+            height: 15
+          characteristics:
+          - id: 12
+            value:
+            - Turkish flag
+          - id: 25471
+            value: 1200
+          - id: 14177449
+            value:
+            - red
+          sizes:
+          - skus:
+            - "1111111111111"
+      - subjectID: 105
+        variants:
+        - vendorCode: Артикул продавца 2
+          title: Наименование товара 2
+          description: Описание товара 2
+          brand: Бренд
+          dimensions:
+            length: 55
+            width: 40
+            height: 15
+          characteristics:
+          - id: 12
+            value:
+            - Turkish flag
+          - id: 25471
+            value: 1200
+          - id: 14177449
+            value:
+            - red
+          sizes:
+          - techSize: S
+            wbSize: "42"
+            price: 5000
+            skus:
+            - "2222222222222"
+    responseIncorrectBeginDate:
+      description: Некорректная дата начала
+      value:
+        error: Некорректная дата начала
+    responseIncorrectEndDate:
+      description: Некорректная дата конца
+      value:
+        error: Некорректная дата конца
+    responseExceededLimit:
+      description: ""
+      value:
+        data: null
+        error: true
+        errorText: В группу можно объединить не больше 30 карточек. В результате запроса
+          будет превышен лимит
+        additionalErrors:
+          error: В группу можно объединить не больше 30 карточек. В результате запроса
+            будет превышен лимит
+    responseCombining:
+      description: ""
+      value:
+        data: null
+        error: true
+        errorText: Объединение товаров с разными предметами невозможно
+        additionalErrors:
+          error: Объединение товаров с разными предметами невозможно
+    responseIncorrectRequestFormat:
+      description: ""
+      value:
+        data: null
+        error: true
+        errorText: Неправильный формат запроса
+        additionalErrors:
+          error: Неправильный формат запроса
+    responseNonExistentNmId:
+      description: ""
+      value:
+        data: null
+        error: true
+        errorText: Указан несуществующий nmID карточки товара
+        additionalErrors:
+          error: Указан несуществующий nmID карточки товара
+    responseNonExistentImt:
+      description: ""
+      value:
+        data: null
+        error: true
+        errorText: Указан несуществующий imt
+        additionalErrors:
+          error: Указан несуществующий imt
+    responseDuplicateRequests:
+      description: ""
+      value:
+        data: null
+        error: true
+        errorText: Недопустимо отправлять дублирующиеся запросы!
+        additionalErrors:
+          error: Недопустимо отправлять дублирующиеся запросы!
+    responseAllCardsInSameGroup:
+      description: ""
+      value:
+        data: null
+        error: true
+        errorText: Все карточки находятся в одной группе
+        additionalErrors:
+          error: Все карточки находятся в одной группе
+    responseCardCreate1:
+      description: ""
+      value:
+        data: null
+        error: true
+        errorText: string
+        additionalErrors:
+          string: string
+    InvalidRequestFormatContent:
+      description: Некорректный формат запроса
+      value:
+        data: null
+        error: true
+        errorText: Invalid request format
+        additionalErrors: {}
+    CardCreatedWithoutVendorCode:
+      description: КТ нельзя создать без артикула продавца
+      value:
+        data: null
+        error: true
+        errorText: A card cannot be created without a vendorCode
+        additionalErrors: {}
+    CardsVendorCodeUsedInOtherCards:
+      description: Артикул продавца используется в другой КТ
+      value:
+        data: null
+        error: true
+        errorText: bad request; Unexpected the specified card's vendor code is used
+          in other cards
+        additionalErrors: {}
+    ThisCategoryDoesNotExist:
+      description: Такого предмета не существует
+      value:
+        data: null
+        error: true
+        errorText: This category does not exist
+        additionalErrors:
+          id: "342342"
+    responseBodyContentError400:
+      description: ""
+      value:
+        data: null
+        error: true
+        errorText: Текст ошибки
+        additionalErrors:
+          MoveNmsToTrash: Bad request
+    responseOK200:
+      description: ""
+      value:
+        data: null
+        error: false
+        errorText: ""
+        additionalErrors: null
+    responseBody400LenName:
+      description: ""
+      value:
+        data: null
+        error: true
+        errorText: Недопустимое значение наименования тега
+        additionalErrors:
+          description: Слишком длинное название тега. Разрешено не более 15 символов
+    responseBodyLimitTag:
+      description: ""
+      value:
+        data: null
+        error: true
+        errorText: Исчерпан лимит на создание тегов
+        additionalErrors: null
+    responseBodyNameNotExist:
+      description: ""
+      value:
+        data: null
+        error: true
+        errorText: Тег с таким именем уже существует
+        additionalErrors: null
+    responseNotFound200:
+      description: ""
+      value:
+        data: null
+        error: true
+        errorText: Неправильный запрос
+        additionalErrors:
+          description: Такого тега не существует у продавца
+    responseNotFound200Del:
+      description: ""
+      value:
+        data: null
+        error: true
+        errorText: Такого тега не существует
+        additionalErrors:
+          tagID: "1234"
+    IncorrectRequest4:
+      description: ""
+      value:
+        data: null
+        error: true
+        errorText: Неправильный запрос
+        additionalErrors:
+          description: Указаны несуществующие теги
+    responseBodyTagNotExist:
+      description: ""
+      value:
+        data: null
+        error: true
+        errorText: Такого тега не существует
+        additionalErrors:
+          tagID: "1234"
+    responseBodyError500:
+      description: ""
+      value:
+        data: null
+        error: true
+        errorText: Внутренняя ошибка.
+        additionalErrors: null
+    BodySizeExceedsTheGivenLimit:
+      description: Превышен лимит объёма данных в запросе
+      value: body size exceeds the given limit
+  responses:
+    "401":
+      content:
+        application/json:
+          example:
+            title: unauthorized
+            detail: "token problem; token is malformed: could not base64 decode signature:\
+              \ illegal base64 data at input byte 84"
+            code: "07e4668e--a53a3d31f8b0-[UK-oWaVDUqNrKG]; 03bce=277; 84bd353bf-75"
+            requestId: 7b80742415072fe8b6b7f7761f1d1211
+            origin: s2s-api-auth-catalog
+            status: 401
+            statusText: Unauthorized
+            timestamp: 2024-09-30T06:52:38Z
+          schema:
+            $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+      description: Пользователь не авторизован
+    "429":
+      content:
+        application/json:
+          example:
+            title: too many requests
+            detail: limited by c122a060-a7fb-4bb4-abb0-32fd4e18d489
+            code: "07e4668e-ac2242c5c8c5-[UK-4dx7JUdskGZ]"
+            requestId: 9d3c02cc698f8b041c661a7c28bed293
+            origin: s2s-api-auth-catalog
+            status: 429
+            statusText: Too Many Requests
+            timestamp: 2024-09-30T06:52:38Z
+          schema:
+            $ref: '#/components/schemas/_content_v2_cards_upload_post_401_response'
+      description: Слишком много запросов
+  schemas:
+    responseCardCreate:
+      example:
+        errorText: errorText
+        data: "{}"
+        additionalErrors:
+          string: string
+        error: true
+      properties:
+        data:
+          nullable: true
+          type: object
+          example: null
+        error:
+          description: Флаг ошибки
+          type: boolean
+        errorText:
+          description: Описание ошибки
+          type: string
+        additionalErrors:
+          $ref: '#/components/schemas/responseCardCreate_additionalErrors'
+      type: object
+    requestMoveNmsImtConn:
+      properties:
+        targetIMT:
+          description: "Существующий у продавца `imtID`, под которым необходимо об\
+            ъединить НМ"
+          example: 123
+          type: integer
+        nmIDs:
+          description: |
+            `nmID`, которые необходимо объединить (максимум 30)
+          example:
+          - 837459235
+          - 828572090
+          items:
+            type: integer
+          type: array
+      required:
+      - nmIDs
+      - targetIMT
+      type: object
+    requestMoveNmsImtDisconn:
+      properties:
+        nmIDs:
+          description: "`nmID`, которые необходимо разъединить (max 30)"
+          example:
+          - 837459235
+          - 828572090
+          items:
+            type: integer
+          type: array
+      required:
+      - nmIDs
+      type: object
+    responseIncorrectDate:
+      properties:
+        error:
+          type: string
+      type: object
+    responseContentError1:
+      example:
+        errorText: errorText
+        data: "{}"
+        additionalErrors:
+          error: error
+        error: true
+      properties:
+        data:
+          nullable: true
+          type: object
+          example: null
+        error:
+          description: Флаг ошибки
+          type: boolean
+        errorText:
+          description: Описание ошибки
+          type: string
+        additionalErrors:
+          $ref: '#/components/schemas/responseContentError1_additionalErrors'
+      type: object
+    responseBodyContentError400:
+      example:
+        data: null
+        error: true
+        errorText: Текст ошибки
+        additionalErrors:
+          MoveNmsToTrash: Bad request
+      properties:
+        data:
+          nullable: true
+          type: object
+        error:
+          description: Флаг ошибки
+          type: boolean
+        errorText:
+          description: Описание ошибки
+          type: string
+        additionalErrors:
+          $ref: '#/components/schemas/responseBodyContentError400_additionalErrors'
+      type: object
+    responseBodyContentError403:
+      example:
+        data: null
+        error: true
+        errorText: Доступ запрещен
+        additionalErrors: Доступ запрещен
+      properties:
+        data:
+          nullable: true
+          type: object
+        error:
+          description: Флаг ошибки
+          type: boolean
+        errorText:
+          description: Описание ошибки
+          type: string
+        additionalErrors:
+          description: Дополнительные ошибки
+          type: string
+      type: object
+    responseContentError4:
+      example:
+        errorText: errorText
+        data: "{}"
+        additionalErrors:
+          description: description
+        error: true
+      properties:
+        data:
+          nullable: true
+          type: object
+        error:
+          description: Флаг ошибки
+          type: boolean
+        errorText:
+          description: Описание ошибки
+          type: string
+        additionalErrors:
+          $ref: '#/components/schemas/responseContentError4_additionalErrors'
+      type: object
+    responseContentError5:
+      properties:
+        data:
+          nullable: true
+          type: object
+        error:
+          description: Флаг ошибки
+          type: boolean
+        errorText:
+          description: Описание ошибки
+          type: string
+        additionalErrors:
+          $ref: '#/components/schemas/responseContentError5_additionalErrors'
+      type: object
+    responseContentError6:
+      example:
+        data: null
+        error: false
+        errorText: ""
+        additionalErrors: null
+      properties:
+        data:
+          nullable: true
+          type: object
+        error:
+          description: Флаг ошибки
+          type: boolean
+        errorText:
+          description: Описание ошибки
+          type: string
+        additionalErrors:
+          description: Дополнительные ошибки
+          nullable: true
+          type: string
+      type: object
+    mediaErrors:
+      example:
+        additionalErrors: null
+        data: null
+        error: true
+        errorText: Текст ошибки
+      properties:
+        additionalErrors:
+          description: Дополнительные ошибки
+          type: object
+        data:
+          type: object
+        error:
+          description: Флаг ошибки
+          type: boolean
+        errorText:
+          description: Описание ошибки
+          type: string
+      type: object
+    _content_v2_cards_upload_post_request_inner_variants_inner_dimensions:
+      description: "Габариты упаковки товара. Указывать в **сантиметрах** для любо\
+        го товара. \n<br> \nЕсли не указать структуру dimensions в запросе, то она\
+        \ сгенерируется системой автоматически с нулевыми значениями длины, ширины\
+        , высоты\n"
+      properties:
+        length:
+          description: "Длина, см"
+          type: integer
+        width:
+          description: "Ширина, см"
+          type: integer
+        height:
+          description: "Высота, см"
+          type: integer
+      type: object
+    _content_v2_cards_upload_post_request_inner_variants_inner_sizes_inner:
+      properties:
+        techSize:
+          description: "Размер товара (XL, 45 и др.)"
+          type: string
+        wbSize:
+          description: Российский размер товара
+          type: string
+        price:
+          description: Цена товара
+          type: integer
+        skus:
+          description: "Баркод. Если не указать, сгенерируется системой автоматиче\
+            ски."
+          items:
+            type: string
+          type: array
+      type: object
+    _content_v2_cards_upload_post_request_inner_variants_inner_characteristics_inner:
+      properties:
+        id:
+          description: Идентификатор характеристики
+          type: integer
+        value:
+          description: Значение характеристики. Тип значения зависит от типа характеристики
+      required:
+      - id
+      - value
+      type: object
+    _content_v2_cards_upload_post_request_inner_variants_inner:
+      properties:
+        brand:
+          description: Бренд
+          type: string
+        title:
+          description: Наименование товара
+          type: string
+        description:
+          description: |
+            Описание товара. Максимальное количество символов зависит от категории товара. Стандарт — 2000, минимум — 1000, максимум — 5000.<br>
+            Подробно о правилах описания в **Правилах заполнения карточки товара** в разделе [Инструкции](https://seller.wildberries.ru/help-center/article/A-113#описание) на портале продавцов.
+          type: string
+        vendorCode:
+          description: Артикул продавца
+          type: string
+        dimensions:
+          $ref: '#/components/schemas/_content_v2_cards_upload_post_request_inner_variants_inner_dimensions'
+        sizes:
+          description: "Массив с размерами. <br> \nЕсли для размерного товара (обу\
+            вь, одежда и др.) не указать этот массив, то системой в карточке он бу\
+            дет сгенерирован автоматически с `techSize` = \"A\" и `wbSize` = \"1\"\
+            \ и баркодом.\n"
+          items:
+            $ref: '#/components/schemas/_content_v2_cards_upload_post_request_inner_variants_inner_sizes_inner'
+          type: array
+        characteristics:
+          description: Массив характеристик товара
+          items:
+            $ref: '#/components/schemas/_content_v2_cards_upload_post_request_inner_variants_inner_characteristics_inner'
+          type: array
+      required:
+      - vendorCode
+      type: object
+    _content_v2_cards_upload_post_request_inner:
+      properties:
+        subjectID:
+          description: ID предмета
+          type: integer
+        variants:
+          description: Массив вариантов товара. В каждой КТ может быть не более 30
+            вариантов (НМ)
+          items:
+            $ref: '#/components/schemas/_content_v2_cards_upload_post_request_inner_variants_inner'
+          type: array
+      required:
+      - subjectID
+      - variants
+      type: object
+    _content_v2_cards_upload_post_401_response:
+      example:
+        code: code
+        requestId: requestId
+        origin: origin
+        statusText: statusText
+        detail: detail
+        title: title
+        status: 0.8008281904610115
+        timestamp: timestamp
+      properties:
+        title:
+          description: Заголовок ошибки
+          type: string
+        detail:
+          description: Детали ошибки
+          type: string
+        code:
+          description: Внутренний код ошибки
+          type: string
+        requestId:
+          description: Уникальный ID запроса
+          type: string
+        origin:
+          description: ID внутреннего сервиса WB
+          type: string
+        status:
+          description: HTTP статус-код
+          type: number
+        statusText:
+          description: Расшифровка HTTP статус-кода
+          type: string
+        timestamp:
+          description: Дата и время запроса
+          format: RFC3339
+          type: string
+      type: object
+    _content_v2_cards_upload_post_413_response:
+      example:
+        code: code
+        requestId: requestId
+        origin: origin
+        statusText: statusText
+        detail: detail
+        title: title
+        status: 6.027456183070403
+      properties:
+        title:
+          description: Заголовок ошибки
+          type: string
+        detail:
+          description: Детали ошибки
+          type: string
+        code:
+          description: Внутренний код ошибки
+          type: string
+        requestId:
+          description: Уникальный ID запроса
+          type: string
+        origin:
+          description: ID внутреннего сервиса WB
+          type: string
+        status:
+          description: HTTP статус-код
+          type: number
+        statusText:
+          description: Расшифровка HTTP статус-кода
+          type: string
+      type: object
+    _content_v2_cards_update_post_request_inner_dimensions:
+      description: |
+        Габариты упаковки товара. Указывать в **сантиметрах** для любого товара.
+      properties:
+        length:
+          description: "Длина, см"
+          type: integer
+        width:
+          description: "Ширина, см"
+          type: integer
+        height:
+          description: "Высота, см"
+          type: integer
+      type: object
+    _content_v2_cards_update_post_request_inner_characteristics_inner:
+      properties:
+        id:
+          description: ID характеристики
+          type: integer
+        value:
+          description: Значение характеристики. Тип значения зависит от типа характеристики.
+      type: object
+    _content_v2_cards_update_post_request_inner_sizes_inner:
+      properties:
+        chrtID:
+          description: |
+            Числовой идентификатор размера для данного артикула Wildberries
+            Обязателен к заполнению для существующих размеров.
+            Для добавляемых размеров не указывается.
+          type: integer
+        techSize:
+          description: "Размер товара (XL, S, 45 и др.)"
+          type: string
+        wbSize:
+          description: Российский размер товара
+          type: string
+        skus:
+          description: Баркод
+          items:
+            type: string
+          type: array
+      type: object
+    _content_v2_cards_update_post_request_inner:
+      properties:
+        nmID:
+          description: Артикул WB
+          type: integer
+        vendorCode:
+          description: Артикул продавца
+          type: string
+        brand:
+          description: Бренд
+          type: string
+        title:
+          description: Наименование товара
+          type: string
+        description:
+          description: |
+            Описание товара. Максимальное количество символов зависит от категории товара. Стандарт — 2000, минимум — 1000, максимум — 5000.<br>
+            Подробно о правилах описания в **Правилах заполнения карточки товара** в разделе [Инструкции](https://seller.wildberries.ru/help-center/article/A-113#описание) на портале продавцов.
+          type: string
+        dimensions:
+          $ref: '#/components/schemas/_content_v2_cards_update_post_request_inner_dimensions'
+        characteristics:
+          description: Характеристики товара
+          items:
+            $ref: '#/components/schemas/_content_v2_cards_update_post_request_inner_characteristics_inner'
+          type: array
+        sizes:
+          description: |
+            Массив размеров артикула. <br> Для безразмерного товара все равно нужно передавать данный массив без параметров (wbSize и techSize), но с баркодом.
+          items:
+            $ref: '#/components/schemas/_content_v2_cards_update_post_request_inner_sizes_inner'
+          type: array
+      required:
+      - nmID
+      - sizes
+      - vendorCode
+      type: object
+    _content_v2_cards_upload_add_post_request_cardsToAdd_inner_characteristics_inner:
+      properties:
+        id:
+          description: ID характеристики
+          type: integer
+        value:
+          description: Значение характеристики. Тип значения зависит от типа характеристики
+      type: object
+    _content_v2_cards_upload_add_post_request_cardsToAdd_inner_sizes_inner:
+      properties:
+        techSize:
+          description: "Размер товара (XL, 42 и др.)"
+          type: string
+        wbSize:
+          description: Российский размер товара
+          type: string
+        price:
+          description: Цена товара
+          type: integer
+        skus:
+          description: Баркод
+          items:
+            type: string
+          type: array
+      type: object
+    _content_v2_cards_upload_add_post_request_cardsToAdd_inner:
+      properties:
+        brand:
+          description: Бренд
+          type: string
+        vendorCode:
+          description: Артикул продавца
+          type: string
+        title:
+          description: Наименование товара
+          type: string
+        description:
+          description: |
+            Описание товара. Максимальное количество символов зависит от категории товара. Стандарт — 2000, минимум — 1000, максимум — 5000.<br>
+            Подробно о правилах описания в **Правилах заполнения карточки товара** в разделе [Инструкции](https://seller.wildberries.ru/help-center/article/A-113#описание) на портале продавцов.
+          type: string
+        dimensions:
+          $ref: '#/components/schemas/_content_v2_cards_upload_post_request_inner_variants_inner_dimensions'
+        characteristics:
+          description: Характеристики товара
+          items:
+            $ref: '#/components/schemas/_content_v2_cards_upload_add_post_request_cardsToAdd_inner_characteristics_inner'
+          type: array
+        sizes:
+          description: "Массив с размерами. <br> \nЕсли для размерного товара (обу\
+            вь, одежда и др.) не указать этот массив, то системой в карточке он бу\
+            дет сгенерирован автоматически с `techSize` = \"A\" и `wbSize` = \"1\"\
+            \ и баркодом.\n"
+          items:
+            $ref: '#/components/schemas/_content_v2_cards_upload_add_post_request_cardsToAdd_inner_sizes_inner'
+          type: array
+      required:
+      - vendorCode
+      type: object
+    _content_v2_cards_upload_add_post_request:
+      properties:
+        imtID:
+          description: "imtID КТ, к которой добавляется НМ"
+          type: integer
+        cardsToAdd:
+          description: Структура добавляемой НМ
+          items:
+            $ref: '#/components/schemas/_content_v2_cards_upload_add_post_request_cardsToAdd_inner'
+          type: array
+      type: object
+    _content_v2_cards_moveNm_post_request:
+      oneOf:
+      - $ref: '#/components/schemas/requestMoveNmsImtConn'
+      - $ref: '#/components/schemas/requestMoveNmsImtDisconn'
+    _content_v2_cards_moveNm_post_400_response:
+      oneOf:
+      - $ref: '#/components/schemas/responseContentError1'
+      - $ref: '#/components/schemas/responseCardCreate'
+      - $ref: '#/components/schemas/responseIncorrectDate'
+    _content_v2_barcodes_post_request:
+      properties:
+        count:
+          description: "Кол-во баркодов которые надо сгенерировать, максимальное д\
+            оступное количество баркодов для генерации - `5 000`"
+          example: 100
+          type: integer
+      type: object
+    _content_v2_barcodes_post_200_response:
+      example:
+        errorText: ""
+        data:
+        - "5032781145187"
+        - "5032781145187"
+        additionalErrors: ""
+        error: false
+      properties:
+        data:
+          description: Массив сгенерированных баркодов
+          items:
+            example: "5032781145187"
+            type: string
+          type: array
+        error:
+          description: Флаг ошибки
+          example: false
+          type: boolean
+        errorText:
+          description: Описание ошибки
+          example: ""
+          type: string
+        additionalErrors:
+          description: Дополнительные ошибки
+          example: ""
+          type: string
+      type: object
+    _content_v2_get_cards_list_post_request_settings_sort:
+      description: Параметр сортировки
+      properties:
+        ascending:
+          description: "Сортировать по полю **updatedAt** (`false` - по убыванию,\
+            \ `true` - по возрастанию)"
+          type: boolean
+      type: object
+    _content_v2_get_cards_list_post_request_settings_filter:
+      description: Параметры фильтрации
+      properties:
+        withPhoto:
+          description: |
+            Фильтр по фото:
+
+              * `0` — только карточки без фото
+              * `1` — только карточки с фото
+              * `-1` — все карточки товара
+          type: integer
+        textSearch:
+          description: "Поиск по артикулу продавца, артикулу WB, баркоду"
+          type: string
+        tagIDs:
+          description: Поиск по ID тегов
+          items:
+            type: integer
+          type: array
+        allowedCategoriesOnly:
+          description: "Фильтр по категории. `true` - только разрешённые, `false`\
+            \ - все. Не\_используется в\_песочнице."
+          type: boolean
+        objectIDs:
+          description: Поиск по id предметов
+          items:
+            type: integer
+          type: array
+        brands:
+          description: Поиск по брендам
+          items:
+            type: string
+          type: array
+        imtID:
+          description: Поиск по идентификатору КТ
+          type: integer
+      type: object
+    _content_v2_get_cards_list_post_request_settings_cursor:
+      description: |
+        Курсор
+      properties:
+        limit:
+          description: Сколько КТ выдать в ответе.
+          type: integer
+      type: object
+    _content_v2_get_cards_list_post_request_settings:
+      description: Настройки
+      properties:
+        sort:
+          $ref: '#/components/schemas/_content_v2_get_cards_list_post_request_settings_sort'
+        filter:
+          $ref: '#/components/schemas/_content_v2_get_cards_list_post_request_settings_filter'
+        cursor:
+          $ref: '#/components/schemas/_content_v2_get_cards_list_post_request_settings_cursor'
+      type: object
+    _content_v2_get_cards_list_post_request:
+      properties:
+        settings:
+          $ref: '#/components/schemas/_content_v2_get_cards_list_post_request_settings'
+      type: object
+    _content_v2_get_cards_list_post_200_response_cards_inner_photos_inner:
+      example:
+        big: big
+        square: square
+        c516x688: c516x688
+        tm: tm
+        c246x328: c246x328
+      properties:
+        big:
+          description: URL фото `900х1200`
+          type: string
+        c246x328:
+          description: URL фото `248х328`
+          type: string
+        c516x688:
+          description: URL фото `516х688`
+          type: string
+        square:
+          description: URL фото `600х600`
+          type: string
+        tm:
+          description: URL фото `75х100`
+          type: string
+      type: object
+    _content_v2_get_cards_list_post_200_response_cards_inner_dimensions:
+      description: "Габариты упаковки товара, см"
+      example:
+        isValid: true
+        length: 5
+        width: 5
+        height: 2
+      properties:
+        length:
+          description: "Длина, см"
+          type: integer
+        width:
+          description: "Ширина, см"
+          type: integer
+        height:
+          description: "Высота, см"
+          type: integer
+        isValid:
+          description: |
+            Потенциальная некорректность габаритов товара:
+            - `true` — не выявлена. `"isValid":true` не гарантирует, что размеры указаны корректно. В отдельных случаях (например, при создании новой категории товаров) `"isValid":true` будет возвращаться при любых значениях, кроме нулевых.
+            - `false` — указанные габариты значительно отличаются от средних по категории (предмету). Рекомендуется перепроверить, правильно ли указаны размеры товара в упаковке **в сантиметрах**. Функциональность карточки товара, в том числе начисление логистики и хранения, при этом ограничена не будет. Логистика и хранение продолжают начисляться — по текущим габаритам. Также `"isValid":false` возвращается при отсутствии значений или нулевом значении любой стороны.
+          type: boolean
+      type: object
+    _content_v2_get_cards_list_post_200_response_cards_inner_characteristics_inner:
+      example:
+        name: name
+        id: 7
+        value: ""
+      properties:
+        id:
+          description: Идентификатор характеристики
+          type: integer
+        name:
+          description: Название характеристики
+          type: string
+        value:
+          description: Значение характеристики. Тип значения зависит от типа характеристики
+      type: object
+    _content_v2_get_cards_list_post_200_response_cards_inner_sizes_inner:
+      example:
+        wbSize: wbSize
+        skus:
+        - 12345Ejf5
+        - 12345Ejf5
+        techSize: techSize
+        chrtID: 9
+      properties:
+        chrtID:
+          description: Числовой идентификатор размера для данного артикула WB
+          type: integer
+        techSize:
+          description: "Размер товара (А, XXL, 57 и др.)"
+          type: string
+        wbSize:
+          description: Российский размер товара
+          type: string
+        skus:
+          description: Баркод товара
+          items:
+            example: 12345Ejf5
+            type: string
+          type: array
+      type: object
+    _content_v2_get_cards_list_post_200_response_cards_inner_tags_inner:
+      example:
+        color: color
+        name: name
+        id: 3
+      properties:
+        id:
+          description: Идентификатор тега
+          type: integer
+        name:
+          description: Название тега
+          type: string
+        color:
+          description: |
+            Цвет тега. <dl> <dt>Доступные цвета:</dt> <dd><code>D1CFD7</code> - серый</dd> <dd><code>FEE0E0</code> - красный</dd> <dd><code>ECDAFF</code> - фиолетовый</dd> <dd><code>E4EAFF</code> - синий</dd> <dd><code>DEF1DD</code> - зеленый</dd> <dd><code>FFECC7</code> - желтый</dd> </dl>
+          type: string
+      type: object
+    _content_v2_get_cards_list_post_200_response_cards_inner:
+      example:
+        characteristics:
+        - name: name
+          id: 7
+          value: ""
+        - name: name
+          id: 7
+          value: ""
+        nmUUID: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+        nmID: 0
+        video: video
+        title: title
+        photos:
+        - big: big
+          square: square
+          c516x688: c516x688
+          tm: tm
+          c246x328: c246x328
+        - big: big
+          square: square
+          c516x688: c516x688
+          tm: tm
+          c246x328: c246x328
+        subjectID: 1
+        vendorCode: vendorCode
+        tags:
+        - color: color
+          name: name
+          id: 3
+        - color: color
+          name: name
+          id: 3
+        imtID: 6
+        createdAt: createdAt
+        sizes:
+        - wbSize: wbSize
+          skus:
+          - 12345Ejf5
+          - 12345Ejf5
+          techSize: techSize
+          chrtID: 9
+        - wbSize: wbSize
+          skus:
+          - 12345Ejf5
+          - 12345Ejf5
+          techSize: techSize
+          chrtID: 9
+        brand: brand
+        subjectName: subjectName
+        dimensions:
+          isValid: true
+          length: 5
+          width: 5
+          height: 2
+        updatedAt: updatedAt
+      properties:
+        nmID:
+          description: Артикул WB
+          type: integer
+        imtID:
+          description: Идентификатор КТ. <br> Артикулы WB из одной КТ будут иметь
+            одинаковый imtID
+          type: integer
+        nmUUID:
+          description: Внутренний технический идентификатор товара
+          format: uuid
+          type: string
+        subjectID:
+          description: Идентификатор предмета
+          type: integer
+        vendorCode:
+          description: Артикул продавца
+          type: string
+        subjectName:
+          description: Название предмета
+          type: string
+        brand:
+          description: Бренд
+          type: string
+        title:
+          description: Наименование товара
+          type: string
+        description:
+          description: Описание товара
+          type: string
+          x-go-field-name: DescriptionField
+        photos:
+          description: Массив фото
+          items:
+            $ref: '#/components/schemas/_content_v2_get_cards_list_post_200_response_cards_inner_photos_inner'
+          type: array
+        video:
+          description: URL видео
+          type: string
+        dimensions:
+          $ref: '#/components/schemas/_content_v2_get_cards_list_post_200_response_cards_inner_dimensions'
+        characteristics:
+          description: Характеристики
+          items:
+            $ref: '#/components/schemas/_content_v2_get_cards_list_post_200_response_cards_inner_characteristics_inner'
+          type: array
+        sizes:
+          description: Размеры товара
+          items:
+            $ref: '#/components/schemas/_content_v2_get_cards_list_post_200_response_cards_inner_sizes_inner'
+          type: array
+        tags:
+          description: Теги
+          items:
+            $ref: '#/components/schemas/_content_v2_get_cards_list_post_200_response_cards_inner_tags_inner'
+          type: array
+        createdAt:
+          description: Дата создания
+          type: string
+        updatedAt:
+          description: Дата изменения
+          type: string
+      type: object
+    _content_v2_get_cards_list_post_200_response_cursor:
+      description: Пагинатор
+      example:
+        total: 4
+        nmID: 2
+        updatedAt: updatedAt
+      properties:
+        updatedAt:
+          description: Дата с которой надо запрашивать следующий список КТ
+          type: string
+        nmID:
+          description: Номер Артикула WB с которой надо запрашивать следующий список
+            КТ
+          type: integer
+        total:
+          description: Кол-во возвращенных КТ
+          type: integer
+      type: object
+    _content_v2_get_cards_list_post_200_response:
+      example:
+        cursor:
+          total: 4
+          nmID: 2
+          updatedAt: updatedAt
+        cards:
+        - characteristics:
+          - name: name
+            id: 7
+            value: ""
+          - name: name
+            id: 7
+            value: ""
+          nmUUID: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          nmID: 0
+          video: video
+          title: title
+          photos:
+          - big: big
+            square: square
+            c516x688: c516x688
+            tm: tm
+            c246x328: c246x328
+          - big: big
+            square: square
+            c516x688: c516x688
+            tm: tm
+            c246x328: c246x328
+          subjectID: 1
+          vendorCode: vendorCode
+          tags:
+          - color: color
+            name: name
+            id: 3
+          - color: color
+            name: name
+            id: 3
+          imtID: 6
+          createdAt: createdAt
+          sizes:
+          - wbSize: wbSize
+            skus:
+            - 12345Ejf5
+            - 12345Ejf5
+            techSize: techSize
+            chrtID: 9
+          - wbSize: wbSize
+            skus:
+            - 12345Ejf5
+            - 12345Ejf5
+            techSize: techSize
+            chrtID: 9
+          brand: brand
+          subjectName: subjectName
+          dimensions:
+            isValid: true
+            length: 5
+            width: 5
+            height: 2
+          updatedAt: updatedAt
+        - characteristics:
+          - name: name
+            id: 7
+            value: ""
+          - name: name
+            id: 7
+            value: ""
+          nmUUID: 046b6c7f-0b8a-43b9-b35d-6489e6daee91
+          nmID: 0
+          video: video
+          title: title
+          photos:
+          - big: big
+            square: square
+            c516x688: c516x688
+            tm: tm
+            c246x328: c246x328
+          - big: big
+            square: square
+            c516x688: c516x688
+            tm: tm
+            c246x328: c246x328
+          subjectID: 1
+          vendorCode: vendorCode
+          tags:
+          - color: color
+            name: name
+            id: 3
+          - color: color
+            name: name
+            id: 3
+          imtID: 6
+          createdAt: createdAt
+          sizes:
+          - wbSize: wbSize
+            skus:
+            - 12345Ejf5
+            - 12345Ejf5
+            techSize: techSize
+            chrtID: 9
+          - wbSize: wbSize
+            skus:
+            - 12345Ejf5
+            - 12345Ejf5
+            techSize: techSize
+            chrtID: 9
+          brand: brand
+          subjectName: subjectName
+          dimensions:
+            isValid: true
+            length: 5
+            width: 5
+            height: 2
+          updatedAt: updatedAt
+      properties:
+        cards:
+          description: Список КТ
+          items:
+            $ref: '#/components/schemas/_content_v2_get_cards_list_post_200_response_cards_inner'
+          type: array
+        cursor:
+          $ref: '#/components/schemas/_content_v2_get_cards_list_post_200_response_cursor'
+      type: object
+    _content_v2_cards_error_list_get_200_response_data_inner:
+      example:
+        updateAt: 2022-06-15T14:37:13Z
+        errors:
+        - "Поля Рос. размер, Размер обязательны для заполнения"
+        - "Поля Рос. размер, Размер обязательны для заполнения"
+        objectID: 41
+        object: Блузки
+        vendorCode: "6000000001"
+      properties:
+        object:
+          description: Категория для который создавалось КТ с данной НМ
+          example: Блузки
+          type: string
+        vendorCode:
+          description: Артикул продавца
+          example: "6000000001"
+          type: string
+        updateAt:
+          description: Дата и время запроса на создание КТ с данным НМ
+          example: 2022-06-15T14:37:13Z
+          type: string
+        errors:
+          description: Список ошибок из-за которых не обработался запрос на создание
+            КТ с данным НМ
+          items:
+            example: "Поля Рос. размер, Размер обязательны для заполнения"
+            type: string
+          type: array
+        objectID:
+          description: Идентификатор предмета
+          example: 41
+          type: integer
+      type: object
+    _content_v2_cards_error_list_get_200_response:
+      example:
+        errorText: ""
+        data:
+        - updateAt: 2022-06-15T14:37:13Z
+          errors:
+          - "Поля Рос. размер, Размер обязательны для заполнения"
+          - "Поля Рос. размер, Размер обязательны для заполнения"
+          objectID: 41
+          object: Блузки
+          vendorCode: "6000000001"
+        - updateAt: 2022-06-15T14:37:13Z
+          errors:
+          - "Поля Рос. размер, Размер обязательны для заполнения"
+          - "Поля Рос. размер, Размер обязательны для заполнения"
+          objectID: 41
+          object: Блузки
+          vendorCode: "6000000001"
+        additionalErrors: ""
+        error: false
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/_content_v2_cards_error_list_get_200_response_data_inner'
+          type: array
+        error:
+          description: Флаг ошибки.
+          example: false
+          type: boolean
+        errorText:
+          description: Описание ошибки.
+          example: ""
+          type: string
+        additionalErrors:
+          description: Дополнительные ошибки.
+          example: ""
+          type: string
+      type: object
+    _content_v2_cards_limits_get_200_response_data:
+      example:
+        paidLimits: 6
+        freeLimits: 0
+      properties:
+        freeLimits:
+          description: Количество бесплатных лимитов
+          type: integer
+        paidLimits:
+          description: Количество оплаченных лимитов
+          type: integer
+      type: object
+    _content_v2_cards_limits_get_200_response:
+      example:
+        errorText: errorText
+        data:
+          paidLimits: 6
+          freeLimits: 0
+        additionalErrors: additionalErrors
+        error: true
+      properties:
+        data:
+          $ref: '#/components/schemas/_content_v2_cards_limits_get_200_response_data'
+        error:
+          description: Флаг ошибки
+          type: boolean
+        errorText:
+          description: Описание ошибки
+          type: string
+        additionalErrors:
+          description: Дополнительные ошибки
+          nullable: true
+          type: string
+      type: object
+    _content_v2_object_parent_all_get_200_response_data_inner:
+      example:
+        name: Электроника
+        id: 479
+        isVisible: true
+      properties:
+        name:
+          description: Название категории
+          example: Электроника
+          type: string
+        id:
+          description: Идентификатор родительской категории
+          example: 479
+          type: integer
+        isVisible:
+          description: Виден на сайте
+          example: true
+          type: boolean
+      type: object
+    _content_v2_object_parent_all_get_200_response:
+      example:
+        errorText: ""
+        data:
+        - name: Электроника
+          id: 479
+          isVisible: true
+        - name: Электроника
+          id: 479
+          isVisible: true
+        additionalErrors: ""
+        error: false
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/_content_v2_object_parent_all_get_200_response_data_inner'
+          type: array
+        error:
+          description: Флаг наличия ошибки
+          example: false
+          type: boolean
+        errorText:
+          description: Описание ошибки
+          example: ""
+          type: string
+        additionalErrors:
+          description: Дополнительные ошибки
+          example: ""
+          type: string
+      type: object
+    _content_v2_object_all_get_200_response_data_inner:
+      example:
+        parentName: parentName
+        subjectID: 0
+        parentID: 6
+        subjectName: subjectName
+      properties:
+        subjectID:
+          description: Идентификатор предмета
+          type: integer
+        parentID:
+          description: Идентификатор родительской категории
+          type: integer
+        subjectName:
+          description: Название предмета
+          type: string
+        parentName:
+          description: Название родительской категории
+          type: string
+      type: object
+    _content_v2_object_all_get_200_response:
+      example:
+        errorText: errorText
+        data:
+        - parentName: parentName
+          subjectID: 0
+          parentID: 6
+          subjectName: subjectName
+        - parentName: parentName
+          subjectID: 0
+          parentID: 6
+          subjectName: subjectName
+        additionalErrors: additionalErrors
+        error: true
+      properties:
+        data:
+          description: Подкатегории (предметы)
+          items:
+            $ref: '#/components/schemas/_content_v2_object_all_get_200_response_data_inner'
+          type: array
+        error:
+          description: Флаг наличия ошибки
+          type: boolean
+        errorText:
+          description: Текст ошибки
+          type: string
+        additionalErrors:
+          description: Дополнительные ошибки
+          type: string
+      type: object
+    _content_v2_object_charcs__subjectId__get_200_response_data_inner:
+      properties:
+        charcID:
+          description: Идентификатор характеристики
+          type: integer
+        subjectName:
+          description: Название предмета
+          type: string
+        subjectID:
+          description: Идентификатор предмета
+          type: integer
+        name:
+          description: Название характеристики
+          type: string
+        required:
+          description: true - характеристику необходимо обязательно указать в КТ.
+            false - характеристику не обязательно указывать
+          type: boolean
+        unitName:
+          description: Единица измерения
+          type: string
+        maxCount:
+          description: |
+            Максимальное кол-во значений, которое можно присвоить данной характеристике. Если 0, то нет ограничения.
+          type: integer
+        popular:
+          description: "Характеристика популярна у пользователей (true - да, false\
+            \ - нет)"
+          type: boolean
+        charcType:
+          description: Тип характеристики (1 и 0 - строка или массив строк; 4 - число
+            или массив чисел)
+          type: integer
+      type: object
+    _content_v2_object_charcs__subjectId__get_200_response:
+      example:
+        data:
+        - charcID: 54337
+          subjectName: Кроссовки
+          subjectID: 105
+          name: Размер
+          required: false
+          unitName: см
+          maxCount: 0
+          popular: false
+          charcType: 4
+        error: false
+        errorText: ""
+        additionalErrors: null
+      properties:
+        data:
+          description: Данные
+          items:
+            $ref: '#/components/schemas/_content_v2_object_charcs__subjectId__get_200_response_data_inner'
+          type: array
+        error:
+          description: Флаг наличия ошибки
+          type: boolean
+        errorText:
+          description: Текст ошибки
+          type: string
+        additionalErrors:
+          description: Дополнительные ошибки
+          type: string
+      type: object
+    _content_v2_directory_colors_get_200_response_data_inner:
+      example:
+        parentName: оранжевый
+        name: персиковый мелок
+      properties:
+        name:
+          description: Наименование цвета
+          example: персиковый мелок
+          type: string
+        parentName:
+          description: Наименование родительского цвета
+          example: оранжевый
+          type: string
+      type: object
+    _content_v2_directory_colors_get_200_response:
+      example:
+        errorText: ""
+        data:
+        - parentName: оранжевый
+          name: персиковый мелок
+        - parentName: оранжевый
+          name: персиковый мелок
+        additionalErrors: ""
+        error: false
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/_content_v2_directory_colors_get_200_response_data_inner'
+          type: array
+        error:
+          description: Флаг ошибки
+          example: false
+          type: boolean
+        errorText:
+          description: Описание ошибки
+          example: ""
+          type: string
+        additionalErrors:
+          description: Дополнительные ошибки
+          example: ""
+          type: string
+      type: object
+    _content_v2_directory_kinds_get_200_response:
+      example:
+        errorText: ""
+        data:
+        - Мужской
+        - Мужской
+        additionalErrors: ""
+        error: false
+      properties:
+        data:
+          description: Массив значений для хар-ки Пол
+          items:
+            example: Мужской
+            type: string
+          type: array
+        error:
+          description: Флаг ошибки
+          example: false
+          type: boolean
+        errorText:
+          description: Описание ошибки
+          example: ""
+          type: string
+        additionalErrors:
+          description: Дополнительные ошибки
+          example: ""
+          type: string
+      type: object
+    _content_v2_directory_countries_get_200_response_data_inner:
+      example:
+        name: Афганистан
+        fullName: Исламский Эмират Афганистан
+      properties:
+        name:
+          description: Значение характеристики Страны
+          example: Афганистан
+          type: string
+        fullName:
+          description: Полное название страны
+          example: Исламский Эмират Афганистан
+          type: string
+      type: object
+    _content_v2_directory_countries_get_200_response:
+      example:
+        errorText: ""
+        data:
+        - name: Афганистан
+          fullName: Исламский Эмират Афганистан
+        - name: Афганистан
+          fullName: Исламский Эмират Афганистан
+        additionalErrors: ""
+        error: false
+      properties:
+        data:
+          items:
+            $ref: '#/components/schemas/_content_v2_directory_countries_get_200_response_data_inner'
+          type: array
+        error:
+          description: Флаг ошибки
+          example: false
+          type: boolean
+        errorText:
+          description: Описание ошибки
+          example: ""
+          type: string
+        additionalErrors:
+          description: Дополнительные ошибки
+          example: ""
+          type: string
+      type: object
+    _content_v2_directory_seasons_get_200_response:
+      example:
+        errorText: ""
+        data:
+        - демисезон
+        - демисезон
+        additionalErrors: ""
+        error: false
+      properties:
+        data:
+          description: Массив значений для хар-ки Сезон
+          items:
+            example: демисезон
+            type: string
+          type: array
+        error:
+          description: Флаг ошибки
+          example: false
+          type: boolean
+        errorText:
+          description: Описание ошибки
+          example: ""
+          type: string
+        additionalErrors:
+          description: Дополнительные ошибки
+          example: ""
+          type: string
+      type: object
+    _content_v2_directory_tnved_get_200_response_data_inner:
+      example:
+        tnved: tnved
+        isKiz: true
+      properties:
+        tnved:
+          description: ТНВЭД-код
+          type: string
+        isKiz:
+          description: |
+            - `true` - код маркировки требуется
+            - `false` - код маркировки не требуется
+          type: boolean
+      type: object
+    _content_v2_directory_tnved_get_200_response:
+      example:
+        errorText: errorText
+        data:
+        - tnved: tnved
+          isKiz: true
+        - tnved: tnved
+          isKiz: true
+        additionalErrors: additionalErrors
+        error: false
+      properties:
+        data:
+          description: Данные
+          items:
+            $ref: '#/components/schemas/_content_v2_directory_tnved_get_200_response_data_inner'
+          type: array
+        error:
+          description: Флаг наличия ошибки
+          example: false
+          type: boolean
+        errorText:
+          description: Текст ошибки
+          type: string
+        additionalErrors:
+          description: Дополнительные ошибки
+          type: string
+      type: object
+    _content_v2_directory_vat_get_200_response:
+      example:
+        errorText: errorText
+        data:
+        - data
+        - data
+        additionalErrors: additionalErrors
+        error: true
+      properties:
+        data:
+          items:
+            type: string
+          type: array
+        error:
+          description: Флаг наличия ошибки
+          type: boolean
+        errorText:
+          description: Текст ошибки
+          type: string
+        additionalErrors:
+          description: Дополнительные ошибки
+          type: string
+      type: object
+    _content_v3_media_save_post_request:
+      properties:
+        nmId:
+          description: Артикул Wildberries
+          example: 213864079
+          type: integer
+        data:
+          description: "Ссылки на изображения в том порядке, в котором они будут н\
+            а\_карточке товара"
+          items:
+            example: https://basket-stage-02.wildberries.ru/vol669/part66964/66964260/images/big/2.jpg
+            type: string
+          type: array
+      type: object
+    _content_v3_media_save_post_200_response:
+      example:
+        errorText: errorText
+        data: "{}"
+        additionalErrors: "{}"
+        error: true
+      properties:
+        data:
+          type: object
+        error:
+          description: Флаг ошибки
+          type: boolean
+        errorText:
+          description: Описание ошибки
+          type: string
+        additionalErrors:
+          description: Дополнительные ошибки
+          type: object
+      type: object
+    _content_v3_media_file_post_request:
+      properties:
+        uploadfile:
+          format: binary
+          type: string
+      type: object
+    _content_v2_tags_get_200_response_data:
+      example:
+        color: color
+        name: name
+        id: 0
+      properties:
+        id:
+          description: Числовой идентификатор тега
+          type: integer
+        color:
+          description: Цвет тега
+          type: string
+        name:
+          description: Имя тега
+          type: string
+    _content_v2_tags_get_200_response:
+      example:
+        errorText: ""
+        data:
+          color: color
+          name: name
+          id: 0
+        additionalErrors: ""
+        error: false
+      properties:
+        data:
+          $ref: '#/components/schemas/_content_v2_tags_get_200_response_data'
+        error:
+          description: Флаг ошибки
+          example: false
+          type: boolean
+        errorText:
+          description: Описание ошибки
+          example: ""
+          type: string
+        additionalErrors:
+          description: Дополнительные ошибки
+          example: ""
+          type: string
+      type: object
+    _content_v2_tag_post_request:
+      properties:
+        color:
+          description: |
+            Цвет тега. <dl> <dt>Доступные цвета:</dt> <dd><code>D1CFD7</code> - серый</dd> <dd><code>FEE0E0</code> - красный</dd> <dd><code>ECDAFF</code> - фиолетовый</dd> <dd><code>E4EAFF</code> - синий</dd> <dd><code>DEF1DD</code> - зеленый</dd> <dd><code>FFECC7</code> - желтый</dd> </dl>
+          example: D1CFD7
+          type: string
+        name:
+          description: Имя тега
+          example: Sale
+          type: string
+      type: object
+    _content_v2_tag_post_400_response:
+      oneOf:
+      - $ref: '#/components/schemas/responseBodyContentError400'
+      - $ref: '#/components/schemas/responseContentError4'
+      - $ref: '#/components/schemas/responseContentError6'
+    _content_v2_tag__id__delete_200_response:
+      oneOf:
+      - $ref: '#/components/schemas/responseContentError6'
+      - $ref: '#/components/schemas/responseContentError5'
+    _content_v2_tag__id__delete_400_response:
+      oneOf:
+      - $ref: '#/components/schemas/responseBodyContentError400'
+      - $ref: '#/components/schemas/responseContentError5'
+    _content_v2_tag__id__patch_request:
+      properties:
+        color:
+          description: Цвет тега
+          example: D1CFD7
+          type: string
+        name:
+          description: Имя тега
+          example: Sale
+          type: string
+      type: object
+    _content_v2_tag__id__patch_200_response:
+      oneOf:
+      - $ref: '#/components/schemas/responseContentError6'
+      - $ref: '#/components/schemas/responseContentError4'
+    _content_v2_tag__id__patch_400_response:
+      oneOf:
+      - $ref: '#/components/schemas/responseBodyContentError400'
+      - $ref: '#/components/schemas/responseContentError4'
+    _content_v2_tag_nomenclature_link_post_request:
+      properties:
+        nmID:
+          description: Артикул WB
+          type: integer
+        tagsIDs:
+          description: |
+            Массив числовых идентификаторов тегов.<br>   Что бы снять теги с КТ, необходимо передать пустой массив.<br> Чтобы добавить теги к уже имеющимся в КТ, необходимо в запросе передать новые теги и теги, которые уже есть в КТ.
+          items:
+            description: Числовой идентификатор тега.
+            type: integer
+          type: array
+      type: object
+    _content_v2_cards_delete_trash_post_request_inner:
+      properties:
+        nmIDs:
+          description: Артикул WB (max. 1000)
+          items:
+            type: integer
+          type: array
+      type: object
+    _content_v2_cards_delete_trash_post_200_response:
+      example:
+        errorText: errorText
+        data: "{}"
+        additionalErrors: "{}"
+        error: true
+      properties:
+        data:
+          nullable: true
+          type: object
+        error:
+          description: Флаг ошибки
+          type: boolean
+        errorText:
+          description: Описание ошибки
+          type: string
+        additionalErrors:
+          description: Дополнительные ошибки
+          type: object
+      type: object
+    _content_v2_cards_recover_post_request_inner:
+      properties:
+        nmIDs:
+          description: Артикул WB (max. 1000)
+          type: integer
+      type: object
+    _content_v2_get_cards_trash_post_request_settings_sort:
+      description: Параметр сортировки
+      properties:
+        ascending:
+          description: "Сортировать по `trashedAt` (`false` - по убыванию, `true`\
+            \ - по возрастанию)"
+          type: boolean
+      type: object
+    _content_v2_get_cards_trash_post_request_settings_cursor:
+      description: Курсор
+      properties:
+        limit:
+          description: Сколько КТ выдать в ответе
+          type: integer
+      type: object
+    _content_v2_get_cards_trash_post_request_settings_filter:
+      description: Параметры фильтрации
+      properties:
+        textSearch:
+          description: "Поиск по артикулу продавца, артикулу WB, баркоду."
+          type: string
+      type: object
+    _content_v2_get_cards_trash_post_request_settings:
+      description: Настройки
+      properties:
+        sort:
+          $ref: '#/components/schemas/_content_v2_get_cards_trash_post_request_settings_sort'
+        cursor:
+          $ref: '#/components/schemas/_content_v2_get_cards_trash_post_request_settings_cursor'
+        filter:
+          $ref: '#/components/schemas/_content_v2_get_cards_trash_post_request_settings_filter'
+      type: object
+    _content_v2_get_cards_trash_post_request:
+      properties:
+        settings:
+          $ref: '#/components/schemas/_content_v2_get_cards_trash_post_request_settings'
+      type: object
+    _content_v2_get_cards_trash_post_200_response_cards_inner_sizes_inner:
+      example:
+        wbSize: wbSize
+        skus:
+        - 12345Ejf5
+        - 12345Ejf5
+        techSize: techSize
+        chrtID: 6
+      properties:
+        chrtID:
+          description: ID размера
+          type: integer
+        techSize:
+          description: Размер товара
+          type: string
+        wbSize:
+          description: Российский размер товара
+          type: string
+        skus:
+          description: Массив баркодов
+          items:
+            example: 12345Ejf5
+            type: string
+          type: array
+      type: object
+    _content_v2_get_cards_trash_post_200_response_cards_inner_dimensions:
+      example:
+        isValid: true
+        length: 1
+        width: 5
+        height: 5
+      properties:
+        length:
+          description: "Длина, см"
+          type: integer
+        width:
+          description: "Ширина, см"
+          type: integer
+        height:
+          description: "Высота, см"
+          type: integer
+        isValid:
+          description: |
+            Потенциальная некорректность габаритов товара:
+            - `true` — не выявлена. `"isValid":true` не гарантирует, что размеры указаны корректно. В отдельных случаях (например, при создании новой категории товаров) `"isValid":true` будет возвращаться при любых значениях, кроме нулевых.
+            - `false` — указанные габариты значительно отличаются от средних по категории (предмету). Рекомендуется перепроверить, правильно ли указаны размеры товара в упаковке **в сантиметрах**. Функциональность карточки товара, в том числе начисление логистики и хранения, при этом ограничена не будет. Логистика и хранение продолжают начисляться — по текущим габаритам. Также `"isValid":false` возвращается при отсутствии значений или нулевом значении любой стороны.
+          type: boolean
+      type: object
+    _content_v2_get_cards_trash_post_200_response_cards_inner_characteristics_inner:
+      example:
+        name: name
+        id: 2
+        value:
+        - value
+        - value
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        value:
+          items:
+            type: string
+          type: array
+      type: object
+    _content_v2_get_cards_trash_post_200_response_cards_inner:
+      example:
+        createdAt: createdAt
+        trashedAt: trashedAt
+        characteristics:
+        - name: name
+          id: 2
+          value:
+          - value
+          - value
+        - name: name
+          id: 2
+          value:
+          - value
+          - value
+        sizes:
+        - wbSize: wbSize
+          skus:
+          - 12345Ejf5
+          - 12345Ejf5
+          techSize: techSize
+          chrtID: 6
+        - wbSize: wbSize
+          skus:
+          - 12345Ejf5
+          - 12345Ejf5
+          techSize: techSize
+          chrtID: 6
+        nmID: 0
+        video: video
+        photos:
+        - big: big
+          square: square
+          c516x688: c516x688
+          tm: tm
+          c246x328: c246x328
+        - big: big
+          square: square
+          c516x688: c516x688
+          tm: tm
+          c246x328: c246x328
+        subjectID: subjectID
+        vendorCode: vendorCode
+        subjectName: subjectName
+        dimensions:
+          isValid: true
+          length: 1
+          width: 5
+          height: 5
+      properties:
+        nmID:
+          description: Артикул WB
+          type: integer
+        vendorCode:
+          description: Артикул продавца
+          type: string
+        subjectID:
+          description: Идентификатор предмета
+          type: string
+        subjectName:
+          description: Название предмета
+          type: string
+        photos:
+          description: Массив фото
+          items:
+            $ref: '#/components/schemas/_content_v2_get_cards_list_post_200_response_cards_inner_photos_inner'
+          type: array
+        video:
+          description: URL видео
+          type: string
+        sizes:
+          description: Массив размеров
+          items:
+            $ref: '#/components/schemas/_content_v2_get_cards_trash_post_200_response_cards_inner_sizes_inner'
+          type: array
+        dimensions:
+          $ref: '#/components/schemas/_content_v2_get_cards_trash_post_200_response_cards_inner_dimensions'
+        characteristics:
+          description: "Массив характеристик, при наличии"
+          items:
+            $ref: '#/components/schemas/_content_v2_get_cards_trash_post_200_response_cards_inner_characteristics_inner'
+          type: array
+        createdAt:
+          type: string
+        trashedAt:
+          type: string
+      type: object
+    _content_v2_get_cards_trash_post_200_response_cursor:
+      example:
+        trashedAt: trashedAt
+        total: 9
+        nmID: 7
+      properties:
+        trashedAt:
+          type: string
+        nmID:
+          type: integer
+        total:
+          type: integer
+      type: object
+    _content_v2_get_cards_trash_post_200_response:
+      example:
+        cursor:
+          trashedAt: trashedAt
+          total: 9
+          nmID: 7
+        cards:
+        - createdAt: createdAt
+          trashedAt: trashedAt
+          characteristics:
+          - name: name
+            id: 2
+            value:
+            - value
+            - value
+          - name: name
+            id: 2
+            value:
+            - value
+            - value
+          sizes:
+          - wbSize: wbSize
+            skus:
+            - 12345Ejf5
+            - 12345Ejf5
+            techSize: techSize
+            chrtID: 6
+          - wbSize: wbSize
+            skus:
+            - 12345Ejf5
+            - 12345Ejf5
+            techSize: techSize
+            chrtID: 6
+          nmID: 0
+          video: video
+          photos:
+          - big: big
+            square: square
+            c516x688: c516x688
+            tm: tm
+            c246x328: c246x328
+          - big: big
+            square: square
+            c516x688: c516x688
+            tm: tm
+            c246x328: c246x328
+          subjectID: subjectID
+          vendorCode: vendorCode
+          subjectName: subjectName
+          dimensions:
+            isValid: true
+            length: 1
+            width: 5
+            height: 5
+        - createdAt: createdAt
+          trashedAt: trashedAt
+          characteristics:
+          - name: name
+            id: 2
+            value:
+            - value
+            - value
+          - name: name
+            id: 2
+            value:
+            - value
+            - value
+          sizes:
+          - wbSize: wbSize
+            skus:
+            - 12345Ejf5
+            - 12345Ejf5
+            techSize: techSize
+            chrtID: 6
+          - wbSize: wbSize
+            skus:
+            - 12345Ejf5
+            - 12345Ejf5
+            techSize: techSize
+            chrtID: 6
+          nmID: 0
+          video: video
+          photos:
+          - big: big
+            square: square
+            c516x688: c516x688
+            tm: tm
+            c246x328: c246x328
+          - big: big
+            square: square
+            c516x688: c516x688
+            tm: tm
+            c246x328: c246x328
+          subjectID: subjectID
+          vendorCode: vendorCode
+          subjectName: subjectName
+          dimensions:
+            isValid: true
+            length: 1
+            width: 5
+            height: 5
+      properties:
+        cards:
+          description: Массив карточек товаров
+          items:
+            $ref: '#/components/schemas/_content_v2_get_cards_trash_post_200_response_cards_inner'
+          type: array
+        cursor:
+          $ref: '#/components/schemas/_content_v2_get_cards_trash_post_200_response_cursor'
+      type: object
+    responseCardCreate_additionalErrors_oneOf:
+      example:
+        string: string
+      properties:
+        string:
+          type: string
+      type: object
+    responseCardCreate_additionalErrors:
+      description: Дополнительные ошибки
+      oneOf:
+      - $ref: '#/components/schemas/responseCardCreate_additionalErrors_oneOf'
+      - type: string
+    responseContentError1_additionalErrors:
+      description: Дополнительные ошибки
+      example:
+        error: error
+      properties:
+        error:
+          type: string
+      type: object
+    responseBodyContentError400_additionalErrors:
+      description: Дополнительные ошибки
+      properties:
+        MoveNmsToTrash:
+          type: string
+      type: object
+    responseContentError4_additionalErrors:
+      description: Дополнительные ошибки
+      example:
+        description: description
+      properties:
+        description:
+          type: string
+      type: object
+    responseContentError5_additionalErrors:
+      description: Дополнительные ошибки
+      properties:
+        tagID:
+          type: string
+      type: object
+  securitySchemes:
+    HeaderApiKey:
+      in: header
+      name: Authorization
+      type: apiKey
+x-tagGroups:
+- name: Контент
+  tags:
+  - Загрузка
+  - Просмотр
+  - Конфигуратор
+  - Медиафайлы
+  - Теги
+  - Корзина

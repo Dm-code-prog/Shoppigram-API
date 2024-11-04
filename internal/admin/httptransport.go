@@ -11,126 +11,6 @@ import (
 	telegramusers "github.com/shoppigram-com/marketplace-api/internal/auth"
 )
 
-// MakeHandler returns a handler for the admin service.
-func MakeHandler(bs Service, authMw endpoint.Middleware) http.Handler {
-	opts := []kithttp.ServerOption{
-		kithttp.ServerErrorEncoder(encodeErrorHTTP),
-	}
-	opts = append(opts, telegramusers.AuthServerBefore...)
-
-	getMarketplacesHandler := kithttp.NewServer(
-		authMw(makeGetShopEndpoint(bs)),
-		gokithelper.DecodeEmptyRequest,
-		encodeResponse,
-		opts...,
-	)
-
-	createMarketplaceHandler := kithttp.NewServer(
-		authMw(makeCreateShopEndpoint(bs)),
-		decodeCreateMarketplaceRequest,
-		encodeResponse,
-		opts...,
-	)
-
-	updateMarketplaceHandler := kithttp.NewServer(
-		authMw(makeUpdateShopEndpoint(bs)),
-		decodeUpdateMarketplaceRequest,
-		encodeResponse,
-		opts...,
-	)
-
-	deleteMarketplaceHandler := kithttp.NewServer(
-		authMw(makeDeleteShopEndpoint(bs)),
-		decodeDeleteMarketplaceRequest,
-		encodeResponse,
-		opts...,
-	)
-
-	createMarketplaceUploadLogoURLHandler := kithttp.NewServer(
-		authMw(makeCreateShopLogoUploadURLEndpoint(bs)),
-		decodeCreateMarketplaceUploadLogoURLRequest,
-		encodeResponse,
-		opts...,
-	)
-
-	createProductHandler := kithttp.NewServer(
-		authMw(makeCreateProductEndpoint(bs)),
-		decodeCreateProductRequest,
-		encodeResponse,
-		opts...,
-	)
-
-	updateProductHandler := kithttp.NewServer(
-		authMw(makeUpdateProductEndpoint(bs)),
-		decodeUpdateProductRequest,
-		encodeResponse,
-		opts...,
-	)
-
-	deleteProductHandler := kithttp.NewServer(
-		authMw(makeDeleteProductEndpoint(bs)),
-		decodeDeleteProductRequest,
-		encodeResponse,
-		opts...,
-	)
-
-	getOrdersHandler := kithttp.NewServer(
-		authMw(makeGetOrdersEndpoint(bs)),
-		decodeGetOrdersRequest,
-		encodeResponse,
-		opts...,
-	)
-
-	createProductImageUploadURL := kithttp.NewServer(
-		authMw(makeCreateProductImageUploadURLEndpoint(bs)),
-		decodeCreateProductImageUploadURLRequest,
-		encodeResponse,
-		opts...,
-	)
-
-	publishMarketplaceBannerToChannelHandler := kithttp.NewServer(
-		authMw(makePublishShopBannerToChannelEndpoint(bs)),
-		decodePublishMarketplaceBannerToChannelRequest,
-		encodeResponse,
-		opts...,
-	)
-
-	getTelegramChannels := kithttp.NewServer(
-		authMw(makeGetTelegramChannelsEndpoint(bs)),
-		gokithelper.DecodeEmptyRequest,
-		encodeResponse,
-		opts...,
-	)
-
-	getBalanceHandler := kithttp.NewServer(
-		authMw(makeGetBalanceEndpoint(bs)),
-		gokithelper.DecodeEmptyRequest,
-		encodeResponse,
-		opts...,
-	)
-
-	r := chi.NewRouter()
-	r.Get("/", getMarketplacesHandler.ServeHTTP)
-	r.Post("/", createMarketplaceHandler.ServeHTTP)
-	r.Put("/{web_app_id}", updateMarketplaceHandler.ServeHTTP)
-	r.Delete("/{web_app_id}", deleteMarketplaceHandler.ServeHTTP)
-
-	r.Post("/products/{web_app_id}", createProductHandler.ServeHTTP)
-	r.Put("/products/{web_app_id}", updateProductHandler.ServeHTTP)
-	r.Delete("/products/{web_app_id}", deleteProductHandler.ServeHTTP)
-
-	r.Get("/orders", getOrdersHandler.ServeHTTP)
-	r.Get("/balance", getBalanceHandler.ServeHTTP)
-
-	r.Post("/products/upload-image-url/{web_app_id}", createProductImageUploadURL.ServeHTTP)
-	r.Post("/upload-logo-url/{web_app_id}", createMarketplaceUploadLogoURLHandler.ServeHTTP)
-
-	r.Post("/publish-to-channel/{web_app_id}", publishMarketplaceBannerToChannelHandler.ServeHTTP)
-	r.Get("/telegram-channels", getTelegramChannels.ServeHTTP)
-
-	return r
-}
-
 // MakeHandlerV2 returns an HTTP handler for the admin service.
 func MakeHandlerV2(bs Service, authMw endpoint.Middleware) http.Handler {
 	opts := []kithttp.ServerOption{
@@ -139,29 +19,43 @@ func MakeHandlerV2(bs Service, authMw endpoint.Middleware) http.Handler {
 	opts = append(opts, telegramusers.AuthServerBefore...)
 
 	getShopsH := kithttp.NewServer(
-		authMw(makeGetShopEndpoint(bs)),
+		authMw(makeGetShopsEndpoint(bs)),
 		gokithelper.DecodeEmptyRequest,
+		encodeResponse,
+		opts...,
+	)
+
+	getShopH := kithttp.NewServer(
+		authMw(makeGetShopEndpoint(bs)),
+		decodeGetShopRequest,
 		encodeResponse,
 		opts...,
 	)
 
 	createShopH := kithttp.NewServer(
 		authMw(makeCreateShopEndpoint(bs)),
-		decodeCreateMarketplaceRequest,
+		decodeCreateShopRequest,
 		encodeResponse,
 		opts...,
 	)
 
 	updateShopH := kithttp.NewServer(
 		authMw(makeUpdateShopEndpoint(bs)),
-		decodeUpdateMarketplaceRequest,
+		decodeUpdateShopRequest,
 		encodeResponse,
 		opts...,
 	)
 
 	deleteShopH := kithttp.NewServer(
 		authMw(makeDeleteShopEndpoint(bs)),
-		decodeDeleteMarketplaceRequest,
+		decodeDeleteShopRequest,
+		encodeResponse,
+		opts...,
+	)
+
+	enableShopSyncH := kithttp.NewServer(
+		authMw(makeEnableShopSyncEndpoint(bs)),
+		decodeEnableShopSyncRequest,
 		encodeResponse,
 		opts...,
 	)
@@ -231,9 +125,11 @@ func MakeHandlerV2(bs Service, authMw endpoint.Middleware) http.Handler {
 
 	r := chi.NewRouter()
 	r.Get("/shops", getShopsH.ServeHTTP)
+	r.Get("/shops/{web_app_id}", getShopH.ServeHTTP)
 	r.Post("/shops", createShopH.ServeHTTP)
 	r.Put("/shops/{web_app_id}", updateShopH.ServeHTTP)
 	r.Delete("/shops/{web_app_id}", deleteShopH.ServeHTTP)
+	r.Put("/shops/sync/{web_app_id}", enableShopSyncH.ServeHTTP)
 
 	r.Post("/shops/products/{web_app_id}", createProductH.ServeHTTP)
 	r.Put("/shops/products/{web_app_id}", updateProductH.ServeHTTP)

@@ -12,6 +12,89 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type ExtenalSyncStatus string
+
+const (
+	ExtenalSyncStatusSuccess ExtenalSyncStatus = "success"
+	ExtenalSyncStatusFailure ExtenalSyncStatus = "failure"
+)
+
+func (e *ExtenalSyncStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ExtenalSyncStatus(s)
+	case string:
+		*e = ExtenalSyncStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ExtenalSyncStatus: %T", src)
+	}
+	return nil
+}
+
+type NullExtenalSyncStatus struct {
+	ExtenalSyncStatus ExtenalSyncStatus
+	Valid             bool // Valid is true if ExtenalSyncStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullExtenalSyncStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.ExtenalSyncStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ExtenalSyncStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullExtenalSyncStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ExtenalSyncStatus), nil
+}
+
+type ExternalProvider string
+
+const (
+	ExternalProviderWildberries ExternalProvider = "wildberries"
+)
+
+func (e *ExternalProvider) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ExternalProvider(s)
+	case string:
+		*e = ExternalProvider(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ExternalProvider: %T", src)
+	}
+	return nil
+}
+
+type NullExternalProvider struct {
+	ExternalProvider ExternalProvider
+	Valid            bool // Valid is true if ExternalProvider is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullExternalProvider) Scan(value interface{}) error {
+	if value == nil {
+		ns.ExternalProvider, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ExternalProvider.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullExternalProvider) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ExternalProvider), nil
+}
+
 type OrderState string
 
 const (
@@ -296,15 +379,17 @@ type PaymentsExtraInfo struct {
 }
 
 type Product struct {
-	ID            uuid.UUID
-	WebAppID      pgtype.UUID
-	Name          string
-	Description   pgtype.Text
-	Price         float64
-	PriceCurrency string
-	ImageUrl      pgtype.Text
-	Category      pgtype.Text
-	IsDeleted     bool
+	ID               uuid.UUID
+	WebAppID         pgtype.UUID
+	Name             string
+	Description      pgtype.Text
+	Price            float64
+	Category         pgtype.Text
+	IsDeleted        bool
+	ExternalProvider NullExternalProvider
+	ExternalID       pgtype.Text
+	CreatedAt        pgtype.Timestamp
+	UpdatedAt        pgtype.Timestamp
 }
 
 type ProductExternalLink struct {
@@ -314,6 +399,39 @@ type ProductExternalLink struct {
 	CreatedAt pgtype.Timestamp
 	UpdatedAt pgtype.Timestamp
 	Label     string
+}
+
+type ProductPhoto struct {
+	ID        uuid.UUID
+	Url       string
+	ProductID uuid.UUID
+	CreatedAt pgtype.Timestamp
+	UpdatedAt pgtype.Timestamp
+}
+
+type ProductVariant struct {
+	ID              uuid.UUID
+	CreatedAt       pgtype.Timestamp
+	UpdatedAt       pgtype.Timestamp
+	ProductID       uuid.UUID
+	Dimensions      []byte
+	Price           pgtype.Numeric
+	DiscountedPrice pgtype.Numeric
+	IsDeleted       bool
+}
+
+type ShopExternalConnection struct {
+	ID               uuid.UUID
+	CreatedAt        pgtype.Timestamp
+	UpdatedAt        pgtype.Timestamp
+	WebAppID         uuid.UUID
+	IsActive         bool
+	ExternalProvider ExternalProvider
+	ApiKey           string
+	LastSyncAt       pgtype.Timestamp
+	LastFailureAt    pgtype.Timestamp
+	LastSyncStatus   NullExtenalSyncStatus
+	LastError        pgtype.Text
 }
 
 type TelegramChannel struct {

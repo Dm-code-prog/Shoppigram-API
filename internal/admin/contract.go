@@ -9,15 +9,25 @@ import (
 type (
 	shopType string
 
+	// SyncDetails represents the synchronization status of a shop
+	// with an external provider
+	SyncDetails struct {
+		ExternalProvider string    `json:"external_provider"`
+		IsActive         bool      `json:"is_active"`
+		LastSyncedAt     time.Time `json:"last_synced_at"`
+		LastStatus       string    `json:"last_status"`
+	}
+
 	// Shop stores the information about a shop application
 	Shop struct {
-		ID                    uuid.UUID `json:"id"`
-		Name                  string    `json:"name"`
-		ShortName             string    `json:"short_name"`
-		IsVerified            bool      `json:"is_verified"`
-		Type                  shopType  `json:"type"`
-		Currency              string    `json:"currency"`
-		OnlinePaymentsEnabled bool      `json:"online_payments_enabled"`
+		ID                    uuid.UUID    `json:"id"`
+		Name                  string       `json:"name"`
+		ShortName             string       `json:"short_name"`
+		IsVerified            bool         `json:"is_verified"`
+		Type                  shopType     `json:"type"`
+		Currency              string       `json:"currency"`
+		OnlinePaymentsEnabled bool         `json:"online_payments_enabled"`
+		SyncDetails           *SyncDetails `json:"sync_details,omitempty"`
 	}
 
 	// ProductExternalLink is a link to a product
@@ -44,7 +54,7 @@ type (
 		Balance  float64 `json:"balance"`
 	}
 
-	// OrderProduct represents a product in a marketplace
+	// OrderProduct represents a product in a shop
 	OrderProduct struct {
 		ID       uuid.UUID `json:"id"`
 		Name     string    `json:"name"`
@@ -77,10 +87,20 @@ type (
 
 	// GetShopsResponse defines the response for the GetShops endpoint
 	GetShopsResponse struct {
-		Shops []Shop `json:"marketplaces"`
+		Shops []Shop `json:"shops"`
 	}
 
-	// CreateShopRequest creates a new marketplace
+	// GetShopRequest specifies the information required to get a shop
+	GetShopRequest struct {
+		ExternalUserID int64
+		WebAppID       uuid.UUID
+	}
+
+	// GetShopResponse specifies the information returned
+	// about a shop
+	GetShopResponse Shop
+
+	// CreateShopRequest creates a new shop
 	// for a client with a given name and shortname
 	CreateShopRequest struct {
 		ShortName      string   `json:"short_name"`
@@ -90,22 +110,32 @@ type (
 		ExternalUserID int64
 	}
 
-	// CreateShopResponse returns the ID of the created marketplace
+	// CreateShopResponse returns the ID of the created shop
 	CreateShopResponse struct {
 		ID uuid.UUID `json:"id"`
 	}
 
 	// UpdateShopRequest allows editing the name
-	// of the marketplace
+	// of the shop
 	UpdateShopRequest struct {
 		ID             uuid.UUID
 		Name           string `json:"name"`
 		ExternalUserID int64
 	}
-	// DeleteShopRequest specifies a marketplace that needs to be deleted
+	// DeleteShopRequest specifies a shop that needs to be deleted
 	DeleteShopRequest struct {
 		WebAppId       uuid.UUID
 		ExternalUserID int64
+	}
+
+	// ConfigureShopSyncRequest specifies the information required to enable
+	// the synchronization of a shop with an external provider
+	ConfigureShopSyncRequest struct {
+		WebAppID         uuid.UUID
+		ExternalUserID   int64
+		IsActive         bool   `json:"is_active"`
+		ExternalProvider string `json:"external_provider"`
+		APIKey           string `json:"api_key"`
 	}
 
 	// CreateProductRequest specifies the information about a product
@@ -125,7 +155,7 @@ type (
 	}
 
 	// UpdateProductRequest specifies the new information about a product
-	// in a marketplace
+	// in a shop
 	UpdateProductRequest struct {
 		ID             uuid.UUID `json:"id"`
 		WebAppID       uuid.UUID
@@ -137,7 +167,7 @@ type (
 		ExternalLinks  []ProductExternalLink `json:"external_links"`
 	}
 
-	// DeleteProductRequest specifies a product in a marketplace that needs to be deleted
+	// DeleteProductRequest specifies a product in a shop that needs to be deleted
 	DeleteProductRequest struct {
 		WebAppID       uuid.UUID
 		ID             uuid.UUID `json:"id"`
@@ -145,7 +175,7 @@ type (
 	}
 
 	// CreateProductImageUploadURLRequest specifies the request for creating a new product image upload URL
-	// for a product in a marketplace
+	// for a product in a shop
 	//
 	// The user will be able to upload an image directly to the DigitalOcean Space
 	CreateProductImageUploadURLRequest struct {
@@ -161,14 +191,14 @@ type (
 		Key       string `json:"key"`
 	}
 
-	// CreateShopLogoUploadURLRequest specifies the request for creating a new marketplace logo upload URL
+	// CreateShopLogoUploadURLRequest specifies the request for creating a new shop logo upload URL
 	CreateShopLogoUploadURLRequest struct {
 		WebAppID       uuid.UUID
 		Extension      string `json:"extension"`
 		ExternalUserID int64
 	}
 
-	// CreateShopLogoUploadURLResponse specifies the response for creating a new marketplace logo upload URL
+	// CreateShopLogoUploadURLResponse specifies the response for creating a new shop logo upload URL
 	CreateShopLogoUploadURLResponse struct {
 		UploadURL string `json:"upload_url"`
 		Key       string `json:"key"`
@@ -199,18 +229,13 @@ type (
 		Balances []Balance `json:"balances"`
 	}
 
-	// GetTelegramChannelOwnerResponse contains the data about Telegram channels owned by a specific user
-	GetTelegramChannelOwnerResponse struct {
-		ChatId int64
-	}
-
 	// GetOrdersRequest is a filter for getting orders
 	GetOrdersRequest struct {
 		ExternalUserID int64
-		State          string
-		MarketplaceID  uuid.UUID
-		Limit          int
-		Offset         int
+		State          string    `json:"state"`
+		ShopID         uuid.UUID `json:"shop_id"`
+		Limit          int       `json:"limit"`
+		Offset         int       `json:"offset"`
 	}
 
 	GetOrdersResponse struct {
@@ -227,7 +252,7 @@ type (
 		AdminChatID int64
 	}
 
-	// SendShopBannerParams is a struct for request params to send a marketplace banner to a Telegram channel
+	// SendShopBannerParams is a struct for request params to send a shop banner to a Telegram channel
 	// with a TWA link button markup
 	SendShopBannerParams struct {
 		WebAppLink    string
@@ -240,14 +265,6 @@ type (
 		ChatID    int64
 		MessageID int64
 	}
-
-	// DOSpacesConfig holds the credentials for the S3 bucket
-	DOSpacesConfig struct {
-		Endpoint string
-		ID       string
-		Secret   string
-		Bucket   string
-	}
 )
 
 // interfaces
@@ -255,10 +272,16 @@ type (
 	// Repository provides access to the admin storage
 	Repository interface {
 		GetShops(ctx context.Context, req GetShopsRequest) (GetShopsResponse, error)
-		GetShortName(ctx context.Context, id uuid.UUID) (string, error)
+
+		GetShop(ctx context.Context, req GetShopRequest) (GetShopResponse, error)
+
 		CreateShop(ctx context.Context, req CreateShopRequest) (CreateShopResponse, error)
+
 		UpdateShop(ctx context.Context, req UpdateShopRequest) error
+
 		SoftDeleteShop(ctx context.Context, req DeleteShopRequest) error
+
+		ConfigureShopSync(ctx context.Context, req ConfigureShopSyncRequest) error
 
 		CreateProduct(ctx context.Context, req CreateProductRequest) (CreateProductResponse, error)
 		UpdateProduct(ctx context.Context, req UpdateProductRequest) error
@@ -268,7 +291,6 @@ type (
 		GetBalance(ctx context.Context, req GetBalanceRequest) (GetBalanceResponse, error)
 
 		IsShopOwner(ctx context.Context, externalUserID int64, webAppID uuid.UUID) (bool, error)
-		IsProductOwner(ctx context.Context, externalUserID int64, productID uuid.UUID) (bool, error)
 		IsTelegramChannelOwner(ctx context.Context, externalUserID, channelID int64) (bool, error)
 
 		GetTelegramChannels(ctx context.Context, ownerExternalID int64) (GetTelegramChannelsResponse, error)
@@ -281,22 +303,53 @@ type (
 	}
 
 	Service interface {
-		GetShops(ctx context.Context, req GetShopsRequest) (GetShopsResponse, error)
-		CreateShop(ctx context.Context, req CreateShopRequest) (CreateShopResponse, error)
-		UpdateShop(ctx context.Context, req UpdateShopRequest) error
-		DeleteShop(ctx context.Context, req DeleteShopRequest) error
+		// GetShops returns a list of shops owned by a user
+		GetShops(context.Context, GetShopsRequest) (GetShopsResponse, error)
 
-		CreateProduct(ctx context.Context, req CreateProductRequest) (CreateProductResponse, error)
-		UpdateProduct(ctx context.Context, req UpdateProductRequest) error
-		DeleteProduct(ctx context.Context, req DeleteProductRequest) error
+		// GetShop returns the information about a shop
+		GetShop(context.Context, GetShopRequest) (GetShopResponse, error)
 
-		GetOrders(ctx context.Context, req GetOrdersRequest) (GetOrdersResponse, error)
-		GetBalance(ctx context.Context, req GetBalanceRequest) (GetBalanceResponse, error)
+		// CreateShop creates a new shop for a user
+		CreateShop(context.Context, CreateShopRequest) (CreateShopResponse, error)
 
-		CreateProductImageUploadURL(ctx context.Context, request CreateProductImageUploadURLRequest) (CreateProductImageUploadURLResponse, error)
-		CreateShopLogoUploadURL(ctx context.Context, request CreateShopLogoUploadURLRequest) (CreateShopLogoUploadURLResponse, error)
+		// UpdateShop updates a shop
+		UpdateShop(context.Context, UpdateShopRequest) error
 
-		GetTelegramChannels(ctx context.Context, ownerExternalID int64) (GetTelegramChannelsResponse, error)
-		PublishShopBannerToChannel(ctx context.Context, req PublishShopBannerToChannelRequest) error
+		// DeleteShop deletes a shop
+		DeleteShop(context.Context, DeleteShopRequest) error
+
+		// ConfigureShopSync enables or disables the synchronization of a shop with an external provider
+		ConfigureShopSync(context.Context, ConfigureShopSyncRequest) error
+
+		// CreateProduct creates a new product in a shop
+		CreateProduct(context.Context, CreateProductRequest) (CreateProductResponse, error)
+
+		// UpdateProduct updates a product in a shop
+		UpdateProduct(context.Context, UpdateProductRequest) error
+
+		// DeleteProduct deletes a product in a shop
+		DeleteProduct(context.Context, DeleteProductRequest) error
+
+		// GetOrders returns a list of orders for a user
+		// can be filtered by shop, state, etc.
+		GetOrders(context.Context, GetOrdersRequest) (GetOrdersResponse, error)
+
+		// GetBalance returns the balance of a user
+		// across all shops
+		//
+		// Not production-ready, don't use it
+		GetBalance(context.Context, GetBalanceRequest) (GetBalanceResponse, error)
+
+		// CreateProductImageUploadURL returns a URL for uploading a product image
+		CreateProductImageUploadURL(context.Context, CreateProductImageUploadURLRequest) (CreateProductImageUploadURLResponse, error)
+
+		// CreateShopLogoUploadURL returns a URL for uploading a shop logo
+		CreateShopLogoUploadURL(context.Context, CreateShopLogoUploadURLRequest) (CreateShopLogoUploadURLResponse, error)
+
+		// GetTelegramChannels returns a list of Telegram channels owned by a user
+		GetTelegramChannels(context.Context, int64) (GetTelegramChannelsResponse, error)
+
+		// PublishShopBannerToChannel publishes a banner to a Telegram channel
+		PublishShopBannerToChannel(context.Context, PublishShopBannerToChannelRequest) error
 	}
 )

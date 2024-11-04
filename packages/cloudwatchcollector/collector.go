@@ -34,6 +34,23 @@ var (
 	once      sync.Once
 )
 
+const (
+	// StatusOK is the status for successful metrics.
+	StatusOK = "OK"
+	// StatusKO is the status for failed metrics.
+	StatusKO = "KO"
+)
+
+// StatusFromError returns the status string based on the error.
+// It returns "OK" if the error is nil, otherwise "KO".
+func StatusFromError(err error) string {
+	if err != nil {
+		return StatusKO
+	}
+
+	return StatusOK
+}
+
 // Init initializes the metricsCollector with the given namespace.
 // It must be called before using the Increment function.
 func Init(namespace string) {

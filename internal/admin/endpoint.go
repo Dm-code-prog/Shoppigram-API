@@ -8,10 +8,8 @@ import (
 	telegramusers "github.com/shoppigram-com/marketplace-api/internal/auth"
 )
 
-// makeGetShopEndpoint constructs a GetShops endpoint wrapping the service.
-//
-// Path: GET /api/v1/private/marketplaces
-func makeGetShopEndpoint(s Service) endpoint.Endpoint {
+// makeGetShopsEndpoint constructs a GetShops endpoint wrapping the service.
+func makeGetShopsEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, _ any) (any, error) {
 		usr, err := telegramusers.GetUserFromContext(ctx)
 		if err != nil {
@@ -28,10 +26,32 @@ func makeGetShopEndpoint(s Service) endpoint.Endpoint {
 	}
 }
 
+// makeGetShopEndpoint creates a new endpoint for access to
+// GetShop service method
+func makeGetShopEndpoint(s Service) endpoint.Endpoint {
+	return func(ctx context.Context, req any) (any, error) {
+		usr, err := telegramusers.GetUserFromContext(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		request, ok := req.(GetShopRequest)
+		if !ok {
+			return nil, ErrorBadRequest
+		}
+
+		request.ExternalUserID = usr.ExternalId
+		response, err := s.GetShop(ctx, request)
+		if err != nil {
+			return nil, errors.Wrap(err, "s.GetShop")
+		}
+
+		return response, nil
+	}
+}
+
 // makeCreateShopEndpoint creates a new endpoint for access to
 // CreateShop service method
-//
-// Path: POST /api/v1/private/marketplaces
 func makeCreateShopEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
 		usr, err := telegramusers.GetUserFromContext(ctx)
@@ -56,8 +76,6 @@ func makeCreateShopEndpoint(s Service) endpoint.Endpoint {
 
 // makeDeleteShopEndpoint creates a new endpoint for access to
 // SoftDeleteShop service method
-//
-// Path: DELETE /api/v1/private/marketplaces
 func makeDeleteShopEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
 		usr, err := telegramusers.GetUserFromContext(ctx)
@@ -82,8 +100,6 @@ func makeDeleteShopEndpoint(s Service) endpoint.Endpoint {
 
 // makeUpdateShopEndpoint creates a new endpoint for access to
 // UpdateShop service method
-//
-// Path: PUT /api/v1/private/marketplaces/<web_app_id>
 func makeUpdateShopEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
 		usr, err := telegramusers.GetUserFromContext(ctx)
@@ -108,8 +124,6 @@ func makeUpdateShopEndpoint(s Service) endpoint.Endpoint {
 
 // makeCreateProductEndpoint creates a new endpoint for access to
 // CreateProduct service method
-//
-// Path: POST /api/v1/private/marketplaces/products/<web_app_id>
 func makeCreateProductEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
 		usr, err := telegramusers.GetUserFromContext(ctx)
@@ -129,6 +143,30 @@ func makeCreateProductEndpoint(s Service) endpoint.Endpoint {
 		}
 
 		return response, nil
+	}
+}
+
+// makeEnableShopSyncEndpoint creates a new endpoint for access to
+// ConfigureShopSync service method
+func makeEnableShopSyncEndpoint(s Service) endpoint.Endpoint {
+	return func(ctx context.Context, req any) (any, error) {
+		usr, err := telegramusers.GetUserFromContext(ctx)
+		if err != nil {
+			return nil, err
+		}
+
+		request, ok := req.(ConfigureShopSyncRequest)
+		if !ok {
+			return nil, ErrorBadRequest
+		}
+
+		request.ExternalUserID = usr.ExternalId
+		err = s.ConfigureShopSync(ctx, request)
+		if err != nil {
+			return nil, errors.Wrap(err, "s.ConfigureShopSync")
+		}
+
+		return nil, nil
 	}
 }
 
@@ -230,8 +268,6 @@ func makeGetBalanceEndpoint(s Service) endpoint.Endpoint {
 
 // makeCreateProductImageUploadURLEndpoint creates a new endpoint for access to
 // CreateProductImageUploadURL service method
-//
-// Path: POST /api/v1/private/marketplaces/products/upload-image-url/<web_app_id>
 func makeCreateProductImageUploadURLEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
 		usr, err := telegramusers.GetUserFromContext(ctx)
@@ -256,8 +292,6 @@ func makeCreateProductImageUploadURLEndpoint(s Service) endpoint.Endpoint {
 
 // makeCreateShopLogoUploadURLEndpoint creates a new endpoint for access to
 // CreateShopLogoUploadURL service method
-//
-// Path: POST /api/v1/private/marketplaces/upload-logo-url/<web_app_id>
 func makeCreateShopLogoUploadURLEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
 		usr, err := telegramusers.GetUserFromContext(ctx)
@@ -282,8 +316,6 @@ func makeCreateShopLogoUploadURLEndpoint(s Service) endpoint.Endpoint {
 
 // makePublishShopBannerToChannelEndpoint creates a new endpoint for access to
 // PublishShopBannerToChannel service method
-//
-// Path: POST /api/v1/private/marketplaces/publish-to-channel/<web_app_id>
 func makePublishShopBannerToChannelEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, req any) (any, error) {
 		usr, err := telegramusers.GetUserFromContext(ctx)
@@ -308,8 +340,6 @@ func makePublishShopBannerToChannelEndpoint(s Service) endpoint.Endpoint {
 
 // makeGetTelegramChannelsEndpoint creates a new endpoint for access to
 // GetTelegramChannels service method
-//
-// Path: GET /api/v1/private/telegram-channels
 func makeGetTelegramChannelsEndpoint(s Service) endpoint.Endpoint {
 	return func(ctx context.Context, _ any) (any, error) {
 		usr, err := telegramusers.GetUserFromContext(ctx)

@@ -4,6 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/shoppigram-com/marketplace-api/internal/sync/wildberries"
 	"github.com/shoppigram-com/marketplace-api/packages/cloudwatchcollector"
 	"github.com/shoppigram-com/marketplace-api/packages/cors"
 	"github.com/shoppigram-com/marketplace-api/packages/health"
@@ -12,7 +17,6 @@ import (
 	"net/http"
 	"os"
 	"regexp"
-	"strings"
 	"syscall"
 	"time"
 
@@ -35,10 +39,10 @@ func main() {
 	var config Environment
 	if _, err := env.UnmarshalFromEnviron(&config); err != nil {
 		fmt.Println("failed to load environment variables", logger.SilentError(err))
-		os.Exit(-1)
+		os.Exit(1)
 	}
 
-	log := logger.New(config.Zap.LogLevel)
+	log := logger.New(config.Logging.LogLevel)
 
 	cloudwatchcollector.Init(config.AWS.Cloudwatch.Namespace)
 	defer cloudwatchcollector.Shutdown()
@@ -94,6 +98,18 @@ func main() {
 		_ = json.NewEncoder(w).Encode(map[string]string{"error": "the path you requested does not exist"})
 	})
 
+	s3Instance := s3.New(
+		session.Must(session.NewSession(&aws.Config{
+			Region: aws.String("fra1"),
+			Credentials: credentials.NewStaticCredentials(
+				config.AWS.S3.Key,
+				config.AWS.S3.Secret,
+				"",
+			),
+			Endpoint:         aws.String(config.AWS.S3.Endpoint),
+			S3ForcePathStyle: aws.Bool(false),
+		})))
+
 	////////////////////////////////////// TELEGRAM USERS //////////////////////////////////////
 	authMw := auth.MakeAuthMiddleware(config.Bot.Token)
 	tgUsersRepo := auth.NewPg(db)
@@ -103,7 +119,7 @@ func main() {
 	)
 	authHandler := auth.MakeHandler(tgUsersService, authMw)
 
-	////////////////////////////////////// MARKETPLACES //////////////////////////////////////
+	////////////////////////////////////// SHOP API //////////////////////////////////////
 	marketplacesRepo := app.NewPg(db)
 	marketplacesService := app.NewServiceWithObservability(
 		app.New(marketplacesRepo, config.Cache.MaxSize),
@@ -113,76 +129,77 @@ func main() {
 	ordersHandler := app.MakeOrdersHandler(marketplacesService, authMw)
 
 	////////////////////////////////////// NOTIFICATIONS //////////////////////////////////////
-	notificationsRepo := notifications.NewPg(
-		db,
-		config.NewOrderNotifications.BatchSize,
-		config.NewMarketplaceNotifications.BatchSize,
-		config.VerifiedMarketplaceNotifications.BatchSize,
-	)
-
-	insertPosition := strings.Index(config.DigitalOcean.Spaces.Endpoint, "https://")
-	if insertPosition == -1 {
-		log.Error("Images storage endpoint incorrect!")
-	}
-	insertPosition += len("https://")
-
 	notificationsService := notifications.New(
-		notificationsRepo,
+		notifications.NewPg(
+			db,
+			config.Jobs.Notifications.Orders.BatchSize,
+			config.Jobs.Notifications.Orders.BatchSize,
+			config.Jobs.Notifications.Orders.BatchSize,
+		),
 		log.With(zap.String("service", "notifications")),
-		time.Duration(config.NewOrderNotifications.TimeoutSec)*time.Second,
-		time.Duration(config.NewMarketplaceNotifications.TimeoutSec)*time.Second,
-		time.Duration(config.VerifiedMarketplaceNotifications.TimeoutSec)*time.Second,
+		time.Duration(config.Jobs.Notifications.Orders.TimeoutSec)*time.Second,
+		time.Duration(config.Jobs.Notifications.NewShops.TimeoutSec)*time.Second,
+		time.Duration(config.Jobs.Notifications.VerfiedShops.TimeoutSec)*time.Second,
 		config.Bot.Token,
 		config.Bot.Name,
-		config.DigitalOcean.Spaces.Endpoint[:insertPosition]+
-			config.DigitalOcean.Spaces.Bucket+"."+
-			config.DigitalOcean.Spaces.Endpoint[insertPosition:],
 	)
 
-	////////////////////////////////////// RUN NOTIFICATION JOBS //////////////////////////////////////
-	if config.NewOrderNotifications.IsEnabled {
-		g.Add(notificationsService.RunOrdersNotifier, func(err error) {
-			_ = notificationsService.Shutdown()
+	////////////////////////////////////// SYNC //////////////////////////////////////
+	wb := wildberries.New(wildberries.NewPg(db), log.With(zap.String("service", "wildberries")))
+
+	////////////////////////////////////// RUN JOBS //////////////////////////////////////
+	if config.Jobs.Notifications.Orders.IsEnabled {
+		g.Add(notificationsService.RunOrdersJob, func(err error) {
+			log.Error("new order notifications job exited with error", logger.SilentError(err))
+			notificationsService.Shutdown(err)
 		})
 	} else {
 		log.Warn("new order notifications job is disabled")
 	}
 
-	if config.NewMarketplaceNotifications.IsEnabled {
-		g.Add(notificationsService.RunNewMarketplaceNotifier, func(err error) {
-			_ = notificationsService.Shutdown()
+	if config.Jobs.Notifications.NewShops.IsEnabled {
+		g.Add(notificationsService.RunNewShopsJob, func(err error) {
+			log.Error("new shop notifications job exited with error", logger.SilentError(err))
+			notificationsService.Shutdown(err)
 		})
 	} else {
-		log.Warn("new marketplace notifications job is disabled")
+		log.Warn("new shop notifications job is disabled")
 	}
 
-	if config.VerifiedMarketplaceNotifications.IsEnabled {
-		g.Add(notificationsService.RunVerifiedMarketplaceNotifier, func(err error) {
-			_ = notificationsService.Shutdown()
+	if config.Jobs.Notifications.VerfiedShops.IsEnabled {
+		g.Add(notificationsService.RunVerifiedShopsJob, func(err error) {
+			log.Error("verified shop notifications job exited with error", logger.SilentError(err))
+			notificationsService.Shutdown(err)
 		})
 	} else {
-		log.Warn("verified marketplace notifications job is disabled")
+		log.Warn("verified notifications job is disabled")
 	}
 
-	////////////////////////////////////// ADMINS //////////////////////////////////////
+	if config.Jobs.Sync.Wildberries.IsEnabled {
+		g.Add(func() error {
+			return wb.Sync()
+		}, func(err error) {
+			wb.Shutdown(err)
+		})
+	} else {
+		log.Warn("wildberries sync job is disabled")
+	}
+
+	////////////////////////////////////// ADMINS /////////////////////////////////////
+
 	adminsRepo := admin.NewPg(db)
 	adminsService := admin.NewServiceWithObservability(
 		admin.New(
 			adminsRepo,
-			admin.DOSpacesConfig{
-				Endpoint: config.DigitalOcean.Spaces.Endpoint,
-				Bucket:   config.DigitalOcean.Spaces.Bucket,
-				ID:       config.DigitalOcean.Spaces.Key,
-				Secret:   config.DigitalOcean.Spaces.Secret,
-			},
 			&notificationsAdminAdapter{
 				notifier: notificationsService,
 			},
+			s3Instance,
 			config.Bot.Name,
+			config.AWS.S3.Bucket,
 		),
 		log.With(zap.String("service", "admins")),
 	)
-	adminsHandler := admin.MakeHandler(adminsService, authMw)
 	adminsHandlerV2 := admin.MakeHandlerV2(adminsService, authMw)
 
 	////////////////////////////////////// WEBHOOKS //////////////////////////////////////
@@ -214,11 +231,6 @@ func main() {
 	)
 
 	////////////////////////////////////// HTTP SERVER V1 //////////////////////////////////////
-	r.Mount("/api/v1/public/products", shopHandler)
-	r.Mount("/api/v1/public/auth", authHandler)
-	r.Mount("/api/v1/public/orders", ordersHandler)
-	r.Mount("/api/v1/private/marketplaces", adminsHandler)
-
 	r.Mount("/api/v1/telegram/webhooks", webhooksHandler)
 	r.Mount("/api/v1/cloud-payments/webhooks", cloudPaymentsWebhookHandler)
 

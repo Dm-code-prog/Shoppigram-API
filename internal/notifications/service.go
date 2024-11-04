@@ -4,8 +4,6 @@ import (
 	"context"
 	"embed"
 	"github.com/shoppigram-com/marketplace-api/packages/cloudwatchcollector"
-	"strconv"
-	"strings"
 	"time"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -31,9 +29,6 @@ const (
 
 	stateConfirmed = "confirmed"
 	stateDone      = "done"
-
-	metricsStatusOK = "OK"
-	metricsStatusKO = "KO"
 )
 
 type (
@@ -140,8 +135,10 @@ type (
 		// GetProductCustomMediaForward gets a custom media forward information for a product
 		GetProductCustomMediaForward(ctx context.Context, productID uuid.UUID, state string) (fromChatID int64, messageID int64, err error)
 
-		GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]NewMarketplaceNotification, error)
-		GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]VerifiedMarketplaceNotification, error)
+		GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]NewShopNotification, error)
+
+		GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]VerifiedShopNotification, error)
+
 		AddUserToNewOrderNotifications(ctx context.Context, req AddUserToNewOrderNotificationsRequest) error
 
 		// GetNotificationsForOrders returns a list of orders that were updated since the last run
@@ -149,8 +146,8 @@ type (
 		GetNotificationsForOrders(ctx context.Context, cursor Cursor) ([]OrderNotification, error)
 	}
 
-	// Service provides user operations
-	Service struct {
+	// Notifier provides user operations
+	Notifier struct {
 		repo                               Repository
 		log                                *zap.Logger
 		ctx                                context.Context
@@ -160,17 +157,11 @@ type (
 		verifiedMarketplaceProcessingTimer time.Duration
 		bot                                *tgbotapi.BotAPI
 		botName                            string
-		bucketUrl                          string
 	}
 )
 
-// New creates a new Service
-func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration, newMarketplaceProcessingTimer time.Duration, verifiedMarketplaceProcessingTimer time.Duration, botToken string, botName string, bucketUrl string) *Service {
-	if log == nil {
-		log, _ = zap.NewProduction()
-		log.Warn("log *zap.Logger is nil, using zap.NewProduction")
-	}
-
+// New creates a new Notifier
+func New(repo Repository, log *zap.Logger, newOrderJobTimeout, newShopJobTimeout, verifiedShopJobTimeout time.Duration, botToken, botName string) *Notifier {
 	bot, err := tgbotapi.NewBotAPI(botToken)
 	if err != nil {
 		log.With(
@@ -180,30 +171,28 @@ func New(repo Repository, log *zap.Logger, newOrderProcessingTimer time.Duration
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	return &Service{
+	return &Notifier{
 		repo:                               repo,
 		log:                                log,
 		ctx:                                ctx,
 		cancel:                             cancel,
-		newOrderProcessingTimer:            newOrderProcessingTimer,
-		newMarketplaceProcessingTimer:      newMarketplaceProcessingTimer,
-		verifiedMarketplaceProcessingTimer: verifiedMarketplaceProcessingTimer,
+		newOrderProcessingTimer:            newOrderJobTimeout,
+		newMarketplaceProcessingTimer:      newShopJobTimeout,
+		verifiedMarketplaceProcessingTimer: verifiedShopJobTimeout,
 		bot:                                bot,
 		botName:                            botName,
-		bucketUrl:                          bucketUrl,
 	}
 }
 
 // Shutdown stops all the notifications
-func (s *Service) Shutdown() error {
+func (s *Notifier) Shutdown(_ error) {
 	s.cancel()
 	<-s.ctx.Done()
-	return nil
 }
 
 // AddUserToNewOrderNotifications creates a new order notification
 // list entry for some marketplace
-func (s *Service) AddUserToNewOrderNotifications(ctx context.Context, req AddUserToNewOrderNotificationsRequest) error {
+func (s *Notifier) AddUserToNewOrderNotifications(ctx context.Context, req AddUserToNewOrderNotificationsRequest) error {
 	err := s.repo.AddUserToNewOrderNotifications(ctx, req)
 	if err != nil {
 		return errors.Wrap(err, "s.repo.AddUserToNewOrderNotifications")
@@ -213,7 +202,7 @@ func (s *Service) AddUserToNewOrderNotifications(ctx context.Context, req AddUse
 }
 
 // NotifyGreetings sends a greeting message to a user
-func (s *Service) NotifyGreetings(_ context.Context, request NotifyGreetingsRequest) error {
+func (s *Notifier) NotifyGreetings(_ context.Context, request NotifyGreetingsRequest) error {
 	messageText, err := BuildGreetigsMessage(
 		checkAndGetLangCode(request.UserLanguage),
 	)
@@ -226,7 +215,7 @@ func (s *Service) NotifyGreetings(_ context.Context, request NotifyGreetingsRequ
 }
 
 // SendMarketplaceBanner sends a marketplace banner to a Telegram channel
-func (s *Service) SendMarketplaceBanner(_ context.Context, params SendMarketplaceBannerParams) (int64, error) {
+func (s *Notifier) SendMarketplaceBanner(_ context.Context, params SendMarketplaceBannerParams) (int64, error) {
 	msg := tgbotapi.NewMessage(params.ChannelChatID, params.Message)
 	addButtonsToMessage(
 		&msg,
@@ -245,7 +234,7 @@ func (s *Service) SendMarketplaceBanner(_ context.Context, params SendMarketplac
 }
 
 // PinNotification pins a message in a Telegram channel
-func (s *Service) PinNotification(_ context.Context, req PinNotificationParams) error {
+func (s *Notifier) PinNotification(_ context.Context, req PinNotificationParams) error {
 	_, err := s.bot.Request(tgbotapi.PinChatMessageConfig{
 		ChatID:    req.ChatID,
 		MessageID: int(req.MessageID),
@@ -258,30 +247,18 @@ func (s *Service) PinNotification(_ context.Context, req PinNotificationParams) 
 }
 
 // SendMessage sends a message, handles errors and publishes metrics
-func (s *Service) SendMessage(msg tgbotapi.Chattable) (tgbotapi.Message, error) {
+func (s *Notifier) SendMessage(msg tgbotapi.Chattable) (tgbotapi.Message, error) {
 	message, err := s.bot.Send(msg)
 	defer func() {
-		status := metricsStatusOK
+		status := cloudwatchcollector.StatusOK
 		if err != nil {
-			status = metricsStatusKO
+			status = cloudwatchcollector.StatusKO
 		}
 		cloudwatchcollector.Increment("telegram_bot_api_send_message", cloudwatchcollector.Dimensions{
 			"status": status,
 		})
 	}()
 	if err != nil {
-		var chatID int64
-		if m, ok := msg.(tgbotapi.MessageConfig); ok {
-			chatID = m.ChatID
-		}
-
-		if strings.Contains(err.Error(), "chat not found") {
-			s.log.With(
-				zap.String("method", "bot.Send"),
-				zap.String("user_id", strconv.FormatInt(chatID, 10)),
-			).Warn("chat not found")
-			return tgbotapi.Message{}, errors.New("send message to Telegram: chat not found")
-		}
 		return tgbotapi.Message{}, errors.Wrap(err, "send message to Telegram")
 	}
 

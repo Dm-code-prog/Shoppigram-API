@@ -20,7 +20,7 @@ type (
 		IsPublic        bool
 	}
 
-	// DeleteTelegramChannelRequest specifies the ID of the channel to delete
+	// DeleteTelegramChannelRequest specifies the ShopID of the channel to delete
 	// from the database
 	DeleteTelegramChannelRequest struct {
 		ExternalID int64

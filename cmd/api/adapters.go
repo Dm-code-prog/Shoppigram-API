@@ -10,7 +10,7 @@ import (
 // notificationsAdminAdapter is an adapter for the notifications service
 // meant to be used by the admins service
 type notificationsAdminAdapter struct {
-	notifier *notifications.Service
+	notifier *notifications.Notifier
 }
 
 func (a *notificationsAdminAdapter) AddUserToNewOrderNotifications(ctx context.Context, req admin.AddUserToNewOrderNotificationsParams) error {
@@ -26,7 +26,7 @@ func (a *notificationsAdminAdapter) PinNotification(ctx context.Context, req adm
 }
 
 type notificationsWebhooksAdapter struct {
-	notifier *notifications.Service
+	notifier *notifications.Notifier
 }
 
 func (a *notificationsWebhooksAdapter) NotifyChannelIntegrationSuccess(ctx context.Context, req webhooks.NotifyChannelIntegrationSuccessRequest) error {

@@ -180,8 +180,8 @@ func (p *Pg) GetNotificationsForOrders(ctx context.Context, cursor Cursor) ([]Or
 
 // GetNotificationsForNewMarketplacesAfterCursor gets notifcations for marketplaces
 // which were created after date specified in cursor
-func (p *Pg) GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]NewMarketplaceNotification, error) {
-	var newMarketplaceNotifications []NewMarketplaceNotification
+func (p *Pg) GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]NewShopNotification, error) {
+	var newMarketplaceNotifications []NewShopNotification
 
 	rows, err := p.gen.GetNotificationsForNewMarketplacesAfterCursor(
 		ctx,
@@ -198,7 +198,7 @@ func (p *Pg) GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, 
 	}
 
 	for _, r := range rows {
-		newMarketplaceNotifications = append(newMarketplaceNotifications, NewMarketplaceNotification{
+		newMarketplaceNotifications = append(newMarketplaceNotifications, NewShopNotification{
 			ID:              r.ID,
 			Name:            r.Name,
 			ShortName:       r.ShortName,
@@ -214,8 +214,8 @@ func (p *Pg) GetNotificationsForNewMarketplacesAfterCursor(ctx context.Context, 
 
 // GetNotificationsForVerifiedMarketplacesAfterCursor gets notifcations for marketplaces
 // which were verified after date specified in cursor
-func (p *Pg) GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]VerifiedMarketplaceNotification, error) {
-	var verifiedMarketplaceNotifications []VerifiedMarketplaceNotification
+func (p *Pg) GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Context, cur Cursor) ([]VerifiedShopNotification, error) {
+	var verifiedMarketplaceNotifications []VerifiedShopNotification
 
 	rows, err := p.gen.GetNotificationsForVerifiedMarketplacesAfterCursor(
 		ctx,
@@ -232,7 +232,7 @@ func (p *Pg) GetNotificationsForVerifiedMarketplacesAfterCursor(ctx context.Cont
 	}
 
 	for _, r := range rows {
-		verifiedMarketplaceNotifications = append(verifiedMarketplaceNotifications, VerifiedMarketplaceNotification{
+		verifiedMarketplaceNotifications = append(verifiedMarketplaceNotifications, VerifiedShopNotification{
 			ID:                  r.ID,
 			Name:                r.Name,
 			ShortName:           r.ShortName,

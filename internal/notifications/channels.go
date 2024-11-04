@@ -17,7 +17,7 @@ import (
 
 // NotifyChannelIntegrationSuccess notifies a user about a successful
 // channel integration with Shoppigram
-func (s *Service) NotifyChannelIntegrationSuccess(_ context.Context, request NotifyChannelIntegrationSuccessRequest) error {
+func (s *Notifier) NotifyChannelIntegrationSuccess(_ context.Context, request NotifyChannelIntegrationSuccessRequest) error {
 	message := ChannelIntegrationSuccessNotification(request)
 
 	langCode := checkAndGetLangCode(message.UserLanguage)
@@ -41,7 +41,7 @@ func (s *Service) NotifyChannelIntegrationSuccess(_ context.Context, request Not
 
 // NotifyChannelIntegrationFailure notifies a user about a failure
 // happened during channel integration with Shoppigram
-func (s *Service) NotifyChannelIntegrationFailure(_ context.Context, request NotifyChannelIntegrationFailureRequest) error {
+func (s *Notifier) NotifyChannelIntegrationFailure(_ context.Context, request NotifyChannelIntegrationFailureRequest) error {
 	message := ChannelIntegrationFailureNotification(request)
 
 	langCode := checkAndGetLangCode(message.UserLanguage)
