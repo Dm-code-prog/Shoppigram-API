@@ -12,5 +12,3 @@ create table product_variants
 
 
 create unique index on products (external_provider, external_id, web_app_id, is_deleted);
-
-drop index if exists products_external_provider_external_id_is_deleted_idx;

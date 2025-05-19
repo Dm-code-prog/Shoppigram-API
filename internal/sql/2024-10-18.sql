@@ -13,16 +13,11 @@ alter table products
 alter table products
     add column updated_at timestamp default now();
 
-alter table products
-    drop column if exists extra_properties;
+-- alter table products
+--     drop column if exists price_currency;
 
-alter table products
-    drop column if exists price_currency;
-
-alter table products
-    drop column if exists image_url;
-
-create unique index on products (external_id, external_provider);
+-- alter table products
+--     drop column if exists image_url;
 
 create or replace function set_updated_at()
     returns trigger as
@@ -57,7 +52,8 @@ create table shop_external_connections
     primary key (id)
 );
 
-create unique index on shop_external_connections (web_app_id);
+create unique index on shop_external_connections (web_app_id, external_provider);
+
 
 create trigger set_updated_at
     before update
@@ -76,9 +72,3 @@ create table product_photos
 );
 
 create unique index on product_photos (url, product_id);
-
-alter table products
-    alter column name type varchar(255);
-
-alter table products
-    alter column category type varchar(255);
